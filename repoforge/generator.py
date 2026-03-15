@@ -15,7 +15,6 @@ Output layout (default: .claude/):
 Also mirrors to .opencode/ with identical structure.
 """
 
-import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -137,7 +136,7 @@ def generate_artifacts(
     # -----------------------------------------------------------------------
     # 4. Orchestrator agent
     # -----------------------------------------------------------------------
-    log(f"\n🤖 Generating orchestrator agent ...")
+    log("\n🤖 Generating orchestrator agent ...")
     system, user = orchestrator_prompt(repo_map)
     content = _generate(llm, system, user, dry_run)
     path = out / "agents" / "orchestrator" / "AGENT.md"
@@ -148,7 +147,7 @@ def generate_artifacts(
     # -----------------------------------------------------------------------
     # 5. Generate skill-registry.md (agent-teams-lite compatible)
     # -----------------------------------------------------------------------
-    log(f"\n📋 Generating skill registry...")
+    log("\n📋 Generating skill registry...")
     registry_content = build_skill_registry(
         generated_skills=generated["skills"],
         repo_map=repo_map,

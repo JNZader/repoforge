@@ -12,7 +12,6 @@ Usage via CLI:
 
 import os
 import json
-import mimetypes
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
 import urllib.parse
@@ -45,7 +44,7 @@ def serve_docs(output_dir: str = "docs", port: int = 8000, open_browser: bool = 
 
     print(f"📖  Serving docs at {url}")
     print(f"    Directory: {out}")
-    print(f"    Press Ctrl+C to stop.\n")
+    print("    Press Ctrl+C to stop.\n")
 
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
@@ -71,7 +70,7 @@ def serve_skills(output_dir: str = ".claude", port: int = 8765, open_browser: bo
 
     print(f"⚒   RepoForge skills browser at {url}")
     print(f"    Directory: {out}")
-    print(f"    Press Ctrl+C to stop.\n")
+    print("    Press Ctrl+C to stop.\n")
 
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
@@ -270,15 +269,15 @@ function md(t){
     body=t.slice(m[0].length);
   }
   body=body
-    .replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>')
+    .replace(/```(\\w*)\n([\\s\\S]*?)```/g,'<pre><code>$2</code></pre>')
     .replace(/^### (.+)$/gm,'<h3>$1</h3>')
     .replace(/^## (.+)$/gm,'<h2>$1</h2>')
     .replace(/^# (.+)$/gm,'<h1>$1</h1>')
     .replace(/`([^`]+)`/g,'<code>$1</code>')
     .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
-    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
-    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g,m=>'<ul>'+m+'</ul>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^\\d+\\. (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>[\\s\\S]*?<\\/li>\n?)+/g,m=>'<ul>'+m+'</ul>')
+    .replace(/\\*\\*(.+?)\\*\\*/g,'<strong>$1</strong>')
     .replace(/\n\n/g,'</p><p>');
   return fm+'<p>'+body+'</p>';
 }

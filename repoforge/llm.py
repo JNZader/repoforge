@@ -165,7 +165,7 @@ def build_llm(
     temperature: Optional[float] = None,
 ) -> LLM:
     """
-    Build an LLM instance. 
+    Build an LLM instance.
 
     Model string format (LiteLLM convention):
         "claude-haiku-3-5"                  -> Anthropic

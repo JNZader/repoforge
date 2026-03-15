@@ -14,10 +14,9 @@ Output is a Docsify-ready docs/ folder that works on GitHub Pages with zero conf
 import sys
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 
 from .scanner import scan_repo
-from .llm import build_llm, LLM
+from .llm import build_llm
 from .docs_prompts import get_chapter_prompts
 from .docsify import build_docsify_files
 
@@ -112,7 +111,7 @@ def generate_docs(
     generated = []
     errors = []
 
-    log(f"\n✍️  Generating documentation...\n")
+    log("\n✍️  Generating documentation...\n")
     for i, chapter in enumerate(chapters, 1):
         subdir = chapter.get("subdir")
         display = f"{subdir}/{chapter['file']}" if subdir else chapter["file"]
@@ -137,7 +136,7 @@ def generate_docs(
     # ------------------------------------------------------------------
     # 6. Generate Docsify files (deterministic, no LLM)
     # ------------------------------------------------------------------
-    log(f"\n🌐 Building Docsify files...")
+    log("\n🌐 Building Docsify files...")
     docsify_files = build_docsify_files(
         output_dir=out,
         project_name=project_name,
@@ -153,9 +152,9 @@ def generate_docs(
     total = len(generated)
     log(f"\n🎉 Done! {total} chapters + {len(docsify_files)} Docsify files")
     log(f"   Output: {_rel(out, root)}/")
-    log(f"\n📖 To preview locally:")
+    log("\n📖 To preview locally:")
     log(f"   npx serve {_rel(out, root)}   (or: python3 -m http.server 8000 --directory {_rel(out, root)})")
-    log(f"\n🚀 To publish on GitHub Pages:")
+    log("\n🚀 To publish on GitHub Pages:")
     log(f"   Push to GitHub → Settings → Pages → Source: /{_rel(out, root)} on main branch")
 
     if errors:

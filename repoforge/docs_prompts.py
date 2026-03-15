@@ -18,7 +18,6 @@ Chapters generated:
   07-dev-guide.md   - How to contribute, conventions, add features
 """
 
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Shared system prompt — injected in every chapter call
@@ -403,7 +402,6 @@ def api_reference_prompt(repo_map: dict, language: str, project_name: str) -> tu
     modules_text = ""
     for layer_name, m in api_modules[:10]:
         exports = ", ".join(m.get("exports", [])[:10])
-        imports = ", ".join(m.get("imports", [])[:5])
         hint = m.get("summary_hint", "")
         modules_text += f"\n  - `{m['path']}` [{layer_name}]: {hint} | exports: {exports}"
 
@@ -438,7 +436,6 @@ Language: {language}
 # ---------------------------------------------------------------------------
 
 def dev_guide_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
-    stack = repo_map.get("tech_stack", [])
     layers = repo_map.get("layers", {})
 
     user = f"""Generate **07-dev-guide.md** — the Developer Guide for **{project_name}**.
@@ -1123,11 +1120,9 @@ def classify_layer(layer_name: str, layer_data: dict, repo_map: dict) -> str:
     """
     name_lower  = layer_name.lower()
     modules     = layer_data.get("modules", [])
-    layer_path  = layer_data.get("path", "").lower()
     stack_all   = " ".join(repo_map.get("tech_stack", [])).lower()
 
     all_paths = " ".join(m["path"].lower() for m in modules)
-    all_names = " ".join(m["name"].lower() for m in modules)
     all_langs = " ".join(m.get("language", "") for m in modules).lower()
     num_files = len(modules)
 

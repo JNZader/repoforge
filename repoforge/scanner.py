@@ -14,9 +14,7 @@ File discovery + definition extraction uses ripgrep when installed
 Falls back to pure Python rglob + regex automatically.
 """
 
-import os
 import json
-import subprocess
 import ast
 from pathlib import Path
 from typing import Optional

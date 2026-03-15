@@ -13,7 +13,6 @@ The generated docs/ folder can be served by:
 """
 
 from pathlib import Path
-from typing import Optional
 
 
 # ---------------------------------------------------------------------------
