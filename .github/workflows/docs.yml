@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate documentation
-        uses: JNZader/repoforge@v0.1.0
+        uses: JNZader/repoforge@main
         with:
           command: docs
           language: English      # change to: Spanish, French, German, etc.
