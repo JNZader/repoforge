@@ -44,8 +44,11 @@ Generates `SKILL.md` and `AGENT.md` compatible with:
 ## Installation
 
 ```bash
-pip install repoforge
+pip install repoforge-ai
 ```
+
+> **Note:** The CLI command is still `repoforge` after installation.
+> The PyPI package name is `repoforge-ai` (the name `repoforge` was already taken).
 
 **Recommended:** install [ripgrep](https://github.com/BurntSushi/ripgrep) for 10-100x faster scanning:
 ```bash

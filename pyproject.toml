@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "repoforge"
+name = "repoforge-ai"
 version = "0.1.0"
 description = "Generate technical docs and AI agent skills (SKILL.md, AGENT.md) from any codebase — model-agnostic, monorepo-aware"
 readme = "README.md"
