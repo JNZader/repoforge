@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "repoforge"
+version = "0.1.0"
+description = "Generate technical docs and AI agent skills (SKILL.md, AGENT.md) from any codebase — model-agnostic, monorepo-aware"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = [
+    "claude-code", "opencode", "ai-agents", "documentation",
+    "skills", "agents", "llm", "monorepo", "docsify",
+    "github-copilot", "code-analysis", "developer-tools",
+    "claude", "gpt", "ollama",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "litellm>=1.40.0",      # universal LLM abstraction
+    "click>=8.1.0",          # CLI
+    "pyyaml>=6.0",           # config file parsing
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "ruff",
+]
+
+[project.scripts]
+repoforge = "repoforge.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/JNZader/repoforge"
+Repository = "https://github.com/JNZader/repoforge"
+Issues = "https://github.com/JNZader/repoforge/issues"
+Changelog = "https://github.com/JNZader/repoforge/releases"
+
+[tool.hatch.build.targets.wheel]
+packages = ["repoforge"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["repoforge"]
+omit = ["tests/*", "eval/*"]

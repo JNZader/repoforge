@@ -1,0 +1,23 @@
+# repoforge.yaml — per-repo configuration
+# Rename to repoforge.yaml and place in your repo root
+
+# Override project name (default: auto-detected from package.json / pyproject.toml)
+# project_name: "My Awesome App"
+
+# Force project type instead of auto-detecting.
+# Options: web_service | frontend_app | cli_tool | library_sdk | data_science
+#          mobile_app | desktop_app | infra_devops | monorepo | generic
+# project_type: web_service
+
+# Override layer detection (default: auto-detected from directory names)
+# layers:
+#   frontend: apps/web
+#   backend: apps/api
+#   shared: packages/shared
+#   workers: apps/jobs
+
+# Default documentation language (avoids passing --lang every time)
+# language: Spanish
+
+# Default LLM model (avoids passing --model every time)
+# model: github/gpt-4o-mini
