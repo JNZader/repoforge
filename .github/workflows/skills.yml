@@ -5,7 +5,7 @@
 # Generates SKILL.md and AGENT.md files for Claude Code / OpenCode
 # and commits them back to the repository.
 #
-# FREE by default — uses GitHub Models with GITHUB_TOKEN.
+# Uses GitHub Models (requires GH_MODELS_TOKEN secret with models:read scope).
 #
 # SETUP:
 #   1. Copy this file to your repo's .github/workflows/skills.yml
@@ -45,7 +45,8 @@ jobs:
           command: skills
           output-dir: .claude
           model: github/gpt-4o-mini
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # GitHub Models requires a PAT with models:read scope (automatic GITHUB_TOKEN is insufficient)
+          github-token: ${{ secrets.GH_MODELS_TOKEN }}
 
       - name: Commit generated files
         uses: stefanzweifel/git-auto-commit-action@v5
