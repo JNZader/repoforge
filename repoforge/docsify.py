@@ -55,8 +55,9 @@ def build_docsify_files(
     # 3. index.html
     index_path = output_dir / "index.html"
     lang_code = _language_to_code(language)
+    homepage = chapters[0]["file"] if chapters else "README.md"
     index_path.write_text(
-        _build_index_html(project_name, lang_code, theme),
+        _build_index_html(project_name, lang_code, theme, homepage),
         encoding="utf-8"
     )
     generated.append(str(index_path))
@@ -131,7 +132,7 @@ def _build_sidebar(project_name: str, chapters: list[dict]) -> str:
 # index.html
 # ---------------------------------------------------------------------------
 
-def _build_index_html(project_name: str, lang_code: str, theme: str) -> str:
+def _build_index_html(project_name: str, lang_code: str, theme: str, homepage: str) -> str:
     theme_url = _theme_url(theme)
     # Escape for HTML/JS
     safe_name = project_name.replace("'", "\\'").replace('"', "&quot;")
@@ -168,6 +169,7 @@ def _build_index_html(project_name: str, lang_code: str, theme: str) -> str:
 
       // Sidebar
       loadSidebar: '_sidebar.md',
+      homepage: '{homepage}',
       subMaxLevel: 3,
       auto2top: true,
 
