@@ -139,6 +139,19 @@ repoforge docs [OPTIONS]
 
 ### Publish to GitHub Pages
 
+RepoForge can publish docs automatically with GitHub Actions.
+
+1. Add `.github/workflows/docs.yml` to your repository.
+2. Set Pages to **Build and deployment: GitHub Actions**.
+3. Push to `main`.
+4. The workflow runs `repoforge docs`, uploads `docs/`, and deploys to Pages.
+
+After deploy, your docs are available at:
+
+`https://<your-user>.github.io/<your-repo>/`
+
+Manual flow is still supported:
+
 ```bash
 repoforge docs -w . -o docs --lang English
 git add docs/ && git commit -m "docs: generate documentation"
