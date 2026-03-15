@@ -74,7 +74,11 @@ inputs:
   github-token:
     description: >-
       GitHub token for authenticating with GitHub Models.
-      Defaults to the automatic GITHUB_TOKEN — no configuration needed.
+      IMPORTANT: The automatic GITHUB_TOKEN does NOT have access to GitHub Models.
+      You need a Personal Access Token (PAT) with the "models:read" scope.
+      Create one at: https://github.com/settings/tokens
+      Add it as a repository secret (e.g. GH_MODELS_TOKEN) and pass it here.
+      Only required when using model: github/* (default). Other providers use api-key.
     required: false
     default: ${{ github.token }}
 
@@ -159,8 +163,8 @@ runs:
         NAME="${{ inputs.project-name }}"
         THEME="${{ inputs.theme }}"
 
-        # Build command args
-        ARGS="$CMD --model $MODEL -o $OUT --quiet"
+        # Build command args (no --quiet so errors are visible in Actions log)
+        ARGS="$CMD --model $MODEL -o $OUT"
 
         if [ "$CMD" = "docs" ]; then
           ARGS="$ARGS --lang $LANG --theme $THEME"
@@ -172,10 +176,17 @@ runs:
         echo "🚀 Running: repoforge $ARGS"
         repoforge $ARGS
 
+        # Fail if nothing was generated (catches silent LLM errors)
+        FILES=$(find $OUT -type f | wc -l | tr -d ' ')
+        echo "files-generated=$FILES" >> $GITHUB_OUTPUT
+        if [ "$FILES" -lt 3 ]; then
+          echo "::error::repoforge generated only $FILES files — expected at least 3. Check LLM credentials."
+          exit 1
+        fi
+
         # Outputs
         echo "output-dir=$(realpath $OUT)" >> $GITHUB_OUTPUT
         echo "project-name=${NAME:-$(basename $(pwd))}" >> $GITHUB_OUTPUT
-        echo "files-generated=$(find $OUT -type f | wc -l | tr -d ' ')" >> $GITHUB_OUTPUT
 
     - name: Summary
       shell: bash

@@ -56,11 +56,16 @@ jobs:
           command: docs
           language: English      # change to: Spanish, French, German, etc.
           output-dir: docs
-          model: github/gpt-4o-mini   # free with GitHub Copilot/token
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Uncomment to use a paid provider:
+          model: github/gpt-4o-mini
+          # GitHub Models requires a PAT with models:read scope (not the automatic GITHUB_TOKEN)
+          # Create one at: https://github.com/settings/tokens → "Generate new token (classic)"
+          # Select scopes: models:read  → save as repo secret GH_MODELS_TOKEN
+          github-token: ${{ secrets.GH_MODELS_TOKEN }}
+          # Alternatively, use any other provider:
           # model: claude-haiku-3-5
           # api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # model: groq/llama-3.3-70b-versatile
+          # api-key: ${{ secrets.GROQ_API_KEY }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
