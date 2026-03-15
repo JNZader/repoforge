@@ -1,0 +1,57 @@
+# ============================================================
+# RepoForge — Auto-generate SKILL.md + AGENT.md on push
+# ============================================================
+#
+# Generates SKILL.md and AGENT.md files for Claude Code / OpenCode
+# and commits them back to the repository.
+#
+# FREE by default — uses GitHub Models with GITHUB_TOKEN.
+#
+# SETUP:
+#   1. Copy this file to your repo's .github/workflows/skills.yml
+#   2. The workflow will auto-commit generated files to .claude/
+#
+# NOTE: If you use this, add .claude/ to your .gitignore OR
+# make sure the workflow only runs on non-skill changes (see paths-ignore).
+
+name: Generate Skills
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.claude/**'     # avoid infinite loop
+      - '.opencode/**'
+      - 'docs/**'
+      - '**.md'
+      - '.github/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write      # needed to commit generated files back
+
+jobs:
+  generate:
+    name: Generate Skills & Agents
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate skills and agents
+        uses: JNZader/repoforge@v0.1.0
+        with:
+          command: skills
+          output-dir: .claude
+          model: github/gpt-4o-mini
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit generated files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regenerate skills and agents [repoforge]"
+          file_pattern: ".claude/** .atl/**"
+          commit_user_name: "RepoForge Bot"
+          commit_user_email: "repoforge[bot]@users.noreply.github.com"
+          skip_dirty_check: false

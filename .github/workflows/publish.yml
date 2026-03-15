@@ -1,0 +1,53 @@
+# ============================================================
+# RepoForge — Publish to PyPI on release
+# ============================================================
+# Triggers automatically when you create a GitHub Release.
+#
+# SETUP:
+#   1. Create a PyPI account at https://pypi.org
+#   2. Go to Account Settings → API tokens → Add API token
+#   3. Add the token as a GitHub secret named PYPI_API_TOKEN
+#   4. Create a release on GitHub → this workflow publishes automatically
+
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write   # for trusted publishing (optional)
+
+jobs:
+  publish:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/repoforge/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check distribution
+        run: twine check dist/*
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*

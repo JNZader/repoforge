@@ -1,0 +1,195 @@
+name: 'RepoForge'
+description: >-
+  Generate technical documentation and AI agent skills (SKILL.md, AGENT.md)
+  from your codebase. Free by default via GitHub Models — no API key needed.
+
+branding:
+  icon: 'book-open'
+  color: 'purple'
+
+inputs:
+  command:
+    description: >-
+      Command to run: "docs" (generate documentation) or "skills" (generate
+      SKILL.md + AGENT.md for Claude Code / OpenCode).
+    required: false
+    default: 'docs'
+
+  language:
+    description: >-
+      Language for generated documentation.
+      Options: English, Spanish, French, German, Portuguese,
+      Chinese, Japanese, Korean, Russian, Italian, Dutch.
+    required: false
+    default: 'English'
+
+  output-dir:
+    description: >-
+      Output directory. For "docs": defaults to "docs" (GitHub Pages ready).
+      For "skills": defaults to ".claude".
+    required: false
+    default: ''
+
+  working-dir:
+    description: >-
+      Path to the repository to analyze. Defaults to the root of the
+      checked-out repository.
+    required: false
+    default: '.'
+
+  model:
+    description: >-
+      LLM model to use. Defaults to "github/gpt-4o-mini" (free via GitHub
+      Models, no API key needed). Other options:
+        github/gpt-4o            — better quality, still free
+        claude-haiku-3-5         — requires ANTHROPIC_API_KEY
+        gpt-4o-mini              — requires OPENAI_API_KEY
+        groq/llama-3.3-70b-versatile — requires GROQ_API_KEY
+    required: false
+    default: 'github/gpt-4o-mini'
+
+  project-name:
+    description: >-
+      Override the project name (auto-detected from package.json /
+      pyproject.toml by default).
+    required: false
+    default: ''
+
+  theme:
+    description: >-
+      Docsify theme for "docs" command.
+      Options: vue (default), dark, buble, pure.
+    required: false
+    default: 'vue'
+
+  api-key:
+    description: >-
+      LLM provider API key. NOT required when using the default
+      "github/gpt-4o-mini" model — the GITHUB_TOKEN is used automatically.
+      Required for: anthropic (ANTHROPIC_API_KEY), openai (OPENAI_API_KEY),
+      groq (GROQ_API_KEY).
+    required: false
+    default: ''
+
+  github-token:
+    description: >-
+      GitHub token for authenticating with GitHub Models.
+      Defaults to the automatic GITHUB_TOKEN — no configuration needed.
+    required: false
+    default: ${{ github.token }}
+
+  python-version:
+    description: >-
+      Python version to use. Minimum: 3.10.
+    required: false
+    default: '3.11'
+
+outputs:
+  output-dir:
+    description: 'Absolute path to the generated output directory'
+    value: ${{ steps.run.outputs.output-dir }}
+
+  project-name:
+    description: 'Auto-detected or overridden project name'
+    value: ${{ steps.run.outputs.project-name }}
+
+  files-generated:
+    description: 'Number of files generated'
+    value: ${{ steps.run.outputs.files-generated }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: repoforge-pip-${{ inputs.python-version }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+        restore-keys: |
+          repoforge-pip-${{ inputs.python-version }}-
+          repoforge-pip-
+
+    - name: Install repoforge
+      shell: bash
+      run: pip install repoforge --quiet
+
+    - name: Install ripgrep (faster scanning)
+      shell: bash
+      run: |
+        if ! command -v rg &> /dev/null; then
+          sudo apt-get install -y ripgrep 2>/dev/null || true
+        fi
+
+    - name: Resolve output directory
+      id: resolve
+      shell: bash
+      run: |
+        CMD="${{ inputs.command }}"
+        OUT="${{ inputs.output-dir }}"
+        if [ -z "$OUT" ]; then
+          if [ "$CMD" = "skills" ]; then
+            OUT=".claude"
+          else
+            OUT="docs"
+          fi
+        fi
+        echo "output-dir=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Run repoforge
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-dir }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        ANTHROPIC_API_KEY: ${{ inputs.api-key }}
+        OPENAI_API_KEY: ${{ inputs.api-key }}
+        GROQ_API_KEY: ${{ inputs.api-key }}
+      run: |
+        CMD="${{ inputs.command }}"
+        MODEL="${{ inputs.model }}"
+        LANG="${{ inputs.language }}"
+        OUT="${{ steps.resolve.outputs.output-dir }}"
+        NAME="${{ inputs.project-name }}"
+        THEME="${{ inputs.theme }}"
+
+        # Build command args
+        ARGS="$CMD --model $MODEL -o $OUT --quiet"
+
+        if [ "$CMD" = "docs" ]; then
+          ARGS="$ARGS --lang $LANG --theme $THEME"
+          if [ -n "$NAME" ]; then
+            ARGS="$ARGS --name \"$NAME\""
+          fi
+        fi
+
+        echo "🚀 Running: repoforge $ARGS"
+        repoforge $ARGS
+
+        # Outputs
+        echo "output-dir=$(realpath $OUT)" >> $GITHUB_OUTPUT
+        echo "project-name=${NAME:-$(basename $(pwd))}" >> $GITHUB_OUTPUT
+        echo "files-generated=$(find $OUT -type f | wc -l | tr -d ' ')" >> $GITHUB_OUTPUT
+
+    - name: Summary
+      shell: bash
+      run: |
+        CMD="${{ inputs.command }}"
+        OUT="${{ steps.resolve.outputs.output-dir }}"
+        FILES="${{ steps.run.outputs.files-generated }}"
+        echo "## ⚒ RepoForge" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Command:** \`$CMD\`  " >> $GITHUB_STEP_SUMMARY
+        echo "**Model:** \`${{ inputs.model }}\`  " >> $GITHUB_STEP_SUMMARY
+        echo "**Output:** \`$OUT/\` ($FILES files)" >> $GITHUB_STEP_SUMMARY
+        if [ "$CMD" = "docs" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📖 Documentation generated and ready for GitHub Pages." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚒ Skills and agents generated for Claude Code / OpenCode." >> $GITHUB_STEP_SUMMARY
+        fi

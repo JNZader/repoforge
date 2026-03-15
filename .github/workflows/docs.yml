@@ -1,0 +1,72 @@
+# ============================================================
+# RepoForge — Auto-generate documentation on push to main
+# ============================================================
+#
+# This workflow generates technical documentation using RepoForge
+# and deploys it to GitHub Pages automatically on every push.
+#
+# FREE by default — uses GitHub Models (gpt-4o-mini) with the
+# automatic GITHUB_TOKEN. No API key configuration needed.
+#
+# SETUP:
+#   1. Copy this file to your repo's .github/workflows/docs.yml
+#   2. Enable GitHub Pages: Settings → Pages → Source: GitHub Actions
+#   3. Push — docs are live at https://<user>.github.io/<repo>/
+#
+# CUSTOMIZE (optional):
+#   - Change "language" to generate docs in your preferred language
+#   - Change "model" to use a different LLM (see action inputs)
+#   - Add a repoforge.yaml to your repo root for per-repo config
+
+name: Generate Docs
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'        # avoid infinite loop
+      - '**.md'
+      - '.github/**'
+  workflow_dispatch:     # allow manual trigger from GitHub UI
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    name: Generate & Deploy Docs
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate documentation
+        uses: JNZader/repoforge@v0.1.0
+        with:
+          command: docs
+          language: English      # change to: Spanish, French, German, etc.
+          output-dir: docs
+          model: github/gpt-4o-mini   # free with GitHub Copilot/token
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Uncomment to use a paid provider:
+          # model: claude-haiku-3-5
+          # api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
