@@ -52,7 +52,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: regenerate skills and agents [repoforge]"
-          file_pattern: ".claude/** .atl/**"
+          file_pattern: ".claude/**"
           commit_user_name: "RepoForge Bot"
           commit_user_email: "repoforge[bot]@users.noreply.github.com"
           skip_dirty_check: false
