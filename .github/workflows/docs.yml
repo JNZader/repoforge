@@ -24,9 +24,7 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'docs/**'        # avoid infinite loop
-      - '**.md'
-      - '.github/**'
+      - 'docs/**'        # avoid infinite loop if docs are committed
   workflow_dispatch:     # allow manual trigger from GitHub UI
 
 permissions:
