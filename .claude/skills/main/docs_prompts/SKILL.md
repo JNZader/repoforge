@@ -2,7 +2,7 @@
 name: add-docs-prompts-endpoint
 description: >
   This skill covers the integration of shared system prompts into your documentation.
-  Trigger: When implementing documentation prompts in your project.
+  Trigger: When you need to inject prompts into chapter calls.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,29 +13,31 @@ metadata:
 
 ### Use Index Prompt
 
-Utilize the `index_prompt` to generate a structured index for your documentation.
+Utilize the `index_prompt` to provide a structured entry point for your documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-index = index_prompt()
+def generate_index():
+    return index_prompt()
 ```
 
 ### Implement Overview Prompt
 
-Leverage the `overview_prompt` to provide a concise summary of your project.
+Leverage the `overview_prompt` to summarize the key aspects of your documentation.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
-overview = overview_prompt()
+def generate_overview():
+    return overview_prompt()
 ```
 
 ## When to Use
 
-- When creating a new documentation chapter.
-- To provide a quick start guide for users.
-- During the review of documentation for clarity and completeness.
+- When creating a new chapter in your documentation.
+- To provide a quick reference for users navigating through the documentation.
+- During the review process to ensure all chapters have consistent prompts.
 
 ## Commands
 
@@ -46,21 +48,19 @@ python repoforge/cli.py update-prompts
 
 ## Anti-Patterns
 
-### Don't: Skip Core Mechanisms Prompt
+### Don't: Skip Prompt Integration
 
-Neglecting the `core_mechanisms_prompt` can lead to incomplete documentation.
+Neglecting to integrate prompts can lead to disjointed documentation and user confusion.
 
 ```python
 # BAD
-from repoforge.docs_prompts import overview_prompt
-
-# Missing core mechanisms
-overview = overview_prompt()
+def generate_chapter():
+    return "This is a chapter without prompts."
 ```
 
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
-| Generate index | `index_prompt()` |
-| Create overview | `overview_prompt()` |
+| Task                     | Pattern                     |
+|--------------------------|-----------------------------|
+| Generate index prompt    | `index_prompt()`            |
+| Create overview section   | `overview_prompt()`         |

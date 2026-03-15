@@ -36,7 +36,7 @@ from repoforge.cli import main
 
 ### Documentation Generation
 
-Use the `repoforge/docs_generator.py` to create documentation files.
+Use `repoforge/docs_generator.py` to create documentation files.
 
 ```python
 # Example
@@ -46,14 +46,14 @@ from repoforge.docs_generator import generate_docs
 ## When to Use
 
 - Creating new CLI commands
-- Generating or updating project documentation
-- Implementing evaluation scenarios for testing
+- Generating project documentation
+- Implementing evaluation scenarios
 
 ## Adding a New CLI Command
 
 1. Modify `repoforge/cli.py` to include the new command.
-2. Implement the command logic in a new function.
-3. Update the command's help documentation.
+2. Define the command's functionality in a new function.
+3. Update the command's help text and options.
 4. Test the command using the CLI interface.
 
 ## Commands
@@ -66,11 +66,11 @@ python -m repoforge.docs_generator
 ## Anti-Patterns
 
 - **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
-- **Don't**: Modify the documentation prompts in `repoforge/docs_prompts.py` without ensuring all documentation generation calls are updated — this can lead to inconsistent documentation.
+- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with all evaluation scenarios — this can lead to runtime errors.
 
 ## Quick Reference
 
 | Task                | File                          | Pattern                          |
 |---------------------|-------------------------------|----------------------------------|
-| Add a new CLI command | `repoforge/cli.py`          | `from repoforge.cli import main` |
-| Generate documentation | `repoforge/docs_generator.py` | `from repoforge.docs_generator import generate_docs` |
+| Add a new CLI command| `repoforge/cli.py`           | `from repoforge.cli import main` |
+| Generate documentation| `repoforge/docs_generator.py`| `from repoforge.docs_generator import generate_docs` |

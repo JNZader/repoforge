@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the execution of evaluation tasks, documentation generation, and scenario management. It never interacts with other layers or agents.
+This agent owns the execution of tasks related to evaluation, documentation, and scenario management. It never interacts with other layers or agents.
 
 ## Capabilities
 

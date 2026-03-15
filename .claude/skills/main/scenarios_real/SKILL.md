@@ -33,27 +33,26 @@ auth_backend = get_auth_backend_module()
 
 ## When to Use
 
-- When you need to fetch backend modules for report generation.
+- When you need to fetch backend modules for reports in scenarios_real.
 - When implementing authentication features in scenarios_real.
-- To debug issues related to module retrieval in the scenarios_real context.
+- To debug issues related to module retrieval in scenarios_real.
 
 ## Commands
 
 ```bash
-python -m repoforge.cli skills
-python -m repoforge.cli docs
+python -m repoforge.cli
 ```
 
 ## Anti-Patterns
 
 ### Don't: Hardcode Module Imports
 
-Hardcoding module imports can lead to maintenance issues and reduce code flexibility.
+Hardcoding module imports can lead to maintenance issues and reduce flexibility.
 
 ```python
 # BAD
 from eval.scenarios_real import get_reports_backend_module as reports
-reports = get_reports_backend_module()
+reports = reports()
 ```
 
 ## Quick Reference
