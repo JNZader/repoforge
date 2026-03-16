@@ -15,9 +15,9 @@ This agent owns the execution of tasks related to evaluation, documentation, and
 
 ## Capabilities
 
-- Evaluation execution using `eval/harness.py`
-- Documentation generation with `repoforge/docs_generator.py`
-- Scenario management through `eval/scenarios_real.py`
+- Evaluation execution
+- Documentation generation
+- Scenario management
 
 ## Workflow
 
@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Execute evaluation tasks using `eval/harness.py`
-2. Generate documentation with `repoforge/docs_generator.py`
-3. Manage scenarios using `eval/scenarios_real.py`
+1. Execute evaluation logic from `eval/__init__.py`
+2. Generate documentation using `repoforge/docs_generator.py`
+3. Manage scenarios with `eval/scenarios_real.py`
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load

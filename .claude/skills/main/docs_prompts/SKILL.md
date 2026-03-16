@@ -19,18 +19,18 @@ Utilize the `index_prompt` to provide a structured entry point for your document
 from repoforge.docs_prompts import index_prompt
 
 def generate_index():
-    return index_prompt()
+    return index_prompt
 ```
 
 ### Implement Overview Prompt
 
-Leverage the `overview_prompt` to summarize the key aspects of your documentation.
+Incorporate the `overview_prompt` to summarize the key aspects of your documentation.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
 def generate_overview():
-    return overview_prompt()
+    return overview_prompt
 ```
 
 ## When to Use
@@ -50,17 +50,18 @@ python repoforge/cli.py update-prompts
 
 ### Don't: Skip Prompt Integration
 
-Neglecting to integrate prompts can lead to disjointed documentation and user confusion.
+Neglecting to integrate prompts can lead to disorganized documentation and user confusion.
 
 ```python
 # BAD
-def generate_chapter():
-    return "This is a chapter without prompts."
+def generate_documentation():
+    # Missing prompts
+    return "Documentation content without prompts."
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Generate index prompt    | `index_prompt()`            |
-| Create overview section   | `overview_prompt()`         |
+| Task | Pattern |
+|------|---------|
+| Generate index | `index_prompt` |
+| Create overview | `overview_prompt` |

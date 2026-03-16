@@ -17,17 +17,17 @@ metadata:
 ├── eval/harness.py — Adds parent to path when running directly
 ├── eval/scenarios_real.py — Contains real module snapshots
 ├── repoforge/__init__.py — Initializes the repoforge module
-├── repoforge/cli.py — Shared options factory
+├── repoforge/cli.py — Shared options factory for CLI commands
 ├── repoforge/docs_generator.py — Generates documentation
-├── repoforge/docs_prompts.py — Shared system prompts
-└── repoforge/docsify.py — Main entry point for documentation
+├── repoforge/docs_prompts.py — Shared system prompts for documentation
+└── repoforge/docsify.py — Main entry point for building documentation
 ```
 
 ## Critical Patterns
 
 ### CLI Command Structure
 
-All CLI commands should follow the pattern defined in `repoforge/cli.py`.
+All CLI commands should follow the structure defined in `repoforge/cli.py`.
 
 ```python
 # Example using real exported names
@@ -66,11 +66,11 @@ python -m repoforge.docs_generator
 ## Anti-Patterns
 
 - **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
-- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with all evaluation scenarios — this can lead to runtime errors.
+- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with existing evaluation scenarios — this can lead to runtime errors.
 
 ## Quick Reference
 
 | Task                | File                          | Pattern                          |
 |---------------------|-------------------------------|----------------------------------|
-| Add a new CLI command| `repoforge/cli.py`           | `from repoforge.cli import main` |
-| Generate documentation| `repoforge/docs_generator.py`| `from repoforge.docs_generator import generate_docs` |
+| Add a new CLI command | `repoforge/cli.py`          | `from repoforge.cli import main` |
+| Generate documentation | `repoforge/docs_generator.py` | `from repoforge.docs_generator import generate_docs` |
