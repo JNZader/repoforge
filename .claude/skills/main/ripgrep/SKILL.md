@@ -1,7 +1,7 @@
 ---
 name: check-ripgrep-availability
 description: >
-  This skill covers checking the availability of ripgrep in the environment.
+  This skill covers patterns for checking the availability of ripgrep.
   Trigger: When verifying if ripgrep is installed and accessible.
 license: Apache-2.0
 metadata:
@@ -50,10 +50,12 @@ python -m repoforge.cli
 
 ### Don't: Assume Ripgrep is Installed
 
-Assuming ripgrep is installed can lead to runtime errors.
+Assuming ripgrep is installed without checking can lead to runtime errors.
 
 ```python
 # BAD
+from repoforge.ripgrep import rg_version
+
 print(f"Ripgrep version: {rg_version()}")
 ```
 

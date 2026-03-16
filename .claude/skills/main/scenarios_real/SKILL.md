@@ -13,51 +13,47 @@ metadata:
 
 ### Get Reports Backend Module
 
-Use this pattern to retrieve the reports backend module for scenarios.
+Use this function to retrieve the reports backend module for scenarios.
 
 ```python
-from eval.scenarios_real import get_reports_backend_module
-
 reports_backend = get_reports_backend_module()
 ```
 
 ### Get Auth Backend Module
 
-This pattern allows you to access the authentication backend module.
+This function fetches the authentication backend module necessary for scenarios.
 
 ```python
-from eval.scenarios_real import get_auth_backend_module
-
 auth_backend = get_auth_backend_module()
 ```
 
 ## When to Use
 
-- When you need to fetch the reports backend for data processing.
-- To implement authentication features in your application.
-- During debugging to ensure backend modules are correctly loaded.
+- When you need to integrate reporting features into the scenarios_real module.
+- To implement authentication for user access in scenarios.
+- When debugging issues related to backend module retrieval.
 
 ## Commands
 
 ```bash
-python -m repoforge.cli
+python -m repoforge.cli skills
+python -m repoforge.cli docs
 ```
 
 ## Anti-Patterns
 
 ### Don't: Hardcode Module Imports
 
-Hardcoding imports can lead to maintenance issues and reduce code flexibility.
+Hardcoding module imports can lead to maintenance issues and reduce code flexibility.
 
 ```python
 # BAD
-from eval.scenarios_real import get_reports_backend_module as reports
-reports = get_reports_backend_module()
+from eval.scenarios_real import get_reports_backend_module
 ```
 
 ## Quick Reference
 
 | Task | Pattern |
 |------|---------|
-| Fetch reports backend | `get_reports_backend_module()` |
-| Access auth backend | `get_auth_backend_module()` |
+| Retrieve reports backend | `get_reports_backend_module()` |
+| Fetch auth backend | `get_auth_backend_module()` |

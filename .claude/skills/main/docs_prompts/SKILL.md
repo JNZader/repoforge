@@ -1,7 +1,7 @@
 ---
 name: add-docs-prompts-endpoint
 description: >
-  This skill covers the integration of shared system prompts into your documentation.
+  This skill covers the integration of shared system prompts into your application.
   Trigger: When you need to inject prompts into chapter calls.
 license: Apache-2.0
 metadata:
@@ -11,33 +11,33 @@ metadata:
 
 ## Critical Patterns
 
-### Use Index Prompt
+### Using Index Prompt
 
-Utilize the `index_prompt` to provide a consistent introduction across chapters.
+Inject the index prompt to provide a structured overview of the documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def inject_index_prompt():
+def get_documentation_index():
     return index_prompt
 ```
 
-### Get Chapter Prompts
+### Accessing Quickstart Prompt
 
-Leverage `get_chapter_prompts` to retrieve prompts for specific chapters dynamically.
+Utilize the quickstart prompt to guide users through initial setup steps.
 
 ```python
-from repoforge.docs_prompts import get_chapter_prompts
+from repoforge.docs_prompts import quickstart_prompt
 
-def fetch_prompts(chapter):
-    return get_chapter_prompts(chapter)
+def display_quickstart():
+    print(quickstart_prompt)
 ```
 
 ## When to Use
 
-- When creating a new documentation chapter that requires a standard introduction.
-- To dynamically load prompts based on user-selected chapters.
-- During the review process to ensure all chapters have consistent prompts.
+- When generating documentation for a new feature.
+- To provide users with a quickstart guide during onboarding.
+- When debugging prompt injection in chapter calls.
 
 ## Commands
 
@@ -50,17 +50,17 @@ python repoforge/cli.py update-prompts
 
 ### Don't: Hardcode Prompts
 
-Hardcoding prompts leads to inconsistency and maintenance challenges.
+Hardcoding prompts reduces flexibility and maintainability of the documentation.
 
 ```python
 # BAD
-def hardcoded_prompt():
+def get_hardcoded_prompt():
     return "This is a hardcoded prompt."
 ```
 
 ## Quick Reference
 
-| Task                       | Pattern                     |
-|----------------------------|-----------------------------|
-| Inject index prompt        | `index_prompt`             |
-| Retrieve chapter prompts    | `get_chapter_prompts`      |
+| Task | Pattern |
+|------|---------|
+| Inject index prompt | `index_prompt` |
+| Display quickstart prompt | `quickstart_prompt` |
