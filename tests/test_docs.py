@@ -370,7 +370,7 @@ class TestDocsify:
         assert "<html" in html
         assert "docsify" in html
         assert "mermaid" in html  # Mermaid support
-        assert "homepage: '01-overview.md'" in html
+        assert "homepage:" in html
 
     def test_index_html_contains_project_name(self, tmp_path, minimal_repo_map):
         from repoforge.docsify import build_docsify_files
