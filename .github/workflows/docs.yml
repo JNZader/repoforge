@@ -1,22 +1,19 @@
 # ============================================================
-# RepoForge — Auto-generate documentation on push to main
+# RepoForge — Generate docs with safe deploy modes
 # ============================================================
 #
-# This workflow generates technical documentation using RepoForge
-# and deploys it to GitHub Pages automatically on every push.
+# Default behavior is SAFE: generate docs only (no deploy).
 #
-# FREE by default — uses GitHub Models (gpt-4o-mini) with the
-# automatic GITHUB_TOKEN. No API key configuration needed.
+# To deploy, opt in explicitly:
+#   - Set repository variable REPOFORGE_DOCS_DEPLOY_MODE to: auto | main | subpath
+#   - Set repository variable REPOFORGE_DOCS_CONFIRM_DEPLOY to: true
 #
-# SETUP:
-#   1. Copy this file to your repo's .github/workflows/docs.yml
-#   2. Enable GitHub Pages: Settings → Pages → Source: GitHub Actions
-#   3. Push — docs are live at https://<user>.github.io/<repo>/
-#
-# CUSTOMIZE (optional):
-#   - Change "language" to generate docs in your preferred language
-#   - Change "model" to use a different LLM (see action inputs)
-#   - Add a repoforge.yaml to your repo root for per-repo config
+# Modes:
+#   none    -> generate only (default)
+#   auto    -> if no live site: deploy to main Pages root
+#              if live site exists: deploy to subpath on gh-pages (keep existing files)
+#   main    -> force deploy to Pages root (may replace existing site)
+#   subpath -> deploy under /<prefix>/ on gh-pages (keeps existing files)
 
 name: Generate Docs
 
@@ -24,11 +21,24 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'docs/**'        # avoid infinite loop if docs are committed
-  workflow_dispatch:     # allow manual trigger from GitHub UI
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      deploy_mode:
+        description: 'none | auto | main | subpath'
+        required: false
+        default: 'auto'
+      confirm_deploy:
+        description: 'Set true to allow deploy'
+        required: false
+        default: 'false'
+      subpath_prefix:
+        description: 'Subpath prefix when mode=subpath or auto-with-existing'
+        required: false
+        default: 'repoforge'
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -38,38 +48,205 @@ concurrency:
 
 jobs:
   generate:
-    name: Generate & Deploy Docs
+    name: Generate docs (safe deploy)
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.outputs.outputs.page_url }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve workflow settings
+        id: cfg
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MODE="${{ github.event.inputs.deploy_mode }}"
+            CONFIRM="${{ github.event.inputs.confirm_deploy }}"
+            PREFIX="${{ github.event.inputs.subpath_prefix }}"
+          else
+            MODE="${{ vars.REPOFORGE_DOCS_DEPLOY_MODE }}"
+            CONFIRM="${{ vars.REPOFORGE_DOCS_CONFIRM_DEPLOY }}"
+            PREFIX="${{ vars.REPOFORGE_DOCS_SUBPATH_PREFIX }}"
+          fi
+
+          [ -z "$MODE" ] && MODE="none"
+          [ -z "$CONFIRM" ] && CONFIRM="false"
+          [ -z "$PREFIX" ] && PREFIX="repoforge"
+
+          case "$MODE" in
+            none|auto|main|subpath) ;;
+            *)
+              echo "::error::Invalid deploy_mode '$MODE'. Use none|auto|main|subpath."
+              exit 1
+              ;;
+          esac
+
+          SANITIZED_PREFIX="$(echo "$PREFIX" | tr -cs 'a-zA-Z0-9/_-.' '-' | sed 's#^/*##;s#/*$##')"
+          [ -z "$SANITIZED_PREFIX" ] && SANITIZED_PREFIX="repoforge"
+
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "confirm=$CONFIRM" >> "$GITHUB_OUTPUT"
+          echo "prefix=$SANITIZED_PREFIX" >> "$GITHUB_OUTPUT"
+
+      - name: Preflight Pages state
+        id: preflight
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          PAGES_URL="https://${OWNER}.github.io/${REPO}/"
+
+          API_URL="https://api.github.com/repos/${{ github.repository }}/pages"
+          HTTP_CODE=$(curl -sS -o pages.json -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$API_URL")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            BUILD_TYPE=$(python3 -c "import json; print(json.load(open('pages.json', encoding='utf-8')).get('build_type', 'unknown'))")
+            PAGES_ENABLED=true
+          else
+            BUILD_TYPE="unknown"
+            PAGES_ENABLED=false
+          fi
+
+          LIVE_CODE=$(curl -sS -o /dev/null -w "%{http_code}" "$PAGES_URL" || true)
+          if [ "$LIVE_CODE" = "200" ]; then
+            EXISTING_LIVE=true
+          else
+            EXISTING_LIVE=false
+          fi
+
+          echo "pages_url=$PAGES_URL" >> "$GITHUB_OUTPUT"
+          echo "pages_enabled=$PAGES_ENABLED" >> "$GITHUB_OUTPUT"
+          echo "build_type=$BUILD_TYPE" >> "$GITHUB_OUTPUT"
+          echo "existing_live=$EXISTING_LIVE" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve deploy target
+        id: plan
+        shell: bash
+        run: |
+          MODE="${{ steps.cfg.outputs.mode }}"
+          CONFIRM="${{ steps.cfg.outputs.confirm }}"
+          PREFIX="${{ steps.cfg.outputs.prefix }}"
+          BUILD_TYPE="${{ steps.preflight.outputs.build_type }}"
+          EXISTING="${{ steps.preflight.outputs.existing_live }}"
+
+          DEPLOY=false
+          TARGET="none"
+          REASON="generate-only (safe default)"
+
+          if [ "$MODE" = "main" ] || [ "$MODE" = "subpath" ]; then
+            DEPLOY=true
+            TARGET="$MODE"
+            REASON="explicit mode: $MODE"
+          elif [ "$MODE" = "auto" ]; then
+            if [ "$EXISTING" = "true" ]; then
+              TARGET="subpath"
+              DEPLOY=true
+              REASON="auto: existing live site detected"
+            else
+              TARGET="main"
+              DEPLOY=true
+              REASON="auto: no live site detected"
+            fi
+          fi
+
+          if [ "$DEPLOY" = "true" ] && [ "$CONFIRM" != "true" ]; then
+            echo "::error::Deploy mode '$MODE' requires confirm_deploy=true (rule: explicit opt-in deploy)."
+            exit 1
+          fi
+
+          if [ "$TARGET" = "subpath" ] && [ "$BUILD_TYPE" = "workflow" ]; then
+            echo "::warning::Pages build_type=workflow detected. Subpath mode needs gh-pages branch source to preserve existing content. Falling back to generate-only."
+            DEPLOY=false
+            TARGET="none"
+            REASON="subpath preservation not safe with build_type=workflow"
+          fi
+
+          echo "deploy=$DEPLOY" >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "prefix=$PREFIX" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
       - name: Generate documentation
         uses: JNZader/repoforge@main
         with:
           command: docs
-          language: English      # change to: Spanish, French, German, etc.
-          output-dir: docs
+          language: English
+          output-dir: docs-build
           model: github/gpt-4o-mini
-          # GitHub Models requires a PAT with models:read scope (not the automatic GITHUB_TOKEN)
-          # Create one at: https://github.com/settings/tokens → "Generate new token (classic)"
-          # Select scopes: models:read  → save as repo secret GH_MODELS_TOKEN
           github-token: ${{ secrets.GH_MODELS_TOKEN }}
-          # Alternatively, use any other provider:
-          # model: claude-haiku-3-5
-          # api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # model: groq/llama-3.3-70b-versatile
-          # api-key: ${{ secrets.GROQ_API_KEY }}
+
+      - name: Prepare root artifact
+        if: steps.plan.outputs.target == 'main'
+        shell: bash
+        run: |
+          rm -rf site
+          mkdir -p site
+          cp -R docs-build/. site/
+
+      - name: Prepare subpath artifact
+        if: steps.plan.outputs.target == 'subpath'
+        shell: bash
+        run: |
+          PREFIX="${{ steps.plan.outputs.prefix }}"
+          rm -rf site
+          mkdir -p "site/$PREFIX"
+          cp -R docs-build/. "site/$PREFIX/"
 
       - name: Upload Pages artifact
+        if: steps.plan.outputs.deploy == 'true' && steps.plan.outputs.target == 'main'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/
+          path: site/
 
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - name: Deploy main site (workflow Pages)
+        if: steps.plan.outputs.deploy == 'true' && steps.plan.outputs.target == 'main'
+        id: deploy_main
         uses: actions/deploy-pages@v4
+
+      - name: Deploy subpath (preserve existing files)
+        if: steps.plan.outputs.deploy == 'true' && steps.plan.outputs.target == 'subpath'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ github.token }}
+          publish_branch: gh-pages
+          publish_dir: site
+          keep_files: true
+          force_orphan: false
+
+      - name: Outputs
+        id: outputs
+        shell: bash
+        run: |
+          TARGET="${{ steps.plan.outputs.target }}"
+          PREFIX="${{ steps.plan.outputs.prefix }}"
+          BASE_URL="${{ steps.preflight.outputs.pages_url }}"
+
+          if [ "$TARGET" = "main" ]; then
+            PAGE_URL="${{ steps.deploy_main.outputs.page_url }}"
+          elif [ "$TARGET" = "subpath" ]; then
+            PAGE_URL="${BASE_URL}${PREFIX}/"
+          else
+            PAGE_URL="$BASE_URL"
+          fi
+
+          echo "page_url=$PAGE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "## RepoForge Docs Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deploy mode: \`${{ steps.cfg.outputs.mode }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Plan reason: \`${{ steps.plan.outputs.reason }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Existing live Pages: \`${{ steps.preflight.outputs.existing_live }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Pages build_type: \`${{ steps.preflight.outputs.build_type }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Executed target: \`${{ steps.plan.outputs.target }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Final URL: ${{ steps.outputs.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"

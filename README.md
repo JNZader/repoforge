@@ -141,14 +141,32 @@ repoforge docs [OPTIONS]
 
 RepoForge can publish docs automatically with GitHub Actions.
 
+Safe defaults (recommended):
+
 1. Add `.github/workflows/docs.yml` to your repository.
-2. Set Pages to **Build and deployment: GitHub Actions**.
-3. Push to `main`.
-4. The workflow runs `repoforge docs`, uploads `docs/`, and deploys to Pages.
+2. Push to `main`.
+3. By default, it runs in `generate-only` mode (`deploy_mode=none`) so it does not touch an existing Pages site.
+
+To enable deploy (explicit opt-in):
+
+1. Set repository variable `REPOFORGE_DOCS_DEPLOY_MODE` to one of:
+   - `auto` (if no live site -> deploy root, if live site -> deploy subpath)
+   - `main` (force root deploy; may replace existing site)
+   - `subpath` (deploy to `/repoforge/` on `gh-pages`, preserving existing files)
+2. Set repository variable `REPOFORGE_DOCS_CONFIRM_DEPLOY=true`.
+3. Optional: set `REPOFORGE_DOCS_SUBPATH_PREFIX` (default: `repoforge`).
+
+You can also run it manually from Actions (`workflow_dispatch`) with `deploy_mode`, `confirm_deploy`, and `subpath_prefix` inputs.
+
+Note: subpath preservation uses `gh-pages` branch deploy. If your repo uses Pages `build_type=workflow`, the workflow will fall back to generate-only for safety.
 
 After deploy, your docs are available at:
 
 `https://<your-user>.github.io/<your-repo>/`
+
+If deployed in subpath mode:
+
+`https://<your-user>.github.io/<your-repo>/<subpath-prefix>/`
 
 Manual flow is still supported:
 
