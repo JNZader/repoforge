@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Generate skills and agents
         uses: JNZader/repoforge@main
@@ -49,7 +49,7 @@ jobs:
           github-token: ${{ secrets.GH_MODELS_TOKEN }}
 
       - name: Commit generated files
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: regenerate skills and agents [repoforge]"
           file_pattern: ".claude/**"
