@@ -141,6 +141,16 @@ repoforge docs [OPTIONS]
 
 RepoForge can publish docs automatically with GitHub Actions.
 
+### Version pinning for workflow stability
+
+When using the RepoForge GitHub Action, pin to a tagged release instead of `@main`:
+
+```yaml
+uses: JNZader/repoforge@v0.2.0
+```
+
+This keeps consumer workflows stable and reproducible. Update the tag explicitly when you want new behavior.
+
 Safe defaults (recommended):
 
 1. Add `.github/workflows/docs.yml` to your repository.

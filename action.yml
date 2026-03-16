@@ -122,7 +122,9 @@ runs:
       shell: bash
       # Install directly from GitHub until published on PyPI as repoforge-ai
       # (the name 'repoforge' on PyPI is taken by a different project)
-      run: pip install "git+https://github.com/JNZader/repoforge.git@main" --quiet
+      run: |
+        REF="${GITHUB_ACTION_REF:-main}"
+        pip install "git+https://github.com/JNZader/repoforge.git@${REF}" --quiet
 
     - name: Install ripgrep (faster scanning)
       shell: bash

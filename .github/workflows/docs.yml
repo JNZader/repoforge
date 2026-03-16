@@ -175,7 +175,7 @@ jobs:
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
 
       - name: Generate documentation
-        uses: JNZader/repoforge@main
+        uses: JNZader/repoforge@v0.2.0
         with:
           command: docs
           language: English
