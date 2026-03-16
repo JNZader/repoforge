@@ -33,9 +33,9 @@ page = make_nextjs_page_module("HomePage")
 
 ## When to Use
 
-- When building RESTful APIs in the harness.
-- To create dynamic pages in a Next.js application.
-- During integration testing of new harness features.
+- When you need to expose a new API endpoint in the harness.
+- To create a new frontend page that interacts with the harness.
+- When evaluating the performance of new features in the harness.
 
 ## Commands
 
@@ -47,7 +47,7 @@ python -m eval.harness
 
 ### Don't: Hardcode Paths
 
-Hardcoding paths can lead to maintenance issues and reduce flexibility.
+Hardcoding paths can lead to issues with portability and maintainability.
 
 ```python
 # BAD

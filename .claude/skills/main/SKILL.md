@@ -17,10 +17,10 @@ metadata:
 ├── eval/harness.py — Adds parent to path when running directly
 ├── eval/scenarios_real.py — Contains real module snapshots
 ├── repoforge/__init__.py — Initializes the repoforge module
-├── repoforge/cli.py — Shared options factory for CLI commands
+├── repoforge/cli.py — Shared options factory
 ├── repoforge/docs_generator.py — Generates documentation
-├── repoforge/docs_prompts.py — Shared system prompts for documentation
-└── repoforge/docsify.py — Main entry point for building documentation
+├── repoforge/docs_prompts.py — Shared system prompts
+└── repoforge/docsify.py — Main entry point for documentation
 ```
 
 ## Critical Patterns
@@ -52,7 +52,7 @@ from repoforge.docs_generator import generate_docs
 ## Adding a New CLI Command
 
 1. Modify `repoforge/cli.py` to include the new command.
-2. Define the command's functionality in a new function.
+2. Implement the command logic in a new function.
 3. Update the command's help text and options.
 4. Test the command using the CLI interface.
 
@@ -66,7 +66,7 @@ python -m repoforge.docs_generator
 ## Anti-Patterns
 
 - **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
-- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with existing evaluation scenarios — this can lead to runtime errors.
+- **Don't**: Modify `eval/scenarios_real.py` without ensuring compatibility with existing evaluation logic — this can lead to incorrect evaluations.
 
 ## Quick Reference
 
