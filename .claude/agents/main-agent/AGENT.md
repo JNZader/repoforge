@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Execute evaluation tasks using `eval/harness.py`
-2. Generate documentation with `repoforge/docs_generator.py`
-3. Manage scenarios using `eval/scenarios_real.py`
+1. Execute evaluation or documentation generation as required
+2. Manage scenarios based on real module snapshots
+3. Verify the output and results
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load

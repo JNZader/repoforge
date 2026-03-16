@@ -1,7 +1,7 @@
 ---
 name: add-docs-prompts-endpoint
 description: >
-  This skill covers the integration of shared system prompts into your application.
+  This skill covers the integration of shared system prompts into your documentation.
   Trigger: When you need to inject prompts into chapter calls.
 license: Apache-2.0
 metadata:
@@ -11,33 +11,33 @@ metadata:
 
 ## Critical Patterns
 
-### Using Index Prompt
+### Use Index Prompt
 
-Inject the index prompt to provide a structured overview of the documentation.
+Utilize the `index_prompt` to provide a structured introduction to your documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def get_documentation_index():
+def generate_index():
     return index_prompt
 ```
 
-### Accessing Quickstart Prompt
+### Implement Overview Prompt
 
-Utilize the quickstart prompt to guide users through initial setup steps.
+Incorporate the `overview_prompt` to summarize the key aspects of your project.
 
 ```python
-from repoforge.docs_prompts import quickstart_prompt
+from repoforge.docs_prompts import overview_prompt
 
-def display_quickstart():
-    print(quickstart_prompt)
+def generate_overview():
+    return overview_prompt
 ```
 
 ## When to Use
 
-- When generating documentation for a new feature.
-- To provide users with a quickstart guide during onboarding.
-- When debugging prompt injection in chapter calls.
+- When creating a new chapter in your documentation.
+- To provide a consistent introduction across multiple sections.
+- During the review process to ensure all chapters have necessary prompts.
 
 ## Commands
 
@@ -48,19 +48,19 @@ python repoforge/cli.py update-prompts
 
 ## Anti-Patterns
 
-### Don't: Hardcode Prompts
+### Don't: Skip Prompt Integration
 
-Hardcoding prompts reduces flexibility and maintainability of the documentation.
+Neglecting to integrate prompts can lead to disjointed documentation. 
 
 ```python
 # BAD
-def get_hardcoded_prompt():
-    return "This is a hardcoded prompt."
+def generate_chapter():
+    return "This is a chapter without prompts."
 ```
 
 ## Quick Reference
 
 | Task | Pattern |
 |------|---------|
-| Inject index prompt | `index_prompt` |
-| Display quickstart prompt | `quickstart_prompt` |
+| Generate index | `index_prompt` |
+| Create overview | `overview_prompt` |

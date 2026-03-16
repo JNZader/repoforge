@@ -33,9 +33,9 @@ page = make_nextjs_page_module("HomePage")
 
 ## When to Use
 
-- When building RESTful APIs in the harness.
-- When developing frontend pages that interact with the harness.
-- To evaluate the performance of new modules added to the harness.
+- When you need to expose new API endpoints in the harness.
+- To create a new frontend page that interacts with the harness.
+- When evaluating the performance of new features in the harness.
 
 ## Commands
 
@@ -47,7 +47,7 @@ python -m eval.harness
 
 ### Don't: Hardcode Paths
 
-Hardcoding paths can lead to maintenance issues and reduce flexibility.
+Hardcoding paths can lead to issues with portability and maintainability.
 
 ```python
 # BAD
@@ -58,5 +58,5 @@ sys.path.append('/absolute/path/to/harness')
 
 | Task                     | Pattern                          |
 |--------------------------|----------------------------------|
-| Create FastAPI Module    | `make_fastapi_crud_module`      |
-| Create Next.js Page      | `make_nextjs_page_module`       |
+| Create FastAPI module    | `make_fastapi_crud_module`      |
+| Create Next.js page      | `make_nextjs_page_module`       |

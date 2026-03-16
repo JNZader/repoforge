@@ -1,7 +1,7 @@
 ---
 name: add-scenarios-real-endpoint
 description: >
-  This skill covers adding endpoints for scenarios_real.
+  This skill covers adding endpoints for scenarios in the real module.
   Trigger: When integrating new functionality into the scenarios_real module.
 license: Apache-2.0
 metadata:
@@ -16,39 +16,42 @@ metadata:
 Use this function to retrieve the reports backend module for scenarios.
 
 ```python
+from eval.scenarios_real import get_reports_backend_module
+
 reports_backend = get_reports_backend_module()
 ```
 
 ### Get Auth Backend Module
 
-This function fetches the authentication backend module necessary for scenarios.
+Utilize this function to access the authentication backend module.
 
 ```python
+from eval.scenarios_real import get_auth_backend_module
+
 auth_backend = get_auth_backend_module()
 ```
 
 ## When to Use
 
 - When you need to integrate reporting features into the scenarios_real module.
-- To implement authentication for user access in scenarios.
-- When debugging issues related to backend module retrieval.
+- When implementing authentication for user access in scenarios.
+- To debug issues related to backend module retrieval in scenarios.
 
 ## Commands
 
 ```bash
-python -m repoforge.cli skills
-python -m repoforge.cli docs
+python -m repoforge.cli
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode Module Imports
+### Don't: Hardcode Module Paths
 
-Hardcoding module imports can lead to maintenance issues and reduce code flexibility.
+Hardcoding paths can lead to maintenance issues and reduce code portability.
 
 ```python
 # BAD
-from eval.scenarios_real import get_reports_backend_module
+from eval.scenarios_real import get_reports_backend_module as reports_backend
 ```
 
 ## Quick Reference
@@ -56,4 +59,4 @@ from eval.scenarios_real import get_reports_backend_module
 | Task | Pattern |
 |------|---------|
 | Retrieve reports backend | `get_reports_backend_module()` |
-| Fetch auth backend | `get_auth_backend_module()` |
+| Access auth backend | `get_auth_backend_module()` |

@@ -27,7 +27,7 @@ metadata:
 
 ### CLI Command Structure
 
-All CLI commands should follow the pattern defined in `repoforge/cli.py`.
+All CLI commands should follow the structure defined in `repoforge/cli.py`.
 
 ```python
 # Example using real exported names
@@ -52,21 +52,20 @@ from repoforge.docs_generator import generate_docs
 ## Adding a New CLI Command
 
 1. Modify `repoforge/cli.py` to include the new command.
-2. Define the command's functionality in a new function.
-3. Update the command-line interface to route to the new function.
-4. Test the command using the CLI.
+2. Implement the command logic in a new or existing module.
+3. Update the documentation in `repoforge/docs_generator.py`.
+4. Test the command using the CLI interface.
 
 ## Commands
 
 ```bash
 python -m repoforge.cli
-python -m repoforge.docs_generator
 ```
 
 ## Anti-Patterns
 
-- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
-- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with all modules that rely on it — this can lead to runtime errors.
+- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent modules — this can break existing CLI commands.
+- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with all evaluation scenarios — this can lead to runtime errors.
 
 ## Quick Reference
 
