@@ -43,9 +43,9 @@ def list_users():
 
 ## When to Use
 
-- When adding new user management features to the test_ripgrep module.
-- When needing to expose user data through an API.
-- To debug user creation issues in the application.
+- When adding new user management features in the test_ripgrep module.
+- When needing to retrieve user data for testing purposes.
+- When debugging user-related functionalities in the application.
 
 ## Commands
 
@@ -55,20 +55,20 @@ pytest tests/test_ripgrep.py
 
 ## Anti-Patterns
 
-### Don't: Use Blocking I/O
+### Don't: Hardcode User Data
 
-Blocking I/O can lead to performance issues in an async framework like FastAPI.
+Hardcoding user data can lead to maintenance issues and testing limitations.
 
 ```python
 # BAD
-def read_users_sync():
-    users = read_json("users.json")
-    return users
+def add_user():
+    user = {"name": "John Doe", "email": "john@example.com"}
+    return create_user(user)
 ```
 
 ## Quick Reference
 
 | Task                     | Pattern                      |
 |--------------------------|------------------------------|
-| Create a user endpoint   | `add_user`                   |
-| Retrieve users           | `list_users`                 |
+| Create user endpoint     | `add_user`                   |
+| Get users endpoint       | `list_users`                 |

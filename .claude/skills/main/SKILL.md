@@ -52,20 +52,21 @@ from repoforge.docs_generator import generate_docs
 ## Adding a New CLI Command
 
 1. Modify `repoforge/cli.py` to include the new command.
-2. Implement the command logic in a new or existing module.
-3. Update the documentation in `repoforge/docs_generator.py`.
+2. Implement the command logic in a new function.
+3. Update the command's help documentation.
 4. Test the command using the CLI interface.
 
 ## Commands
 
 ```bash
 python -m repoforge.cli
+python -m repoforge.docs_generator
 ```
 
 ## Anti-Patterns
 
-- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent modules — this can break existing CLI commands.
-- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with all evaluation scenarios — this can lead to runtime errors.
+- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
+- **Don't**: Modify `eval/scenarios_real.py` without ensuring compatibility with existing evaluation logic — this can lead to incorrect evaluations.
 
 ## Quick Reference
 
