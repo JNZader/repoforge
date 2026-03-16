@@ -11,56 +11,56 @@ metadata:
 
 ## Critical Patterns
 
-### Using Index Prompt
+### Use Index Prompt
 
-Inject the index prompt to provide a structured overview of the documentation.
+Utilize the `index_prompt` to provide a structured entry point for your documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def get_documentation_index():
+def generate_index():
     return index_prompt
 ```
 
-### Implementing Overview Prompt
+### Implement Overview Prompt
 
-Utilize the overview prompt to summarize the key aspects of the documentation.
+Leverage the `overview_prompt` to summarize the key aspects of your documentation.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
-def get_documentation_overview():
+def generate_overview():
     return overview_prompt
 ```
 
 ## When to Use
 
-- When structuring the documentation for a new project.
-- To provide a summary at the beginning of each chapter.
-- During the review process to ensure all chapters are aligned with the prompts.
+- When creating a new chapter in your documentation.
+- To provide a quick reference for users navigating through the documentation.
+- During the review process to ensure all chapters have consistent prompts.
 
 ## Commands
 
 ```bash
 python repoforge/cli.py generate-docs
-python repoforge/cli.py validate-prompts
+python repoforge/cli.py update-prompts
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode Prompts
+### Don't: Skip Prompt Integration
 
-Hardcoding prompts reduces flexibility and maintainability of the documentation.
+Neglecting to integrate prompts can lead to disorganized documentation and user confusion.
 
 ```python
 # BAD
-def get_hardcoded_prompt():
-    return "This is a hardcoded prompt."
+def generate_documentation():
+    return "This is a documentation without prompts."
 ```
 
 ## Quick Reference
 
 | Task | Pattern |
 |------|---------|
-| Inject index prompt | `index_prompt` |
-| Summarize documentation | `overview_prompt` |
+| Generate index | `index_prompt` |
+| Create overview | `overview_prompt` |

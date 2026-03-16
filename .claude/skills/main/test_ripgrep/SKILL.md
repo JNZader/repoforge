@@ -44,8 +44,8 @@ def list_users():
 ## When to Use
 
 - When adding new user management features in the test_ripgrep module.
-- When needing to retrieve user data for testing purposes.
-- When debugging user-related functionalities in the application.
+- When integrating user data retrieval in the application.
+- To debug user creation issues during testing.
 
 ## Commands
 
@@ -57,18 +57,18 @@ pytest tests/test_ripgrep.py
 
 ### Don't: Hardcode User Data
 
-Hardcoding user data can lead to maintenance issues and testing limitations.
+Hardcoding user data can lead to maintenance issues and security risks.
 
 ```python
 # BAD
 def add_user():
-    user = {"name": "John Doe", "email": "john@example.com"}
-    return create_user(user)
+    user_data = {"name": "John Doe", "email": "john@example.com"}
+    return create_user(user_data)
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                      |
-|--------------------------|------------------------------|
-| Create user endpoint     | `add_user`                   |
-| Get users endpoint       | `list_users`                 |
+| Task                     | Pattern                       |
+|--------------------------|-------------------------------|
+| Create user endpoint     | `add_user`                    |
+| Get users endpoint       | `list_users`                  |
