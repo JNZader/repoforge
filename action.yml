@@ -1,7 +1,5 @@
-name: 'RepoForge'
-description: >-
-  Generate technical documentation and AI agent skills (SKILL.md, AGENT.md)
-  from your codebase. Free by default via GitHub Models — no API key needed.
+name: 'RepoForge AI'
+description: 'Generate technical docs and AI agent skills (SKILL.md, AGENT.md) from any codebase.'
 
 branding:
   icon: 'book-open'
