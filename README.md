@@ -189,7 +189,36 @@ If deployed in subpath mode:
 
 `https://<your-user>.github.io/<your-repo>/<subpath-prefix>/`
 
-Manual flow is still supported:
+### Example: adding docs to a repo with existing Pages
+
+Your repo already has a live site at `https://youruser.github.io/yourrepo/` and you want to add RepoForge docs without breaking it.
+
+```bash
+# 1. Copy the docs workflow to your repo
+cp .github/workflows/docs.yml <your-repo>/.github/workflows/docs.yml
+
+# 2. Set repo variables for safe subpath deploy
+gh variable set REPOFORGE_DOCS_DEPLOY_MODE --body "auto" --repo youruser/yourrepo
+gh variable set REPOFORGE_DOCS_CONFIRM_DEPLOY --body "true" --repo youruser/yourrepo
+gh variable set REPOFORGE_DOCS_SUBPATH_PREFIX --body "docs" --repo youruser/yourrepo
+
+# 3. Set Pages source to gh-pages branch (required for subpath mode)
+#    Settings → Pages → Build and deployment → Deploy from a branch → gh-pages / (root)
+
+# 4. Add the GH_MODELS_TOKEN secret (PAT with models:read scope)
+gh secret set GH_MODELS_TOKEN --repo youruser/yourrepo
+
+# 5. Push and let the workflow run
+git add .github/workflows/docs.yml && git commit -m "ci: add repoforge docs" && git push
+```
+
+Result:
+- Your existing site stays at `https://youruser.github.io/yourrepo/` (unchanged).
+- RepoForge docs appear at `https://youruser.github.io/yourrepo/docs/`.
+
+### Manual flow
+
+Still supported if you prefer not to use the workflow:
 
 ```bash
 repoforge docs -w . -o docs --lang English

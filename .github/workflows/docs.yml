@@ -242,11 +242,37 @@ jobs:
       - name: Summary
         shell: bash
         run: |
+          TARGET="${{ steps.plan.outputs.target }}"
+          MODE="${{ steps.cfg.outputs.mode }}"
+          REASON="${{ steps.plan.outputs.reason }}"
+          EXISTING="${{ steps.preflight.outputs.existing_live }}"
+          BUILD_TYPE="${{ steps.preflight.outputs.build_type }}"
+          PAGE_URL="${{ steps.outputs.outputs.page_url }}"
+
           echo "## RepoForge Docs Deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Deploy mode: \`${{ steps.cfg.outputs.mode }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Plan reason: \`${{ steps.plan.outputs.reason }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Existing live Pages: \`${{ steps.preflight.outputs.existing_live }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Pages build_type: \`${{ steps.preflight.outputs.build_type }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Executed target: \`${{ steps.plan.outputs.target }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Final URL: ${{ steps.outputs.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+
+          # Highlight when deploy was skipped
+          if [ "$TARGET" = "none" ]; then
+            echo "> **No deploy performed.** Docs were generated but not published." >> "$GITHUB_STEP_SUMMARY"
+            echo ">" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$MODE" = "none" ]; then
+              echo "> To enable deploy, set repository variables:" >> "$GITHUB_STEP_SUMMARY"
+              echo "> - \`REPOFORGE_DOCS_DEPLOY_MODE\` = \`auto\` / \`main\` / \`subpath\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "> - \`REPOFORGE_DOCS_CONFIRM_DEPLOY\` = \`true\`" >> "$GITHUB_STEP_SUMMARY"
+            elif [ "$MODE" = "auto" ]; then
+              echo "> Auto mode fell back to generate-only because: \`${REASON}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo ">" >> "$GITHUB_STEP_SUMMARY"
+              echo "> If you want subpath deploy, change Pages to: **Deploy from a branch** → \`gh-pages\` + \`/ (root)\`" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "| Setting | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deploy mode | \`${MODE}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Decision reason | \`${REASON}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Existing live Pages | \`${EXISTING}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Pages build_type | \`${BUILD_TYPE}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Executed target | \`${TARGET}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Final URL | ${PAGE_URL} |" >> "$GITHUB_STEP_SUMMARY"
