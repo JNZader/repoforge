@@ -170,6 +170,17 @@ You can also run it manually from Actions (`workflow_dispatch`) with `deploy_mod
 
 Note: subpath preservation uses `gh-pages` branch deploy. If your repo uses Pages `build_type=workflow`, the workflow will fall back to generate-only for safety.
 
+Required Pages configuration by deploy mode:
+
+| `deploy_mode` | Deployment mechanism | Required Pages setting |
+|---|---|---|
+| `none` | Generate only (no publish) | Any |
+| `main` | `actions/deploy-pages` (artifact) | **Build and deployment: GitHub Actions** |
+| `subpath` | `peaceiris/actions-gh-pages` (branch, `keep_files`) | **Deploy from a branch** → `gh-pages` + `/ (root)` |
+| `auto` | Chooses `main` or `subpath` | Must match chosen target (`main` => GitHub Actions, `subpath` => `gh-pages`) |
+
+If `auto` selects `subpath` but Pages is configured as `GitHub Actions`, the subpath branch publish may succeed but not be publicly visible.
+
 After deploy, your docs are available at:
 
 `https://<your-user>.github.io/<your-repo>/`
