@@ -32,7 +32,7 @@ This skill covers the generation of chapter prompts for documentation.
 
 ## Critical Patterns (Summary)
 - **Generate index prompt**: Use `index_prompt` to create an index for documentation.
-- **Generate overview prompt**: Use `overview_prompt` to create an overview for documentation.
+- **Generate overview prompt**: Use `overview_prompt` to create an overview section for documentation.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -43,25 +43,21 @@ This skill covers the generation of chapter prompts for documentation.
 Use `index_prompt` to create an index for documentation, providing a structured overview of the content.
 
 ```python
-from repoforge.docs_prompts import index_prompt
-
 index = index_prompt()
 ```
 
 ### Generate overview prompt
 
-Use `overview_prompt` to create an overview for documentation, summarizing key points.
+Use `overview_prompt` to create an overview section for documentation, summarizing key points.
 
 ```python
-from repoforge.docs_prompts import overview_prompt
-
 overview = overview_prompt()
 ```
 
 ## When to Use
 
 - When creating structured documentation for a project.
-- When needing to summarize key points in documentation.
+- When needing to summarize content for user guides.
 
 ## Commands
 

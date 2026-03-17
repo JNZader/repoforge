@@ -2,7 +2,7 @@
 name: add-test-ripgrep-endpoint
 description: >
   This skill covers adding endpoints for user management in the test_ripgrep module.
-  Trigger: When implementing user management features in the test_ripgrep context.
+  Trigger: When implementing user-related features in the test_ripgrep application.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers adding endpoints for user management in the test_ripgrep module.
 
-**Trigger**: When implementing user management features in the test_ripgrep context.
+**Trigger**: When implementing user-related features in the test_ripgrep application.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,8 +27,8 @@ This skill covers adding endpoints for user management in the test_ripgrep modul
 
 | Task | Pattern |
 |------|---------|
-| Create user endpoint | `create_user` |
-| Get users endpoint | `get_users` |
+| Create User Endpoint | `create_user` |
+| Get Users Endpoint | `get_users` |
 
 ## Critical Patterns (Summary)
 - **Create User Endpoint**: Implements a FastAPI endpoint to create a new user.
@@ -40,7 +40,7 @@ This skill covers adding endpoints for user management in the test_ripgrep modul
 
 ### Create User Endpoint
 
-This pattern demonstrates how to create a FastAPI endpoint for user creation using `create_user`.
+This pattern demonstrates how to create a FastAPI endpoint for user creation using the `create_user` function.
 
 ```python
 from fastapi import FastAPI
@@ -49,13 +49,13 @@ from your_module import create_user
 app = FastAPI()
 
 @app.post("/users/")
-async def add_user(user_data: dict):
+def add_user(user_data: dict):
     return create_user(user_data)
 ```
 
 ### Get Users Endpoint
 
-This pattern shows how to implement an endpoint to retrieve users using `get_users`.
+This pattern shows how to implement an endpoint to fetch all users using the `get_users` function.
 
 ```python
 from fastapi import FastAPI
@@ -64,14 +64,14 @@ from your_module import get_users
 app = FastAPI()
 
 @app.get("/users/")
-async def list_users():
+def list_users():
     return get_users()
 ```
 
 ## When to Use
 
-- When you need to implement user creation functionality in the test_ripgrep module.
-- When you want to expose user data retrieval through an API endpoint.
+- When you need to implement user registration in the test_ripgrep application.
+- When you want to retrieve user data for display or processing.
 
 ## Commands
 
@@ -87,6 +87,8 @@ Hardcoding user data can lead to maintenance issues and security vulnerabilities
 
 ```python
 # BAD
-user_data = {"name": "John Doe", "email": "john@example.com"}
+def add_user():
+    user_data = {"name": "John Doe", "email": "john@example.com"}
+    return create_user(user_data)
 ```
 <!-- L3:END -->

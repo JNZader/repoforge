@@ -49,7 +49,7 @@ users = get_users()
 
 ### Sample Skills
 
-This pattern provides access to predefined skills for validation in tests.
+This pattern accesses predefined skills to validate functionality.
 
 ```python
 # Example usage of sample_skills
@@ -58,8 +58,8 @@ skills = sample_skills
 
 ## When to Use
 
-- When validating user data in tests.
-- When needing predefined skills for comparison in test cases.
+- When validating the functionality of YAML frontmatter stripping.
+- When testing user data retrieval in the context of adapters.
 
 ## Commands
 
@@ -69,12 +69,13 @@ pytest tests/test_adapters.py
 
 ## Anti-Patterns
 
-### Don't: Use hardcoded values
+### Don't: Ignore Test Coverage
 
-Hardcoded values can lead to brittle tests that fail with changes in data.
+Neglecting test coverage can lead to untested code paths and potential bugs.
 
 ```python
 # BAD
-assert user['name'] == 'John Doe'
+def unused_function():
+    pass
 ```
 <!-- L3:END -->

@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the execution of evaluation tasks, harness operations, and documentation generation. It never interacts with other layers or external systems.
+This agent owns the execution of evaluation tasks, harness operations, and documentation generation. It never interacts with other layers or agents.
 
 ## Capabilities
 
@@ -27,8 +27,8 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Execute evaluation logic using `eval/__init__.py`
-2. Manage harness operations via `eval/harness.py`
+1. Execute evaluation logic from `eval/__init__.py`
+2. Manage harness operations using `eval/harness.py`
 3. Generate documentation with `repoforge/docs_generator.py`
 4. Report back to orchestrator with: files changed, tests status, blockers
 
