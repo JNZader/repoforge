@@ -2,7 +2,7 @@
 name: create-test-compressor-user
 description: >
   This skill covers creating users for testing compression passes.
-  Trigger: Load this skill when setting up test_compressor fixtures.
+  Trigger: Load this skill when setting up test scenarios for the test_compressor module.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers creating users for testing compression passes.
 
-**Trigger**: Load this skill when setting up test_compressor fixtures.
+**Trigger**: Load this skill when setting up test scenarios for the test_compressor module.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -30,8 +30,8 @@ This skill covers creating users for testing compression passes.
 | Create a user for tests | `create_user` |
 
 ## Critical Patterns (Summary)
-- **Create User**: Use `create_user` to set up a user for testing.
-- **Get Users**: Retrieve users with `get_users` for validation in tests.
+- **Create User**: Use `create_user` to set up test users.
+- **Get User**: Retrieve user data with `get_user` for validation.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -39,29 +39,28 @@ This skill covers creating users for testing compression passes.
 
 ### Create User
 
-Use `create_user` to set up a user for testing compression passes.
+Use `create_user` to set up test users for the compression tests.
 
 ```python
 from tests.test_compressor import create_user
 
-user = create_user(username="test_user", password="secure_password")
+user = create_user(name="Test User", email="test@example.com")
 ```
 
-### Get Users
+### Get User
 
-Retrieve users with `get_users` for validation in tests.
+Retrieve user data with `get_user` to validate the created user.
 
 ```python
-from tests.test_compressor import get_users
+from tests.test_compressor import get_user
 
-users = get_users()
-assert len(users) > 0
+user = get_user(user_id=1)
 ```
 
 ## When to Use
 
 - When initializing test data for compression tests.
-- When validating user-related functionality in compression scenarios.
+- When validating user-related functionality in the test_compressor module.
 
 ## Commands
 
@@ -71,12 +70,14 @@ pytest tests/test_compressor.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode User Data
+### Don't: Create Users Without Validation
 
-Hardcoding user data can lead to brittle tests that fail on changes.
+Creating users without validating their data can lead to inconsistent test results.
 
 ```python
 # BAD
-user = create_user(username="hardcoded_user", password="12345")
+from tests.test_compressor import create_user
+
+user = create_user(name="", email="invalid-email")
 ```
 <!-- L3:END -->

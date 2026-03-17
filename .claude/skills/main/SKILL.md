@@ -1,13 +1,13 @@
 ---
 name: main-layer
 description: >
-  This layer encompasses the core functionality of the project, managing the primary modules and their interactions.
-  Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
+  This layer encompasses the core functionality of the project, managing the main application logic and integrations.
+  Trigger: When working in main/ — adding, modifying, or debugging core application features.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
+  complexity: low
   token_estimate: 450
   dependencies: []
   related_skills: []
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # main-layer
 
-This skill covers the core functionalities and modules of the project.
+This layer encompasses the core functionality of the project, managing the main application logic and integrations.
 
-**Trigger**: When working in main/ directory and its main responsibility.
+**Trigger**: When working in main/ — adding, modifying, or debugging core application features.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,43 +27,40 @@ This skill covers the core functionalities and modules of the project.
 
 | Task | Pattern |
 |------|---------|
-| Create a new module | `eval/harness.py` |
+| Create a FastAPI CRUD module | `make_fastapi_crud_module()` |
 
 ## Critical Patterns (Summary)
-- **Module Initialization**: Ensure proper path setup when running modules directly.
-- **Data Adaptation**: Use adapters for valid target identifiers in the project.
+- **FastAPI CRUD Module**: Use `make_fastapi_crud_module()` to quickly scaffold a CRUD API.
+- **Next.js Page Module**: Utilize `make_nextjs_page_module()` for generating Next.js pages.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Module Initialization
+### FastAPI CRUD Module
 
-Ensure proper path setup when running modules directly to avoid import errors.
+Use `make_fastapi_crud_module()` to quickly scaffold a CRUD API for your data models.
 
 ```python
-# eval/harness.py
-import sys
-import os
+from eval.harness import make_fastapi_crud_module
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+app = make_fastapi_crud_module(model_name="Item")
 ```
 
-### Data Adaptation
+### Next.js Page Module
 
-Use adapters for valid target identifiers to maintain a consistent display order across the application.
+Utilize `make_nextjs_page_module()` for generating Next.js pages based on your application structure.
 
 ```python
-# repoforge/adapters.py
-def adapt_for_cursor(data):
-    # Adapt data for cursor usage
-    pass
+from eval.harness import make_nextjs_page_module
+
+page = make_nextjs_page_module(page_name="HomePage")
 ```
 
 ## When to Use
 
-- When creating or modifying core modules that interact with the main application.
-- When integrating new features that require adjustments to existing modules.
+- When you need to create RESTful APIs for your data models.
+- When integrating frontend components with backend services.
 
 ## Commands
 
@@ -73,12 +70,14 @@ python -m eval.harness
 
 ## Anti-Patterns
 
-### Don't: Change core module structure without updating imports
+### Don't: Modify core logic without testing
 
-This can lead to broken references and runtime errors across the application.
+Changing core application logic without proper testing can lead to unexpected behavior across the application.
 
 ```python
 # BAD
-from eval.harness import some_function  # If harness.py is moved or renamed
+def main_logic():
+    # Directly modifying shared state
+    shared_state['key'] = 'new_value'
 ```
 <!-- L3:END -->

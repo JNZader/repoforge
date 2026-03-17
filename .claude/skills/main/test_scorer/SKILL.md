@@ -40,17 +40,17 @@ This skill covers patterns for implementing scoring functionality in tests.
 
 ### Create User for Scoring
 
-Use `create_user` to add a new user for scoring purposes, ensuring the user is properly initialized.
+Use `create_user` to add a new user for scoring purposes in your tests.
 
 ```python
 from tests.test_scorer import create_user
 
-new_user = create_user(name="Test User", score=0)
+new_user = create_user(name="Test User", score=100)
 ```
 
-### Retrieve Users for Scoring
+### Get Users for Scoring
 
-Use `get_users` to retrieve all users that can be scored, facilitating the scoring process.
+Use `get_users` to retrieve all users that can be scored in your tests.
 
 ```python
 from tests.test_scorer import get_users
@@ -60,7 +60,7 @@ users = get_users()
 
 ## When to Use
 
-- When you need to set up users for scoring in your tests.
+- When you need to set up users for scoring in your test cases.
 - When you want to retrieve existing users to evaluate their scores.
 
 ## Commands
@@ -71,14 +71,12 @@ pytest tests/test_scorer.py
 
 ## Anti-Patterns
 
-### Don't: Create Users Without Validation
+### Don't: Hardcode User Data
 
-Creating users without proper validation can lead to inconsistent test results.
+Hardcoding user data can lead to brittle tests that fail when data changes.
 
 ```python
 # BAD
-from tests.test_scorer import create_user
-
-user = create_user(name="", score=-1)  # Invalid user data
+user = create_user(name="Hardcoded User", score=50)
 ```
 <!-- L3:END -->

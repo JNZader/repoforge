@@ -40,26 +40,24 @@ This skill covers testing the _strip_yaml_frontmatter helper.
 
 ### Get Users
 
-This pattern retrieves user data for testing purposes.
+This pattern retrieves user data for testing purposes using the `get_users` function.
 
 ```python
-# Example usage of get_users
 users = get_users()
 ```
 
 ### Sample Skills
 
-This pattern provides access to predefined skills for validation in tests.
+This pattern accesses predefined skills for validation in tests.
 
 ```python
-# Example usage of sample_skills
 skills = sample_skills
 ```
 
 ## When to Use
 
 - When validating user data in tests.
-- When checking the integrity of predefined skills.
+- When checking the integrity of sample skills.
 
 ## Commands
 
