@@ -104,7 +104,7 @@ class SecurityScanner:
          "SEC-003", "Prompt injection: system prompt leak"),
         (r"disregard\s+(all\s+)?(prior|previous|above)",
          "SEC-004", "Prompt injection: disregard prior"),
-        (r"forget\s+(everything|all|your)\s+(instructions|rules|training)",
+        (r"forget\s+(everything|all|your)\b.*?\b(instructions|rules|training)",
          "SEC-005", "Prompt injection: forget training"),
         (r"act\s+as\s+(if\s+)?(you\s+)?(are|were)\s+",
          "SEC-006", "Prompt injection: role override"),
@@ -138,7 +138,7 @@ class SecurityScanner:
          "SEC-020", "Email address"),
         (r"\b\d{3}[-.]?\d{2}[-.]?\d{4}\b",
          "SEC-021", "Possible SSN"),
-        (r"\b(?:\+?1[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}\b",
+        (r"(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
          "SEC-022", "Phone number"),
     ]
 
