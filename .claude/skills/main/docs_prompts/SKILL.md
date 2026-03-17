@@ -2,7 +2,7 @@
 name: add-docs-prompts-endpoint
 description: >
   This skill covers the integration of shared system prompts into your application.
-  Trigger: When utilizing the docs_prompts in chapter calls.
+  Trigger: When you need to utilize prompts for documentation generation.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,31 +13,29 @@ metadata:
 
 ### Use Index Prompt
 
-Inject the index prompt into your chapter call to provide a structured overview.
+Utilize the `index_prompt` to generate the main index for your documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def chapter_call():
-    return index_prompt
+documentation_index = index_prompt()
 ```
 
 ### Get Chapter Prompts
 
-Retrieve all chapter prompts for dynamic content generation.
+Leverage `get_chapter_prompts` to retrieve prompts for specific chapters in your documentation.
 
 ```python
 from repoforge.docs_prompts import get_chapter_prompts
 
-def fetch_prompts():
-    return get_chapter_prompts()
+chapter_prompts = get_chapter_prompts('architecture')
 ```
 
 ## When to Use
 
-- When you need to provide a consistent introduction across multiple chapters.
-- To dynamically generate content based on chapter-specific prompts.
-- During the development of documentation to ensure clarity and structure.
+- When generating an index for your documentation.
+- To retrieve prompts for specific sections of your documentation.
+- When needing to classify project documentation effectively.
 
 ## Commands
 
@@ -54,13 +52,12 @@ Hardcoding prompts reduces flexibility and maintainability in your documentation
 
 ```python
 # BAD
-def chapter_call():
-    return "This is a hardcoded prompt."
+documentation_index = "This is a hardcoded index prompt."
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Retrieve chapter prompts  | `get_chapter_prompts()`     |
-| Use index prompt          | `index_prompt`              |
+| Task                       | Pattern                     |
+|----------------------------|-----------------------------|
+| Generate documentation index| `index_prompt()`            |
+| Retrieve chapter prompts    | `get_chapter_prompts('chapter_name')` |

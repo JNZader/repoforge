@@ -33,27 +33,27 @@ Always export functions at the module level for easy access.
 from eval.harness import make_fastapi_crud_module
 ```
 
-### Shared Prompts Usage
+### Scenario Management
 
-Utilize shared prompts for consistent documentation generation.
+Use scenarios to manage real module snapshots effectively.
 
 ```python
 # Example
-from repoforge.docs_prompts import index_prompt
+from eval.scenarios_real import get_reports_backend_module
 ```
 
 ## When to Use
 
-- Implementing new evaluation scenarios
-- Adapting modules for different target identifiers
-- Generating documentation for core functionalities
+- Implementing core evaluation logic
+- Adapting modules for different targets
+- Generating documentation for the project
 
 ## Adding a New Module
 
 1. Create a new file in the `eval/` directory, e.g., `eval/new_module.py`
-2. Define the necessary functions and export them
-3. Update `__init__.py` to include the new module
-4. Verify by running tests in the `eval/` directory
+2. Define the necessary functions and classes
+3. Export the new module in `eval/__init__.py`
+4. Verify functionality by running tests in the `eval/` directory
 
 ## Commands
 
@@ -63,12 +63,13 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-- **Don't**: Change function signatures in `eval/harness.py` — it breaks existing integrations.
-- **Don't**: Remove exports from `repoforge/adapters.py` — it disrupts the expected behavior of dependent modules.
+- **Don't**: Change the structure of `eval/harness.py` — it breaks the import paths for dependent modules.
+- **Don't**: Modify the exports in `repoforge/adapters.py` without updating all dependent modules — it leads to runtime errors.
 
 ## Quick Reference
 
-| Task                | File                        | Pattern                          |
-|---------------------|-----------------------------|----------------------------------|
-| Generate docs       | `repoforge/docs_generator.py` | `generate_docs`                  |
-| Adapt for target    | `repoforge/adapters.py`     | `adapt_for_cursor`               |
+| Task               | File                        | Pattern                          |
+|--------------------|-----------------------------|----------------------------------|
+| Generate docs      | `repoforge/docs_generator.py` | `generate_docs`                  |
+| Adapt for targets  | `repoforge/adapters.py`     | `adapt_for_cursor`               |
+| Run CLI            | `repoforge/cli.py`          | `main`                           |

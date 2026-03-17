@@ -46,18 +46,19 @@ python repoforge/cli.py test
 
 ## Anti-Patterns
 
-### Don't: Skip Path Adjustment
+### Don't: Hardcode Paths
 
-Not adjusting the parent path can lead to module import errors.
+Hardcoding paths can lead to issues with module imports and execution.
 
 ```python
 # BAD
-import eval.harness
+import sys
+sys.path.append('/absolute/path/to/harness')
 ```
 
 ## Quick Reference
 
-| Task                       | Pattern                          |
-|----------------------------|----------------------------------|
-| Create FastAPI module      | `make_fastapi_crud_module`      |
-| Generate Next.js page      | `make_nextjs_page_module`       |
+| Task                     | Pattern                          |
+|--------------------------|----------------------------------|
+| Create FastAPI Module    | `make_fastapi_crud_module`      |
+| Generate Next.js Page    | `make_nextjs_page_module`       |

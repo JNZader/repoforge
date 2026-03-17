@@ -50,7 +50,7 @@ python -m repoforge.cli
 
 ### Don't: Assume Ripgrep is Installed
 
-Assuming ripgrep is installed can lead to runtime errors and failed tests.
+Assuming ripgrep is installed without checking can lead to runtime errors.
 
 ```python
 # BAD
