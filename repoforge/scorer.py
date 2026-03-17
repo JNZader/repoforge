@@ -509,6 +509,12 @@ class SkillScorer:
             re.search(r"##\s*When to Use", content, re.IGNORECASE)
         )
 
+        # Progressive disclosure: tier markers for tiered loading
+        has_l1 = "<!-- L1:START -->" in content and "<!-- L1:END -->" in content
+        has_l2 = "<!-- L2:START -->" in content and "<!-- L2:END -->" in content
+        has_l3 = "<!-- L3:START -->" in content and "<!-- L3:END -->" in content
+        checks["tier_markers"] = has_l1 and has_l2 and has_l3
+
         passed = sum(1 for v in checks.values() if v)
         total = len(checks)
         score = passed / total if total > 0 else 0.0

@@ -109,9 +109,13 @@ def main():
         "Default: claude,opencode. "
         "Valid: claude, opencode, cursor, codex, gemini, copilot, all."
     ))
+@click.option("--disclosure",
+    default="tiered", show_default=True,
+    type=click.Choice(["full", "tiered"], case_sensitive=False),
+    help="Skill output mode: tiered (progressive disclosure markers) or full (no markers).")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
-           with_hooks, do_score, targets):
+           with_hooks, do_score, targets, disclosure):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -148,6 +152,7 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             complexity=complexity,
             with_hooks=with_hooks,
             targets=targets,
+            disclosure=disclosure,
         )
 
     if do_score and not dry_run:

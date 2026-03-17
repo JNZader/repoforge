@@ -101,6 +101,96 @@ RULES:
 6. Minimum 2 Critical Patterns, minimum 1 Anti-Pattern
 """
 
+# ---------------------------------------------------------------------------
+# Tiered SKILL.md format — progressive disclosure with tier markers
+# ---------------------------------------------------------------------------
+
+_TIERED_SKILL_INSTRUCTIONS = """\
+
+## PROGRESSIVE DISCLOSURE FORMAT
+
+Structure the output with HTML comment tier markers for progressive loading.
+Agents load L1 first (discovery), then L2 (quick reference), then L3 (full detail).
+Markers are invisible in rendered markdown.
+
+The YAML frontmatter must include these ADDITIONAL fields:
+- `complexity`: low | medium | high
+- `token_estimate`: estimated total token count (number)
+- `dependencies`: list of other skills this depends on ([] if none)
+- `related_skills`: list of related skill names
+- `load_priority`: high | medium | low
+
+The content MUST be wrapped in tier markers like this:
+
+<!-- L1:START -->
+# <name>
+
+<One sentence description of what this skill covers.>
+
+**Trigger**: <When to load this skill.>
+<!-- L1:END -->
+
+<!-- L2:START -->
+## Quick Reference
+
+| Task | Pattern |
+|------|---------|
+| <task> | `<code>` |
+
+## Critical Patterns (Summary)
+- **<Pattern 1>**: <brief one-line description>
+- **<Pattern 2>**: <brief one-line description>
+<!-- L2:END -->
+
+<!-- L3:START -->
+## Critical Patterns (Detailed)
+
+### <Pattern 1 full name>
+
+<Full explanation with code examples>
+
+```<language>
+// Real code
+```
+
+### <Pattern 2 full name>
+
+<Full explanation>
+
+```<language>
+// Real code
+```
+
+## When to Use
+
+- <scenario>
+- <scenario>
+
+## Commands
+
+```bash
+<commands>
+```
+
+## Anti-Patterns
+
+### Don't: <anti-pattern>
+
+<Why it's wrong.>
+
+```<language>
+// BAD
+```
+<!-- L3:END -->
+
+TIER RULES:
+- L1 must be self-contained: name + description + trigger ONLY (~50-100 tokens)
+- L2 must add Quick Reference table + Critical Patterns summary ONLY (~300-500 tokens)
+- L3 contains everything else: detailed patterns, code, commands, anti-patterns
+- Each tier marker pair (<!-- L1:START --> / <!-- L1:END -->) must be on its own line
+- Frontmatter is OUTSIDE all tier markers (always loaded)
+"""
+
 # Detail-level instructions appended to user prompts
 _DETAIL_INSTRUCTIONS = {
     "detailed": (
@@ -123,11 +213,13 @@ _DETAIL_INSTRUCTIONS = {
 
 
 def skill_prompt(module: dict, layer_name: str, repo_map: dict,
-                 prompt_detail: str = "standard") -> tuple[str, str]:
+                 prompt_detail: str = "standard",
+                 disclosure: str = "full") -> tuple[str, str]:
     """Build prompt for a module-level SKILL.md.
 
     Args:
         prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
+        disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
     """
     tech = ", ".join(repo_map.get("tech_stack", []))
     exports = module.get("exports", [])
@@ -154,6 +246,7 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict,
     }.get(module.get("language", ""), "text")
 
     detail_suffix = _DETAIL_INSTRUCTIONS.get(prompt_detail, "")
+    tiered_suffix = _TIERED_SKILL_INSTRUCTIONS if disclosure == "tiered" else ""
 
     user = f"""Generate a SKILL.md for this module.
 
@@ -180,7 +273,7 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict,
 - Code blocks MUST use `{lang_hint}` language tag
 - Commands must be real {tech} commands (not placeholders)
 - Trigger in description must mention: `{module['name']}` or its domain
-{detail_suffix}"""
+{detail_suffix}{tiered_suffix}"""
     return SKILL_SYSTEM, user
 
 
@@ -270,11 +363,13 @@ RULES:
 
 
 def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
-                      prompt_detail: str = "standard") -> tuple[str, str]:
+                      prompt_detail: str = "standard",
+                      disclosure: str = "full") -> tuple[str, str]:
     """Build prompt for a layer-level SKILL.md.
 
     Args:
         prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
+        disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
     """
     tech = ", ".join(repo_map.get("tech_stack", []))
     modules = layer.get("modules", [])
@@ -302,6 +397,7 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
     is_multilang = len(languages) > 1
 
     detail_suffix = _DETAIL_INSTRUCTIONS.get(prompt_detail, "")
+    tiered_suffix = _TIERED_SKILL_INSTRUCTIONS if disclosure == "tiered" else ""
 
     user = f"""Generate a layer-level SKILL.md for the **"{layer_name}"** layer.
 
@@ -324,7 +420,7 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
 {"- MULTILANGUAGE LAYER: include one code block per language: " + ", ".join(languages) if is_multilang else "- Single language: " + (languages[0] if languages else "unknown")}
 - 'Adding a New X' step names must match real file structure shown above
 - Anti-patterns must cover cross-layer issues (what breaks when {layer_name} changes)
-{detail_suffix}"""
+{detail_suffix}{tiered_suffix}"""
     return LAYER_SKILL_SYSTEM, user
 
 

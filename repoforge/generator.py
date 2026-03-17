@@ -36,6 +36,7 @@ from .prompts import (
     hooks_prompt,
 )
 from .adapters import resolve_targets, run_adapters, ADAPTER_TARGETS
+from .disclosure import build_discovery_index
 
 
 # Defaults — overridden by complexity classification at runtime
@@ -55,6 +56,7 @@ def generate_artifacts(
     complexity: str = "auto",
     with_hooks: bool = False,
     targets: Optional[str] = None,
+    disclosure: str = "tiered",
 ) -> dict:
     """
     Main entry point. Scans the repo and generates SKILL.md + AGENT.md files.
@@ -65,6 +67,8 @@ def generate_artifacts(
         targets: Comma-separated list of output targets.
                  Default: "claude,opencode". Use "all" for all targets.
                  Valid: claude, opencode, cursor, codex, gemini, copilot.
+        disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
+                    Default: "tiered" (progressive disclosure enabled).
 
     Returns a summary dict with all generated file paths.
     """
@@ -97,6 +101,10 @@ def generate_artifacts(
     if not with_hooks:
         with_hooks = cfg.get("generate_hooks", False)
 
+    # Resolve disclosure: CLI flag > config file > tiered (default)
+    if disclosure == "tiered":
+        disclosure = cfg.get("disclosure", "tiered")
+
     # Resolve targets: CLI --targets > config targets > legacy also_opencode default
     if _targets_from_cli is not None:
         active_targets = resolve_targets(_targets_from_cli)
@@ -128,6 +136,7 @@ def generate_artifacts(
     log(f"   → skills/layer={cx['max_module_skills_per_layer']}, "
         f"min_exports={cx['min_exports_for_skill']}, "
         f"detail={cx['prompt_detail']}, "
+        f"disclosure={disclosure}, "
         f"orchestrator={'yes' if cx['generate_orchestrator'] else 'skip'}, "
         f"layer_agents={'yes' if cx['generate_layer_agents'] else 'skip'}")
 
@@ -143,6 +152,7 @@ def generate_artifacts(
         "skills": [],
         "agents": [],
         "complexity": cx,
+        "disclosure": disclosure,
     }
 
     # -----------------------------------------------------------------------
@@ -151,7 +161,8 @@ def generate_artifacts(
     for layer_name, layer_data in repo_map["layers"].items():
         log(f"\n✏️  Generating layer skill: {layer_name} ...")
         system, user = layer_skill_prompt(layer_name, layer_data, repo_map,
-                                          prompt_detail=detail)
+                                          prompt_detail=detail,
+                                          disclosure=disclosure)
         content = _generate(llm, system, user, dry_run)
         path = out / "skills" / layer_name / "SKILL.md"
         _write(path, content, dry_run)
@@ -171,7 +182,8 @@ def generate_artifacts(
             mod_name = Path(module["path"]).stem
             log(f"✏️  Module skill: {module['path']} ...")
             system, user = skill_prompt(module, layer_name, repo_map,
-                                        prompt_detail=detail)
+                                        prompt_detail=detail,
+                                        disclosure=disclosure)
             content = _generate(llm, system, user, dry_run)
             path = out / "skills" / layer_name / mod_name / "SKILL.md"
             _write(path, content, dry_run)
@@ -232,6 +244,21 @@ def generate_artifacts(
         _update_gitignore(root, ".atl/")
     generated["registry"] = str(registry_path)
     log(f"   ✅ {_rel(registry_path, root)}")
+
+    # -----------------------------------------------------------------------
+    # 5b. Discovery index (when disclosure=tiered)
+    # -----------------------------------------------------------------------
+    if disclosure == "tiered" and not dry_run:
+        skills_dir = out / "skills"
+        if skills_dir.exists():
+            log("\n📇 Generating discovery index...")
+            discovery_content = build_discovery_index(str(skills_dir))
+            discovery_path = out / "skills" / "DISCOVERY_INDEX.md"
+            _write(discovery_path, discovery_content, dry_run)
+            generated["discovery_index"] = str(discovery_path)
+            log(f"   ✅ {_rel(discovery_path, root)}")
+    elif disclosure == "tiered" and dry_run:
+        log("\n📇 Discovery index would be generated (skipped in dry-run)")
 
     # -----------------------------------------------------------------------
     # 6. Hooks documentation (opt-in via --with-hooks or config)
@@ -446,6 +473,10 @@ def _write_index(out: Path, repo_map: dict, generated: dict, dry_run: bool):
     if generated.get("hooks"):
         lines.append("\n## Hooks\n")
         lines.append(f"- `{generated['hooks']}`\n")
+    if generated.get("discovery_index"):
+        lines.append("\n## Discovery Index\n")
+        lines.append(f"- `{generated['discovery_index']}`\n")
+        lines.append("  Load this first — lightweight index of all skills for agent discovery.\n")
     # Multi-tool adapter outputs
     adapter_outputs = generated.get("adapter_outputs", [])
     if adapter_outputs:
