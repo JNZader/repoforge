@@ -72,12 +72,12 @@ python -m eval.harness
 
 ### Don't: Modify core logic without testing
 
-Changing core application logic without proper testing can lead to unexpected behavior across the application.
+Changing core application logic can lead to unexpected behavior across the project.
 
 ```python
 # BAD
 def main_logic():
-    # Directly modifying shared state
+    # Directly modifying shared state without checks
     shared_state['key'] = 'new_value'
 ```
 <!-- L3:END -->

@@ -31,7 +31,7 @@ This skill covers creating users for testing compression passes.
 
 ## Critical Patterns (Summary)
 - **Create User**: Use `create_user` to set up test users.
-- **Get User**: Retrieve user data with `get_user` for validation.
+- **Get Users**: Retrieve users with `get_users` for validation in tests.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -47,20 +47,20 @@ from tests.test_compressor import create_user
 user = create_user(name="Test User", email="test@example.com")
 ```
 
-### Get User
+### Get Users
 
-Retrieve user data with `get_user` to validate the created user.
+Retrieve users with `get_users` to validate the test scenarios.
 
 ```python
-from tests.test_compressor import get_user
+from tests.test_compressor import get_users
 
-user = get_user(user_id=1)
+users = get_users()
 ```
 
 ## When to Use
 
-- When initializing test data for compression tests.
-- When validating user-related functionality in the test_compressor module.
+- When you need to create users for testing the compression functionality.
+- When validating user data in compression tests.
 
 ## Commands
 
@@ -72,12 +72,12 @@ pytest tests/test_compressor.py
 
 ### Don't: Create Users Without Validation
 
-Creating users without validating their data can lead to inconsistent test results.
+Creating users without validating their data can lead to unreliable tests.
 
 ```python
 # BAD
 from tests.test_compressor import create_user
 
-user = create_user(name="", email="invalid-email")
+create_user(name="", email="invalid-email")
 ```
 <!-- L3:END -->

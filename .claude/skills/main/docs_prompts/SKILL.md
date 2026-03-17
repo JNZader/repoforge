@@ -25,14 +25,14 @@ This skill covers the generation of chapter prompts for documentation.
 <!-- L2:START -->
 ## Quick Reference
 
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Generate index prompt    | `index_prompt`              |
-| Generate overview prompt  | `overview_prompt`           |
+| Task | Pattern |
+|------|---------|
+| Generate index prompt | `index_prompt` |
+| Generate overview prompt | `overview_prompt` |
 
 ## Critical Patterns (Summary)
 - **Generate index prompt**: Use `index_prompt` to create an index for documentation.
-- **Generate overview prompt**: Use `overview_prompt` to create an overview section for documentation.
+- **Generate overview prompt**: Use `overview_prompt` to provide an overview of the documentation.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers the generation of chapter prompts for documentation.
 
 ### Generate index prompt
 
-Use `index_prompt` to create an index for documentation, providing a structured entry point for users.
+Use `index_prompt` to create an index for documentation, helping users navigate through chapters.
 
 ```python
 from repoforge.docs_prompts import index_prompt
@@ -50,7 +50,7 @@ index = index_prompt()
 
 ### Generate overview prompt
 
-Use `overview_prompt` to create an overview section for documentation, summarizing key concepts.
+Use `overview_prompt` to provide an overview of the documentation, summarizing key points.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
@@ -60,8 +60,8 @@ overview = overview_prompt()
 
 ## When to Use
 
-- When creating documentation for a new project.
-- When updating existing documentation to include new chapters.
+- When creating structured documentation for a project.
+- When needing to provide users with a clear overview of the documentation content.
 
 ## Commands
 
@@ -73,7 +73,7 @@ python repoforge/cli.py generate-docs
 
 ### Don't: Hardcode prompts
 
-Hardcoding prompts reduces flexibility and maintainability of documentation.
+Hardcoding prompts reduces flexibility and maintainability of the documentation.
 
 ```python
 # BAD

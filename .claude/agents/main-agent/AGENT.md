@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the execution of evaluation scenarios, harness management, and data compression. It never interacts with other layers or external systems.
+This agent owns the execution of evaluation scenarios, harness operations, and data compression. It never interacts with other layers or external systems.
 
 ## Capabilities
 
@@ -28,7 +28,7 @@ Before starting ANY task:
 
 Task execution:
 1. Execute evaluation scenarios using `eval/scenarios_real.py`
-2. Manage harness execution through `eval/harness.py`
+2. Run harness operations via `eval/harness.py`
 3. Verify data compression with `repoforge/compressor.py`
 4. Report back to orchestrator with: files changed, tests status, blockers
 
