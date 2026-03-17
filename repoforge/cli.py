@@ -1,10 +1,11 @@
 """
 cli.py - Command-line interface for RepoForge.
 
-Five modes:
+Six modes:
 
   repoforge skills   [options] — Generate SKILL.md + AGENT.md for Claude Code / OpenCode
   repoforge score    [options] — Score quality of generated SKILL.md files (no API key needed)
+  repoforge scan     [options] — Security scan generated output for issues (no API key needed)
   repoforge docs     [options] — Generate technical documentation (Docsify / GH Pages ready)
   repoforge export   [options] — Flatten repo into a single LLM-optimized file (no API key needed)
   repoforge compress [options] — Token-optimize generated .md files (no API key needed)
@@ -14,7 +15,10 @@ Quick usage:
   repoforge skills -w /my/repo --targets all            # generate for all AI tools
   repoforge skills -w /my/repo --targets claude,cursor   # Claude + Cursor only
   repoforge skills -w /my/repo --compress                # generate + auto-compress
+  repoforge skills -w /my/repo --scan                    # generate + auto-security-scan
   repoforge score  -w /my/repo --format table
+  repoforge scan   -w /my/repo --format table
+  repoforge scan   -w /my/repo --fail-on critical
   repoforge docs   -w /my/repo --lang Spanish -o docs
   repoforge docs   -w /my/repo --model gpt-4o-mini --lang English --dry-run
   repoforge export -w /my/repo -o context.md
@@ -66,6 +70,7 @@ def main():
     Commands:
       skills    Generate SKILL.md + AGENT.md for Claude Code / OpenCode
       score     Score quality of generated SKILL.md files (no API key needed)
+      scan      Security scan generated output for issues (no API key needed)
       docs      Generate technical documentation (Docsify-ready, GH Pages compatible)
       export    Flatten repo into a single LLM-optimized file (no API key needed)
       compress  Token-optimize generated .md files (no API key needed)
@@ -74,8 +79,11 @@ def main():
     Examples:
       repoforge skills -w .
       repoforge skills -w . --compress
+      repoforge skills -w . --scan
       repoforge score -w . --format table
       repoforge score -w . --min-score 0.7
+      repoforge scan -w . --format table
+      repoforge scan -w . --fail-on critical
       repoforge docs -w . --lang Spanish -o docs
       repoforge docs --model gpt-4o-mini --dry-run
       repoforge export -w . -o context.md
@@ -123,9 +131,12 @@ def main():
     help="After generation, compress skills to reduce token count.")
 @click.option("--aggressive", is_flag=True, default=False,
     help="Use aggressive compression (abbreviations). Only applies with --compress.")
+@click.option("--scan/--no-scan", "do_scan", default=False, show_default=True,
+    help="After generation, run security scanner on generated output.")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
-           with_hooks, do_score, targets, disclosure, do_compress, aggressive):
+           with_hooks, do_score, targets, disclosure, do_compress, aggressive,
+           do_scan):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -180,6 +191,16 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             scores = scorer.score_directory(str(skills_dir))
             if scores:
                 click.echo(scorer.report(scores, fmt="table"), err=True)
+
+    if do_scan and not dry_run:
+        from .security import scan_generated_output
+        scan_result = scan_generated_output(working_dir)
+        if scan_result.findings:
+            from .security import SecurityScanner
+            scanner = SecurityScanner()
+            click.echo(scanner.report(scan_result, fmt="table"), err=True)
+        elif not quiet:
+            click.echo("\n\u2705 Security scan: no issues found.", err=True)
 
     if do_serve or serve_only:
         from pathlib import Path
@@ -411,6 +432,145 @@ def score(working_dir, skills_dir, fmt, min_score, quiet):
             if not quiet:
                 click.echo(
                     f"\n{len(below)} skill(s) scored below {min_score:.0%} threshold.",
+                    err=True,
+                )
+            sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# scan subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--workspace",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("--target-dir", default=None,
+    help="Specific directory to scan. Default: auto-detect generated output dirs.",
+    type=click.Path(file_okay=False),
+)
+@click.option("--format", "fmt",
+    default="table", show_default=True,
+    type=click.Choice(["table", "json", "markdown"], case_sensitive=False),
+    help="Output format for the report.")
+@click.option("--allowlist", default=None,
+    help="Comma-separated rule IDs to skip (e.g. SEC-020,SEC-022).")
+@click.option("--fail-on",
+    default=None,
+    type=click.Choice(["critical", "high", "medium", "low"], case_sensitive=False),
+    help="Exit code 1 if findings at or above this severity level.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def scan(workspace, target_dir, fmt, allowlist, fail_on, quiet):
+    """
+    Security scan generated output for issues (no API key needed).
+
+    \b
+    Scans generated .md files for 5 categories of security issues:
+      - Prompt injection patterns
+      - Hardcoded secrets (API keys, tokens, passwords)
+      - PII exposure (emails, SSNs, phone numbers)
+      - Destructive commands (rm -rf /, DROP TABLE, etc.)
+      - Unsafe code patterns (eval(), exec(), os.system())
+
+    \b
+    Context-aware: patterns inside Anti-Patterns sections are
+    downgraded to INFO severity (not false positives).
+
+    \b
+    Examples:
+      repoforge scan -w .                         # scan with table output
+      repoforge scan -w . --format json           # JSON output
+      repoforge scan -w . --fail-on critical      # exit 1 on critical findings
+      repoforge scan -w . --fail-on high          # exit 1 on high+ findings
+      repoforge scan -w . --allowlist SEC-020,SEC-022  # skip email/phone rules
+      repoforge scan --target-dir ./my-skills/    # scan specific directory
+    """
+    import sys
+    from pathlib import Path
+    from .security import SecurityScanner, scan_generated_output, Severity
+
+    # Parse allowlist
+    allow = None
+    if allowlist:
+        allow = [r.strip() for r in allowlist.split(",") if r.strip()]
+
+    if target_dir:
+        target = Path(target_dir)
+        if not target.exists():
+            click.echo(f"Directory not found: {target}", err=True)
+            sys.exit(1)
+
+        if not quiet:
+            click.echo(f"Scanning {target} for security issues ...", err=True)
+
+        scanner = SecurityScanner(allowlist=allow)
+        result = scanner.scan_directory(str(target))
+    else:
+        if not quiet:
+            click.echo(f"Scanning generated output in {workspace} ...", err=True)
+
+        if allow:
+            # Need to create scanner with allowlist and scan manually
+            scanner = SecurityScanner(allowlist=allow)
+            root = Path(workspace)
+            from .security import ScanResult, Finding
+            all_findings: list[Finding] = []
+            files_scanned = 0
+
+            scan_dirs = [
+                root / ".claude" / "skills",
+                root / ".claude" / "agents",
+                root / ".opencode" / "skills",
+                root / ".opencode" / "agents",
+            ]
+            for scan_dir in scan_dirs:
+                if scan_dir.exists():
+                    r = scanner.scan_directory(str(scan_dir))
+                    all_findings.extend(r.findings)
+                    files_scanned += r.files_scanned
+
+            adapter_files = [
+                root / "AGENTS.md",
+                root / "GEMINI.md",
+                root / ".github" / "copilot-instructions.md",
+            ]
+            for af in adapter_files:
+                if af.exists():
+                    all_findings.extend(scanner.scan_file(str(af)))
+                    files_scanned += 1
+
+            cursor_dir = root / ".cursor" / "rules"
+            if cursor_dir.exists():
+                r = scanner.scan_directory(str(cursor_dir), extensions=(".mdc",))
+                all_findings.extend(r.findings)
+                files_scanned += r.files_scanned
+
+            result = ScanResult(files_scanned=files_scanned, findings=all_findings)
+        else:
+            result = scan_generated_output(workspace)
+
+    # Generate report
+    scanner_for_report = SecurityScanner(allowlist=allow)
+    report = scanner_for_report.report(result, fmt=fmt)
+    click.echo(report)
+
+    # Exit code based on --fail-on
+    if fail_on:
+        severity_threshold = {
+            "critical": [Severity.CRITICAL],
+            "high": [Severity.CRITICAL, Severity.HIGH],
+            "medium": [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM],
+            "low": [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW],
+        }
+        fail_severities = severity_threshold.get(fail_on, [])
+        failing = [f for f in result.findings if f.severity in fail_severities]
+        if failing:
+            if not quiet:
+                click.echo(
+                    f"\n{len(failing)} finding(s) at or above '{fail_on}' severity.",
                     err=True,
                 )
             sys.exit(1)

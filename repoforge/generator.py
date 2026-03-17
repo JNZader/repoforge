@@ -59,6 +59,7 @@ def generate_artifacts(
     disclosure: str = "tiered",
     compress: bool = False,
     compress_aggressive: bool = False,
+    scan: bool = False,
 ) -> dict:
     """
     Main entry point. Scans the repo and generates SKILL.md + AGENT.md files.
@@ -73,6 +74,7 @@ def generate_artifacts(
                     Default: "tiered" (progressive disclosure enabled).
         compress: After generation, run token compressor on generated skills.
         compress_aggressive: Use aggressive abbreviation mode for compression.
+        scan: After generation (and compression), run security scanner.
 
     Returns a summary dict with all generated file paths.
     """
@@ -346,6 +348,31 @@ def generate_artifacts(
                 }
     elif compress and dry_run:
         log("\n🗜️  Compression would run after generation (skipped in dry-run)")
+
+    # -----------------------------------------------------------------------
+    # 10. Security scan (opt-in via --scan flag or scan parameter)
+    # -----------------------------------------------------------------------
+    if scan and not dry_run:
+        from .security import scan_generated_output, SecurityScanner
+        log("\n🔒 Running security scan on generated output...")
+        scan_result = scan_generated_output(str(root))
+        if scan_result.findings:
+            scanner = SecurityScanner()
+            log(scanner.report(scan_result, fmt="table"))
+        else:
+            log("   ✅ No security issues found.")
+        generated["security_scan"] = {
+            "files_scanned": scan_result.files_scanned,
+            "passed": scan_result.passed,
+            "critical": scan_result.critical_count,
+            "high": scan_result.high_count,
+            "medium": scan_result.medium_count,
+            "low": scan_result.low_count,
+            "info": scan_result.info_count,
+            "total_findings": len(scan_result.findings),
+        }
+    elif scan and dry_run:
+        log("\n🔒 Security scan would run after generation (skipped in dry-run)")
 
     targets_summary = ", ".join(active_targets)
     log(f"\n🎉 Done! Generated {len(generated['skills'])} skills, {len(generated['agents'])} agents")
