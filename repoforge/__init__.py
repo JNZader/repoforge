@@ -48,6 +48,13 @@ from .plugins import (
     manifest_to_markdown,
     write_plugin,
 )
+from .graph import (
+    CodeGraph,
+    Node,
+    Edge,
+    build_graph,
+    build_graph_from_workspace,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -87,4 +94,9 @@ __all__ = [
     "manifest_to_json",
     "manifest_to_markdown",
     "write_plugin",
+    "CodeGraph",
+    "Node",
+    "Edge",
+    "build_graph",
+    "build_graph_from_workspace",
 ]
