@@ -16,6 +16,7 @@ Quick usage:
   repoforge skills -w /my/repo --targets claude,cursor   # Claude + Cursor only
   repoforge skills -w /my/repo --compress                # generate + auto-compress
   repoforge skills -w /my/repo --scan                    # generate + auto-security-scan
+  repoforge skills -w /my/repo --plugin                  # generate + plugin hierarchy
   repoforge score  -w /my/repo --format table
   repoforge scan   -w /my/repo --format table
   repoforge scan   -w /my/repo --fail-on critical
@@ -133,10 +134,12 @@ def main():
     help="Use aggressive compression (abbreviations). Only applies with --compress.")
 @click.option("--scan/--no-scan", "do_scan", default=False, show_default=True,
     help="After generation, run security scanner on generated output.")
+@click.option("--plugin/--no-plugin", "with_plugin", default=False, show_default=True,
+    help="Generate plugin.json + commands/ hierarchy (Skills → Commands → Plugins).")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
            with_hooks, do_score, targets, disclosure, do_compress, aggressive,
-           do_scan):
+           do_scan, with_plugin):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -172,6 +175,7 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             dry_run=dry_run,
             complexity=complexity,
             with_hooks=with_hooks,
+            with_plugin=with_plugin,
             targets=targets,
             disclosure=disclosure,
             compress=do_compress,

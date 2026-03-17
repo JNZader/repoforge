@@ -43,3 +43,11 @@
 # Can also be set with --targets flag (CLI takes precedence).
 # targets: [claude, opencode]
 # targets: [claude, opencode, cursor, codex, gemini, copilot]  # all tools
+
+# Generate plugin hierarchy (plugin.json + commands/ + PLUGIN.md) during skills generation.
+# Organizes generated output into an installable, composable plugin format:
+#   Skills   = Knowledge/patterns (SKILL.md files)
+#   Commands = Executable workflows that chain multiple skills
+#   Plugin   = Composable package with manifest, skills, commands, metadata
+# Can also be enabled with --plugin flag.
+# generate_plugin: false

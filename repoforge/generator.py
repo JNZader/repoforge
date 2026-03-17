@@ -37,6 +37,7 @@ from .prompts import (
 )
 from .adapters import resolve_targets, run_adapters, ADAPTER_TARGETS
 from .disclosure import build_discovery_index
+from .plugins import build_plugin_manifest, write_plugin, commands_prompt
 
 
 # Defaults — overridden by complexity classification at runtime
@@ -55,6 +56,7 @@ def generate_artifacts(
     dry_run: bool = False,
     complexity: str = "auto",
     with_hooks: bool = False,
+    with_plugin: bool = False,
     targets: Optional[str] = None,
     disclosure: str = "tiered",
     compress: bool = False,
@@ -67,6 +69,7 @@ def generate_artifacts(
     Args:
         complexity: "auto" (detect), or force "small" / "medium" / "large".
         with_hooks: Generate HOOKS.md with Claude Code hook recommendations.
+        with_plugin: Generate plugin.json + commands/ + PLUGIN.md hierarchy.
         targets: Comma-separated list of output targets.
                  Default: "claude,opencode". Use "all" for all targets.
                  Valid: claude, opencode, cursor, codex, gemini, copilot.
@@ -106,6 +109,10 @@ def generate_artifacts(
     # Resolve hooks: CLI flag > config file > off
     if not with_hooks:
         with_hooks = cfg.get("generate_hooks", False)
+
+    # Resolve plugin: CLI flag > config file > off
+    if not with_plugin:
+        with_plugin = cfg.get("generate_plugin", False)
 
     # Resolve disclosure: CLI flag > config file > tiered (default)
     if disclosure == "tiered":
@@ -281,6 +288,51 @@ def generate_artifacts(
         log("\n⏭️  Skipping hooks (use --with-hooks to enable)")
 
     # -----------------------------------------------------------------------
+    # 6b. Plugin hierarchy (opt-in via --plugin or config)
+    # -----------------------------------------------------------------------
+    if with_plugin:
+        log("\n📦 Generating plugin manifest and commands...")
+        manifest = build_plugin_manifest(repo_map, generated, cx)
+
+        if not dry_run:
+            # Optionally generate detailed command workflows via LLM
+            cmd_prompt = commands_prompt(repo_map, cx)
+            cmd_content = ""
+            if cmd_prompt and manifest.commands:
+                log("   ✏️  Generating detailed command workflows...")
+                cmd_content = llm.complete(cmd_prompt, system=(
+                    "Output ONLY the command workflow documents. "
+                    "No preamble, no explanation. "
+                    "Separate each command with ---."
+                ))
+
+            plugin_files = write_plugin(str(root), manifest, cmd_content)
+            generated["plugin"] = {
+                "manifest": str(root / ".claude" / "plugin.json"),
+                "readme": str(root / ".claude" / "PLUGIN.md"),
+                "commands": [
+                    p for p in plugin_files
+                    if p.startswith(".claude/commands/")
+                ],
+                "total_commands": len(manifest.commands),
+            }
+            log(f"   ✅ plugin.json ({len(manifest.commands)} commands)")
+            log("   ✅ PLUGIN.md")
+            for cmd_path in generated["plugin"]["commands"]:
+                log(f"   ✅ {cmd_path}")
+        else:
+            manifest = build_plugin_manifest(repo_map, generated, cx)
+            generated["plugin"] = {
+                "manifest": str(root / ".claude" / "plugin.json"),
+                "readme": str(root / ".claude" / "PLUGIN.md"),
+                "commands": [f".claude/commands/{cmd.name}.md" for cmd in manifest.commands],
+                "total_commands": len(manifest.commands),
+            }
+            log(f"   📦 Would generate plugin.json + {len(manifest.commands)} commands (dry-run)")
+    else:
+        log("\n⏭️  Skipping plugin generation (use --plugin to enable)")
+
+    # -----------------------------------------------------------------------
     # 7. Mirror to .opencode/ if requested
     # -----------------------------------------------------------------------
     if also_opencode and not dry_run:
@@ -375,7 +427,10 @@ def generate_artifacts(
         log("\n🔒 Security scan would run after generation (skipped in dry-run)")
 
     targets_summary = ", ".join(active_targets)
-    log(f"\n🎉 Done! Generated {len(generated['skills'])} skills, {len(generated['agents'])} agents")
+    plugin_summary = ""
+    if generated.get("plugin"):
+        plugin_summary = f", {generated['plugin']['total_commands']} commands (plugin)"
+    log(f"\n🎉 Done! Generated {len(generated['skills'])} skills, {len(generated['agents'])} agents{plugin_summary}")
     log(f"   Targets: {targets_summary}")
     log(f"   Output: {_rel(out, root)}")
 
@@ -535,6 +590,14 @@ def _write_index(out: Path, repo_map: dict, generated: dict, dry_run: bool):
         lines.append("\n## Discovery Index\n")
         lines.append(f"- `{generated['discovery_index']}`\n")
         lines.append("  Load this first — lightweight index of all skills for agent discovery.\n")
+    if generated.get("plugin"):
+        plugin = generated["plugin"]
+        lines.append("\n## Plugin\n")
+        lines.append(f"- `{plugin['manifest']}`\n")
+        lines.append(f"- `{plugin['readme']}`\n")
+        for cmd_path in plugin.get("commands", []):
+            lines.append(f"- `{cmd_path}`\n")
+        lines.append(f"  Plugin with {plugin['total_commands']} commands.\n")
     # Multi-tool adapter outputs
     adapter_outputs = generated.get("adapter_outputs", [])
     if adapter_outputs:
