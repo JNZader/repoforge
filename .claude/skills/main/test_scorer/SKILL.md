@@ -35,7 +35,7 @@ users = get_users()
 
 - When setting up test cases for user scoring.
 - To validate scoring logic against multiple users.
-- During test completeness checks with `TestCompleteness`.
+- During debugging of scoring-related test failures.
 
 ## Commands
 
@@ -45,7 +45,7 @@ pytest tests/test_scorer.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode User Data
+### Don't: Use Hardcoded User Data
 
 Hardcoding user data can lead to brittle tests that fail on changes.
 
