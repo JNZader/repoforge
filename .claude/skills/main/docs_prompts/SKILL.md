@@ -2,7 +2,7 @@
 name: add-docs-prompts-endpoint
 description: >
   This skill covers the integration of shared system prompts into your documentation.
-  Trigger: When utilizing the `docs_prompts` for chapter calls.
+  Trigger: When you need to inject prompts into chapter calls.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,31 +13,31 @@ metadata:
 
 ### Using Index Prompt
 
-Inject the `index_prompt` to provide a structured entry point for documentation.
+Inject the index prompt to provide a structured overview of the documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def generate_index():
+def get_documentation_index():
     return index_prompt
 ```
 
 ### Implementing Overview Prompt
 
-Utilize the `overview_prompt` to summarize the documentation effectively.
+Utilize the overview prompt to summarize the key aspects of the documentation.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
-def generate_overview():
+def get_documentation_overview():
     return overview_prompt
 ```
 
 ## When to Use
 
 - When creating a new chapter in the documentation.
-- To provide a consistent overview across multiple sections.
-- During the review process to ensure all chapters have necessary prompts.
+- To provide a summary of existing documentation sections.
+- During the review process to ensure all prompts are included.
 
 ## Commands
 
@@ -48,19 +48,19 @@ python repoforge/cli.py update-prompts
 
 ## Anti-Patterns
 
-### Don't: Skip Prompt Integration
+### Don't: Hardcode Prompts
 
-Neglecting to integrate prompts can lead to disjointed documentation. 
+Hardcoding prompts reduces flexibility and maintainability of the documentation.
 
 ```python
 # BAD
-def generate_documentation():
-    return "This is a documentation without prompts."
+def get_hardcoded_prompt():
+    return "This is a hardcoded prompt."
 ```
 
 ## Quick Reference
 
 | Task | Pattern |
 |------|---------|
-| Generate index | `index_prompt` |
-| Create overview | `overview_prompt` |
+| Inject index prompt | `index_prompt` |
+| Summarize documentation | `overview_prompt` |

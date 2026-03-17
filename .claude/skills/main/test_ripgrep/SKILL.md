@@ -1,7 +1,7 @@
 ---
 name: add-test-ripgrep-endpoint
 description: >
-  This skill covers patterns for adding endpoints to the user management router.
+  This skill covers adding endpoints to the user management router.
   Trigger: When implementing new user-related features in test_ripgrep.
 license: Apache-2.0
 metadata:
@@ -13,22 +13,17 @@ metadata:
 
 ### Create User Endpoint
 
-Define a FastAPI endpoint to create a new user.
+Define an endpoint to create a new user in the user management system.
 
 ```python
-from fastapi import APIRouter
-from pydantic import BaseModel
+from fastapi import FastAPI
 from . import create_user
 
-router = APIRouter()
+app = FastAPI()
 
-class UserCreate(BaseModel):
-    username: str
-    email: str
-
-@router.post("/users/")
-async def create_user_endpoint(user: UserCreate):
-    return await create_user(user)
+@app.post("/users/")
+def add_user(user_data: dict):
+    return create_user(user_data)
 ```
 
 ### Get Users Endpoint
@@ -36,14 +31,14 @@ async def create_user_endpoint(user: UserCreate):
 Implement an endpoint to retrieve a list of users.
 
 ```python
-from fastapi import APIRouter
+from fastapi import FastAPI
 from . import get_users
 
-router = APIRouter()
+app = FastAPI()
 
-@router.get("/users/")
-async def get_users_endpoint():
-    return await get_users()
+@app.get("/users/")
+def list_users():
+    return get_users()
 ```
 
 ## When to Use
@@ -60,19 +55,20 @@ pytest tests/test_ripgrep.py
 
 ## Anti-Patterns
 
-### Don't: Use Blocking Calls
+### Don't: Hardcode User Data
 
-Using blocking calls in FastAPI endpoints can lead to performance issues.
+Hardcoding user data can lead to maintenance issues and security vulnerabilities.
 
 ```python
 # BAD
-def create_user_endpoint(user: UserCreate):
-    return create_user(user)  # This blocks the event loop
+def add_user():
+    user_data = {"name": "John Doe", "email": "john@example.com"}
+    return create_user(user_data)
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                          |
-|--------------------------|----------------------------------|
-| Create user endpoint     | `create_user_endpoint`           |
-| Get users endpoint       | `get_users_endpoint`             |
+| Task                | Pattern                      |
+|---------------------|------------------------------|
+| Create user endpoint | `add_user`                  |
+| Get users endpoint   | `list_users`                |
