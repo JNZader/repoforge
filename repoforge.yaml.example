@@ -29,3 +29,8 @@
 #   medium → standard depth (default behavior)
 #   large  → concise skills, fewer per layer, more chapters
 # complexity: auto
+
+# Generate Claude Code hooks documentation (HOOKS.md) during skills generation.
+# Hooks protect critical files, enforce linting, and suggest test runs.
+# Can also be enabled with --with-hooks flag.
+# generate_hooks: false

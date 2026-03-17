@@ -92,8 +92,11 @@ def main():
     help="Port for --serve mode.")
 @click.option("--serve-only", is_flag=True, default=False,
     help="Skip generation, only open browser for existing skills.")
+@click.option("--with-hooks/--no-hooks", default=False, show_default=True,
+    help="Generate HOOKS.md with recommended Claude Code hooks.")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
-           output_dir, no_opencode, complexity, do_serve, port, serve_only):
+           output_dir, no_opencode, complexity, do_serve, port, serve_only,
+           with_hooks):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -121,6 +124,7 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             verbose=not quiet,
             dry_run=dry_run,
             complexity=complexity,
+            with_hooks=with_hooks,
         )
 
     if do_serve or serve_only:

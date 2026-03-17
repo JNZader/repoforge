@@ -27,6 +27,7 @@ from .prompts import (
     agent_prompt,
     orchestrator_prompt,
     build_skill_registry,
+    hooks_prompt,
 )
 
 
@@ -45,12 +46,14 @@ def generate_artifacts(
     verbose: bool = True,
     dry_run: bool = False,
     complexity: str = "auto",
+    with_hooks: bool = False,
 ) -> dict:
     """
     Main entry point. Scans the repo and generates SKILL.md + AGENT.md files.
 
     Args:
         complexity: "auto" (detect), or force "small" / "medium" / "large".
+        with_hooks: Generate HOOKS.md with Claude Code hook recommendations.
 
     Returns a summary dict with all generated file paths.
     """
@@ -71,6 +74,10 @@ def generate_artifacts(
     if complexity == "auto":
         complexity = cfg.get("complexity", "auto")
     cx = classify_complexity(repo_map, override=complexity)
+
+    # Resolve hooks: CLI flag > config file > off
+    if not with_hooks:
+        with_hooks = cfg.get("generate_hooks", False)
 
     stats = repo_map.get("stats", {})
     rg = stats.get("rg_version", None)
@@ -192,7 +199,21 @@ def generate_artifacts(
     log(f"   ✅ {_rel(registry_path, root)}")
 
     # -----------------------------------------------------------------------
-    # 6. Mirror to .opencode/ if requested
+    # 6. Hooks documentation (opt-in via --with-hooks or config)
+    # -----------------------------------------------------------------------
+    if with_hooks:
+        log("\n🪝 Generating hooks documentation...")
+        system, user = hooks_prompt(repo_map, cx)
+        content = _generate(llm, system, user, dry_run)
+        hooks_path = out / "hooks" / "HOOKS.md"
+        _write(hooks_path, content, dry_run)
+        generated["hooks"] = str(hooks_path)
+        log(f"   ✅ {_rel(hooks_path, root)}")
+    else:
+        log("\n⏭️  Skipping hooks (use --with-hooks to enable)")
+
+    # -----------------------------------------------------------------------
+    # 7. Mirror to .opencode/ if requested
     # -----------------------------------------------------------------------
     if also_opencode and not dry_run:
         opencode_out = root / ".opencode"
@@ -200,7 +221,7 @@ def generate_artifacts(
         log(f"\n📁 Also mirrored to {_rel(opencode_out, root)}")
 
     # -----------------------------------------------------------------------
-    # 7. Write index
+    # 8. Write index
     # -----------------------------------------------------------------------
     _write_index(out, repo_map, generated, dry_run)
 
@@ -326,6 +347,9 @@ def _write_index(out: Path, repo_map: dict, generated: dict, dry_run: bool):
     if generated.get("registry"):
         lines.append("\n## Skill Registry\n")
         lines.append(f"- `{generated['registry']}`\n")
+    if generated.get("hooks"):
+        lines.append("\n## Hooks\n")
+        lines.append(f"- `{generated['hooks']}`\n")
     lines.append("\n## Usage\n")
     lines.append("In Claude Code, skills and agents in `.claude/` are loaded automatically.\n")
     lines.append("In OpenCode, use `.opencode/` — same structure.\n")
