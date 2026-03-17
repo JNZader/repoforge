@@ -83,6 +83,60 @@ MAX_FILES_PER_LAYER = 80
 
 
 # ---------------------------------------------------------------------------
+# Complexity classification (deterministic, no LLM)
+# ---------------------------------------------------------------------------
+
+def classify_complexity(repo_map: dict, override: str = "auto") -> dict:
+    """
+    Classify repo complexity and return routing parameters.
+
+    Adjusts generation behavior so small repos get detailed treatment
+    and large repos get concise, focused output.
+
+    Args:
+        repo_map: Output from scan_repo()
+        override: "auto" (detect), or force "small" / "medium" / "large"
+
+    Returns:
+        Dict with size classification and all routing parameters.
+    """
+    total_files = repo_map.get("stats", {}).get("total_files", 0)
+    num_layers = len(repo_map.get("layers", {}))
+    total_modules = sum(
+        len(layer.get("modules", {}))
+        for layer in repo_map.get("layers", {}).values()
+    )
+
+    # Classify
+    if override != "auto" and override in ("small", "medium", "large"):
+        size = override
+    elif total_files <= 20 and num_layers <= 2:
+        size = "small"
+    elif total_files <= 200 and num_layers <= 5:
+        size = "medium"
+    else:
+        size = "large"
+
+    return {
+        # Classification
+        "size": size,
+        "total_files": total_files,
+        "num_layers": num_layers,
+        "total_modules": total_modules,
+        # Skills generation parameters
+        "max_module_skills_per_layer": {"small": 10, "medium": 5, "large": 3}[size],
+        "min_exports_for_skill": {"small": 1, "medium": 2, "large": 3}[size],
+        "prompt_detail": {"small": "detailed", "medium": "standard", "large": "concise"}[size],
+        "generate_orchestrator": size != "small",
+        "generate_layer_agents": size != "small",
+        "max_files_per_layer": {"small": 200, "medium": 150, "large": 100}[size],
+        # Docs generation parameters
+        "max_chapters": {"small": 5, "medium": 7, "large": 9}[size],
+        "include_monorepo_hierarchy": size == "large",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
