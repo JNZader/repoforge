@@ -1,22 +1,25 @@
 """
 cli.py - Command-line interface for RepoForge.
 
-Four modes:
+Five modes:
 
-  repoforge skills [options]   — Generate SKILL.md + AGENT.md for Claude Code / OpenCode
-  repoforge score  [options]   — Score quality of generated SKILL.md files (no API key needed)
-  repoforge docs   [options]   — Generate technical documentation (Docsify / GH Pages ready)
-  repoforge export [options]   — Flatten repo into a single LLM-optimized file (no API key needed)
+  repoforge skills   [options] — Generate SKILL.md + AGENT.md for Claude Code / OpenCode
+  repoforge score    [options] — Score quality of generated SKILL.md files (no API key needed)
+  repoforge docs     [options] — Generate technical documentation (Docsify / GH Pages ready)
+  repoforge export   [options] — Flatten repo into a single LLM-optimized file (no API key needed)
+  repoforge compress [options] — Token-optimize generated .md files (no API key needed)
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
   repoforge skills -w /my/repo --targets all            # generate for all AI tools
   repoforge skills -w /my/repo --targets claude,cursor   # Claude + Cursor only
+  repoforge skills -w /my/repo --compress                # generate + auto-compress
   repoforge score  -w /my/repo --format table
   repoforge docs   -w /my/repo --lang Spanish -o docs
   repoforge docs   -w /my/repo --model gpt-4o-mini --lang English --dry-run
   repoforge export -w /my/repo -o context.md
   repoforge export -w /my/repo --max-tokens 100000 --format xml
+  repoforge compress -w /my/repo --aggressive --dry-run
   repoforge skills --model ollama/qwen2.5-coder:14b   # free local
   repoforge skills --model github/gpt-4o-mini          # GitHub Copilot
 """
@@ -61,20 +64,23 @@ def main():
 
     \b
     Commands:
-      skills   Generate SKILL.md + AGENT.md for Claude Code / OpenCode
-      score    Score quality of generated SKILL.md files (no API key needed)
-      docs     Generate technical documentation (Docsify-ready, GH Pages compatible)
-      export   Flatten repo into a single LLM-optimized file (no API key needed)
+      skills    Generate SKILL.md + AGENT.md for Claude Code / OpenCode
+      score     Score quality of generated SKILL.md files (no API key needed)
+      docs      Generate technical documentation (Docsify-ready, GH Pages compatible)
+      export    Flatten repo into a single LLM-optimized file (no API key needed)
+      compress  Token-optimize generated .md files (no API key needed)
 
     \b
     Examples:
       repoforge skills -w .
+      repoforge skills -w . --compress
       repoforge score -w . --format table
       repoforge score -w . --min-score 0.7
       repoforge docs -w . --lang Spanish -o docs
       repoforge docs --model gpt-4o-mini --dry-run
       repoforge export -w . -o context.md
       repoforge export -w . --max-tokens 100000 --format xml
+      repoforge compress -w . --aggressive --dry-run
     """
     pass
 
@@ -113,9 +119,13 @@ def main():
     default="tiered", show_default=True,
     type=click.Choice(["full", "tiered"], case_sensitive=False),
     help="Skill output mode: tiered (progressive disclosure markers) or full (no markers).")
+@click.option("--compress/--no-compress", "do_compress", default=False, show_default=True,
+    help="After generation, compress skills to reduce token count.")
+@click.option("--aggressive", is_flag=True, default=False,
+    help="Use aggressive compression (abbreviations). Only applies with --compress.")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
-           with_hooks, do_score, targets, disclosure):
+           with_hooks, do_score, targets, disclosure, do_compress, aggressive):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -153,6 +163,8 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             with_hooks=with_hooks,
             targets=targets,
             disclosure=disclosure,
+            compress=do_compress,
+            compress_aggressive=aggressive,
         )
 
     if do_score and not dry_run:
@@ -402,6 +414,99 @@ def score(working_dir, skills_dir, fmt, min_score, quiet):
                     err=True,
                 )
             sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# compress subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--workspace",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("--target-dir", default=None,
+    help="Specific directory to compress. Default: <workspace>/.claude/skills/",
+    type=click.Path(file_okay=False),
+)
+@click.option("--aggressive", is_flag=True, default=False,
+    help="Use abbreviations (function→fn, configuration→config, etc.).")
+@click.option("--dry-run", is_flag=True, default=False,
+    help="Show compression stats without modifying files.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def compress(workspace, target_dir, aggressive, dry_run, quiet):
+    """
+    Token-optimize generated .md files (no API key needed).
+
+    \b
+    Applies deterministic multi-pass compression to reduce token count
+    by ~50-75% while preserving all semantic information:
+      - Whitespace normalization
+      - Filler phrase removal
+      - Table compaction
+      - Code block cleanup
+      - Bullet consolidation
+      - Abbreviations (--aggressive only)
+
+    \b
+    Examples:
+      repoforge compress -w .                       # compress .claude/skills/
+      repoforge compress -w . --aggressive           # also abbreviate words
+      repoforge compress -w . --dry-run              # show stats only
+      repoforge compress --target-dir ./my-skills/   # compress specific dir
+    """
+    import sys
+    from pathlib import Path
+    from .compressor import (
+        SkillCompressor,
+        compress_directory,
+        compression_report,
+    )
+
+    if target_dir:
+        target = Path(target_dir)
+    else:
+        target = Path(workspace) / ".claude" / "skills"
+
+    if not target.exists():
+        click.echo(f"Directory not found: {target}", err=True)
+        click.echo("Run 'repoforge skills' first to generate skills.", err=True)
+        sys.exit(1)
+
+    if not quiet:
+        mode = "aggressive" if aggressive else "normal"
+        click.echo(f"Compressing .md files in {target} (mode={mode}) ...", err=True)
+
+    if dry_run:
+        # Dry-run: compute stats without writing
+        compressor = SkillCompressor()
+        results = []
+        for md_file in sorted(target.rglob("*.md")):
+            content = md_file.read_text(encoding="utf-8")
+            result = compressor.compress(content, aggressive=aggressive)
+            results.append(result)
+            if not quiet:
+                pct = (1.0 - result.ratio) * 100 if result.ratio < 1.0 else 0.0
+                try:
+                    rel = str(md_file.relative_to(target))
+                except ValueError:
+                    rel = md_file.name
+                click.echo(
+                    f"  {rel}: {result.original_tokens} → {result.compressed_tokens} "
+                    f"tokens ({pct:.1f}% reduction)",
+                    err=True,
+                )
+    else:
+        results = compress_directory(str(target), aggressive=aggressive)
+
+    if results:
+        report = compression_report(results)
+        click.echo(report)
+    else:
+        click.echo("No .md files found.", err=True)
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------

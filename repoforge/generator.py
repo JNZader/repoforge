@@ -57,6 +57,8 @@ def generate_artifacts(
     with_hooks: bool = False,
     targets: Optional[str] = None,
     disclosure: str = "tiered",
+    compress: bool = False,
+    compress_aggressive: bool = False,
 ) -> dict:
     """
     Main entry point. Scans the repo and generates SKILL.md + AGENT.md files.
@@ -69,6 +71,8 @@ def generate_artifacts(
                  Valid: claude, opencode, cursor, codex, gemini, copilot.
         disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
                     Default: "tiered" (progressive disclosure enabled).
+        compress: After generation, run token compressor on generated skills.
+        compress_aggressive: Use aggressive abbreviation mode for compression.
 
     Returns a summary dict with all generated file paths.
     """
@@ -315,6 +319,33 @@ def generate_artifacts(
     # 8. Write index
     # -----------------------------------------------------------------------
     _write_index(out, repo_map, generated, dry_run)
+
+    # -----------------------------------------------------------------------
+    # 9. Token compression (opt-in via --compress flag)
+    # -----------------------------------------------------------------------
+    if compress and not dry_run:
+        from .compressor import compress_directory
+        skills_dir = out / "skills"
+        if skills_dir.exists():
+            log("\n🗜️  Compressing generated skills...")
+            results = compress_directory(str(skills_dir), aggressive=compress_aggressive)
+            if results:
+                mode = "aggressive" if compress_aggressive else "normal"
+                total_orig = sum(r.original_tokens for r in results)
+                total_comp = sum(r.compressed_tokens for r in results)
+                ratio = total_comp / total_orig if total_orig > 0 else 1.0
+                pct = (1.0 - ratio) * 100 if ratio < 1.0 else 0.0
+                log(f"   Compressed {len(results)} files (mode={mode}): "
+                    f"{total_orig} → {total_comp} tokens ({pct:.1f}% reduction)")
+                generated["compression"] = {
+                    "files": len(results),
+                    "mode": mode,
+                    "original_tokens": total_orig,
+                    "compressed_tokens": total_comp,
+                    "ratio": round(ratio, 3),
+                }
+    elif compress and dry_run:
+        log("\n🗜️  Compression would run after generation (skipped in dry-run)")
 
     targets_summary = ", ".join(active_targets)
     log(f"\n🎉 Done! Generated {len(generated['skills'])} skills, {len(generated['agents'])} agents")
