@@ -31,6 +31,13 @@ from .compressor import (
     compress_file,
     compress_directory,
 )
+from .security import (
+    SecurityScanner,
+    ScanResult,
+    Finding,
+    Severity,
+    scan_generated_output,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -57,4 +64,9 @@ __all__ = [
     "CompressionResult",
     "compress_file",
     "compress_directory",
+    "SecurityScanner",
+    "ScanResult",
+    "Finding",
+    "Severity",
+    "scan_generated_output",
 ]
