@@ -1,8 +1,8 @@
 ---
-name: test-adapters-helper
+name: test-adapters-strip-yaml-frontmatter
 description: >
-  This skill covers testing patterns for the _strip_yaml_frontmatter helper.
-  Trigger: When testing YAML frontmatter stripping in adapters.
+  This skill covers testing the _strip_yaml_frontmatter helper.
+  Trigger: When validating YAML frontmatter in test_adapters.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,11 +13,13 @@ metadata:
 
 ### TestStripYamlFrontmatter
 
-Ensure the _strip_yaml_frontmatter function correctly removes YAML frontmatter.
+Ensure the _strip_yaml_frontmatter function correctly removes YAML frontmatter from strings.
 
 ```python
 def test_strip_yaml_frontmatter():
-    assert TestStripYamlFrontmatter().strip('---\ntitle: Test\n---\nContent') == 'Content'
+    input_data = "---\ntitle: Test\n---\nContent"
+    expected_output = "Content"
+    assert TestStripYamlFrontmatter.strip_yaml_frontmatter(input_data) == expected_output
 ```
 
 ### TestSkillNameFromPath
@@ -26,14 +28,16 @@ Verify that skill names are correctly derived from file paths.
 
 ```python
 def test_skill_name_from_path():
-    assert TestSkillNameFromPath().get_name('path/to/skill_file.py') == 'skill_file'
+    path = "skills/test_adapters.py"
+    expected_name = "test-adapters"
+    assert TestSkillNameFromPath.from_path(path) == expected_name
 ```
 
 ## When to Use
 
-- When validating the output of YAML frontmatter processing.
-- When ensuring skill names are accurately extracted from file paths.
-- To debug issues related to incorrect YAML parsing in tests.
+- When writing tests for YAML processing in test_adapters.
+- To validate skill name extraction from file paths.
+- During debugging of YAML frontmatter issues in test scenarios.
 
 ## Commands
 
@@ -43,19 +47,19 @@ pytest tests/test_adapters.py
 
 ## Anti-Patterns
 
-### Don't: Ignore Test Coverage
+### Don't: Use hardcoded strings
 
-Neglecting test coverage can lead to untested code paths and potential bugs.
+Hardcoded strings can lead to brittle tests that fail on minor changes.
 
 ```python
 # BAD
-def test_untested_function():
-    pass  # No assertions or checks
+def test_hardcoded_string():
+    assert TestStripYamlFrontmatter.strip_yaml_frontmatter("---\ntitle: Test\n---\nContent") == "Wrong Content"
 ```
 
 ## Quick Reference
 
 | Task | Pattern |
 |------|---------|
-| Test YAML stripping | `TestStripYamlFrontmatter` |
-| Validate skill name extraction | `TestSkillNameFromPath` |
+| Validate YAML frontmatter | `TestStripYamlFrontmatter` |
+| Extract skill name from path | `TestSkillNameFromPath` |

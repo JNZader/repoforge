@@ -13,13 +13,14 @@ metadata:
 
 ### Create User Endpoint
 
-Define a FastAPI endpoint to create a new user.
+Define an endpoint to create a new user using the UserRouter.
 
 ```python
 from fastapi import FastAPI
-from . import create_user
+from tests.test_ripgrep import create_user, UserRouter
 
 app = FastAPI()
+app.include_router(UserRouter)
 
 @app.post("/users/")
 def add_user(user_data: dict):
@@ -28,13 +29,14 @@ def add_user(user_data: dict):
 
 ### Get Users Endpoint
 
-Set up an endpoint to retrieve the list of users.
+Set up an endpoint to retrieve a list of users.
 
 ```python
 from fastapi import FastAPI
-from . import get_users
+from tests.test_ripgrep import get_users, UserRouter
 
 app = FastAPI()
+app.include_router(UserRouter)
 
 @app.get("/users/")
 def list_users():
@@ -43,9 +45,9 @@ def list_users():
 
 ## When to Use
 
-- When adding new user management features in the test_ripgrep module.
+- When adding new user management features to the test_ripgrep module.
 - When integrating user data retrieval in the application.
-- To debug user creation issues during testing.
+- To debug user creation issues in the test_ripgrep context.
 
 ## Commands
 
@@ -55,20 +57,21 @@ pytest tests/test_ripgrep.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode User Data
+### Don't: Use Global State
 
-Hardcoding user data can lead to maintenance issues and security risks.
+Using global variables for user data can lead to unpredictable behavior.
 
 ```python
 # BAD
-def add_user():
-    user_data = {"name": "John Doe", "email": "john@example.com"}
-    return create_user(user_data)
+users = []
+
+def add_user(user):
+    users.append(user)
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                      |
-|--------------------------|------------------------------|
-| Create user endpoint     | `add_user`                   |
-| Get users endpoint       | `list_users`                 |
+| Task               | Pattern                      |
+|--------------------|------------------------------|
+| Create a user      | `create_user(user_data)`     |
+| List users         | `get_users()`                |

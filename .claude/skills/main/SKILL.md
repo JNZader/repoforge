@@ -17,9 +17,9 @@ metadata:
 ├── eval/harness.py — Adds parent to path when running directly
 ├── eval/scenarios_real.py — Contains real module snapshots
 ├── repoforge/__init__.py — Initializes the repoforge module
-├── repoforge/adapters.py — Contains valid target identifiers
-├── repoforge/cli.py — Shared options factory
-└── repoforge/docs_generator.py — Generates documentation
+├── repoforge/adapters.py — Contains all valid target identifiers
+├── repoforge/cli.py — Shared options factory for command line interface
+└── repoforge/disclosure.py — Manages tier markers
 ```
 
 ## Critical Patterns
@@ -33,28 +33,31 @@ Always initialize modules in `__init__.py` to ensure proper imports.
 from .harness import make_fastapi_crud_module
 ```
 
-### Shared Options
+### Command Line Interface
 
-Utilize the shared options factory in `cli.py` for consistent command-line interfaces.
+Use `repoforge/cli.py` for shared command line options.
 
 ```python
 # repoforge/cli.py
+import click
+
+@click.command()
 def main():
-    ...
+    pass
 ```
 
 ## When to Use
 
 - Implementing new evaluation scenarios
 - Adapting modules for different targets
-- Generating documentation for the project
+- Generating documentation for core functionalities
 
 ## Adding a New Module
 
 1. Create a new file in the `eval/` directory, e.g., `eval/new_module.py`.
 2. Define the necessary functions and classes.
 3. Update `eval/__init__.py` to include the new module.
-4. Verify functionality by running tests in the `eval/` directory.
+4. Verify by running the CLI commands to ensure integration.
 
 ## Commands
 
@@ -64,12 +67,13 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-- **Don't**: Change the structure of `eval/harness.py` — it may break module imports across the project.
-- **Don't**: Modify the shared options in `repoforge/cli.py` without updating all dependent modules — this can lead to inconsistent command-line behavior.
+- **Don't**: Modify `eval/harness.py` without updating dependent modules — this can break the entire evaluation flow.
+- **Don't**: Change the structure of `repoforge/adapters.py` without notifying other layers — it can lead to integration issues across the project.
 
 ## Quick Reference
 
-| Task                | File                        | Pattern                      |
-|---------------------|-----------------------------|------------------------------|
-| Initialize module   | `eval/__init__.py`         | `from .harness import ...`   |
-| Generate docs       | `repoforge/docs_generator.py` | `generate_docs()`           |
+| Task                | File                        | Pattern                       |
+|---------------------|-----------------------------|-------------------------------|
+| Initialize module   | `eval/__init__.py`         | `from .harness import ...`    |
+| Add CLI command     | `repoforge/cli.py`         | `@click.command()`            |
+| Generate docs       | `repoforge/docs_generator.py` | `generate_docs()`            |
