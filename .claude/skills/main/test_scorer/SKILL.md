@@ -28,11 +28,11 @@ This skill covers patterns for creating and managing test scorer endpoints.
 | Task | Pattern |
 |------|---------|
 | Create a user | `create_user` |
-| Retrieve users | `get_users` |
+| Get users | `get_users` |
 
 ## Critical Patterns (Summary)
 - **Create User**: Use `create_user` to add a new user to the system.
-- **Get Users**: Utilize `get_users` to fetch a list of all users.
+- **Get Users**: Utilize `get_users` to retrieve a list of all users.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -50,7 +50,7 @@ new_user = create_user(name="John Doe", email="john@example.com")
 
 ### Get Users
 
-Utilize `get_users` to fetch a list of all users, which can be useful for displaying user data.
+Utilize `get_users` to retrieve a list of all users, which can be useful for displaying user data.
 
 ```python
 from tests.test_scorer import get_users
@@ -60,7 +60,7 @@ users = get_users()
 
 ## When to Use
 
-- When you need to add a new user for testing purposes.
+- When you need to add new users for testing purposes.
 - When retrieving user data for validation in tests.
 
 ## Commands
@@ -71,9 +71,9 @@ pytest tests/test_scorer.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode User Data
+### Don't: Use hardcoded user data
 
-Hardcoding user data can lead to brittle tests that fail with changes in requirements.
+Hardcoding user data can lead to brittle tests that fail when data changes.
 
 ```python
 # BAD

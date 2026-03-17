@@ -1,8 +1,8 @@
 ---
 name: main-layer
 description: >
-  This layer encompasses the core functionality of the project, managing the main application logic and integrations.
-  Trigger: When working in main/ — adding, modifying, or debugging core application features.
+  This layer encompasses the core functionality and utilities of the project.
+  Trigger: When working in main/ — adding, modifying, or debugging core features.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # main-layer
 
-This layer encompasses the core functionality of the project, managing the main application logic and integrations.
+This skill covers the core functionality and utilities of the project.
 
-**Trigger**: When working in main/ — adding, modifying, or debugging core application features.
+**Trigger**: When working in main/ — adding, modifying, or debugging core features.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -28,39 +28,42 @@ This layer encompasses the core functionality of the project, managing the main 
 | Task | Pattern |
 |------|---------|
 | Create a FastAPI CRUD module | `make_fastapi_crud_module()` |
+| Generate a Next.js page module | `make_nextjs_page_module()` |
 
 ## Critical Patterns (Summary)
-- **FastAPI CRUD Module**: Use `make_fastapi_crud_module()` to quickly scaffold a CRUD API.
-- **Next.js Page Module**: Utilize `make_nextjs_page_module()` for generating Next.js pages.
+- **FastAPI CRUD Module Creation**: Use `make_fastapi_crud_module()` to scaffold a new CRUD API.
+- **Next.js Page Module Generation**: Utilize `make_nextjs_page_module()` for creating a new page in Next.js.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### FastAPI CRUD Module
+### FastAPI CRUD Module Creation
 
-Use `make_fastapi_crud_module()` to quickly scaffold a CRUD API for your data models.
+This pattern allows you to quickly scaffold a CRUD API using FastAPI.
 
 ```python
 from eval.harness import make_fastapi_crud_module
 
-app = make_fastapi_crud_module(model_name="Item")
+# Example usage
+make_fastapi_crud_module('Item', 'items')
 ```
 
-### Next.js Page Module
+### Next.js Page Module Generation
 
-Utilize `make_nextjs_page_module()` for generating Next.js pages based on your application structure.
+This pattern helps in generating a new page module for a Next.js application.
 
 ```python
 from eval.harness import make_nextjs_page_module
 
-page = make_nextjs_page_module(page_name="HomePage")
+# Example usage
+make_nextjs_page_module('HomePage', '/')
 ```
 
 ## When to Use
 
-- When you need to create RESTful APIs for your data models.
-- When integrating frontend components with backend services.
+- When you need to create a new API endpoint for your application.
+- When developing a new page for the frontend using Next.js.
 
 ## Commands
 
@@ -70,14 +73,14 @@ python -m eval.harness
 
 ## Anti-Patterns
 
-### Don't: Modify core logic without testing
+### Don't: Modify core utilities without testing
 
-Changing core application logic can lead to unexpected behavior across the project.
+Changing core functionalities can lead to unexpected behavior across the project.
 
 ```python
 # BAD
-def main_logic():
-    # Directly modifying shared state without checks
-    shared_state['key'] = 'new_value'
+def broken_function():
+    # This change can break existing functionality
+    pass
 ```
 <!-- L3:END -->
