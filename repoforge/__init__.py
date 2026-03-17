@@ -17,6 +17,14 @@ from .adapters import (
     resolve_targets,
     ALL_TARGETS,
 )
+from .disclosure import (
+    extract_tier,
+    extract_frontmatter,
+    build_discovery_index,
+    estimate_tokens,
+    has_tier_markers,
+    count_tier_markers,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -33,4 +41,10 @@ __all__ = [
     "adapt_for_copilot",
     "resolve_targets",
     "ALL_TARGETS",
+    "extract_tier",
+    "extract_frontmatter",
+    "build_discovery_index",
+    "estimate_tokens",
+    "has_tier_markers",
+    "count_tier_markers",
 ]
