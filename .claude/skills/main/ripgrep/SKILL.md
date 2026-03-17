@@ -1,7 +1,7 @@
 ---
 name: check-ripgrep-availability
 description: >
-  This skill covers patterns for checking the availability of ripgrep.
+  This skill covers checking the availability of ripgrep in the environment.
   Trigger: When verifying if ripgrep is installed and accessible.
 license: Apache-2.0
 metadata:

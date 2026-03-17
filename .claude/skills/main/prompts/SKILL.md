@@ -1,8 +1,8 @@
 ---
-name: add-prompts-endpoint
+name: build-skill-registry
 description: >
-  This skill covers patterns for integrating prompts into the system.
-  Trigger: When working with prompts in the application.
+  This skill covers the creation of a skill registry for prompts.
+  Trigger: When initializing prompts in the system.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,56 +11,53 @@ metadata:
 
 ## Critical Patterns
 
-### Using skill_prompt
+### Build Skill Registry
 
-Utilize `skill_prompt` to define a new skill prompt for the system.
-
-```python
-from repoforge.prompts import skill_prompt
-
-new_skill = skill_prompt("New skill description")
-```
-
-### Building a skill registry
-
-Leverage `build_skill_registry` to create a registry of available skills.
+Use `build_skill_registry` to create a registry for managing skills.
 
 ```python
 from repoforge.prompts import build_skill_registry
 
-registry = build_skill_registry([new_skill])
+registry = build_skill_registry()
+```
+
+### Use Skill Prompt
+
+Utilize `skill_prompt` to define a specific skill prompt for agents.
+
+```python
+from repoforge.prompts import skill_prompt
+
+prompt = skill_prompt("What is your skill?")
 ```
 
 ## When to Use
 
-- When defining new skills for the application using prompts.
-- To create a centralized registry of skills for easy access.
-- When integrating hooks for skill execution.
+- When setting up a new prompt system for agents.
+- To manage and organize multiple skill prompts.
+- During the initialization phase of the application.
 
 ## Commands
 
 ```bash
-python repoforge/cli.py add-prompts-endpoint
+python repoforge/cli.py init
+python repoforge/cli.py run
 ```
 
 ## Anti-Patterns
 
-### Don't: Overuse skill_prompt
+### Don't: Hardcode Prompts
 
-Overusing `skill_prompt` can lead to a cluttered and unmanageable skill set.
+Hardcoding prompts reduces flexibility and maintainability in the system.
 
 ```python
 # BAD
-from repoforge.prompts import skill_prompt
-
-skill1 = skill_prompt("Skill 1")
-skill2 = skill_prompt("Skill 2")
-skill3 = skill_prompt("Skill 3")  # Too many skills without organization
+prompt = "This is a hardcoded prompt."
 ```
 
 ## Quick Reference
 
 | Task                     | Pattern                     |
 |--------------------------|-----------------------------|
-| Define a new skill prompt| `skill_prompt("description")` |
-| Create a skill registry   | `build_skill_registry([...])` |
+| Create skill registry     | `build_skill_registry()`    |
+| Define a skill prompt     | `skill_prompt("text")`      |

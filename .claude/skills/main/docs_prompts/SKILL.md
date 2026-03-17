@@ -1,8 +1,8 @@
 ---
 name: add-docs-prompts-endpoint
 description: >
-  This skill covers the integration of shared system prompts into your application.
-  Trigger: When utilizing the docs_prompts in chapter calls.
+  This skill covers the integration of shared system prompts into your documentation.
+  Trigger: When you need to inject prompts into chapter calls.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,56 +11,56 @@ metadata:
 
 ## Critical Patterns
 
-### Using Index Prompt
+### Use Index Prompt
 
-Inject the index prompt into your chapter call for structured navigation.
+Utilize the `index_prompt` to provide a structured entry point for your documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def get_navigation():
+def generate_index():
     return index_prompt
 ```
 
-### Implementing Overview Prompt
+### Implement Overview Prompt
 
-Utilize the overview prompt to provide a summary of the chapter's content.
+Incorporate the `overview_prompt` to give users a concise summary of the documentation.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
-def get_overview():
+def generate_overview():
     return overview_prompt
 ```
 
 ## When to Use
 
-- When you need to provide structured prompts for documentation chapters.
-- To enhance user experience with clear navigation and summaries.
-- During the development of documentation to ensure consistency across chapters.
+- When creating a new chapter in your documentation.
+- To provide a quick reference for users navigating through the content.
+- During the review process to ensure all chapters have necessary prompts.
 
 ## Commands
 
 ```bash
 python repoforge/cli.py generate-docs
-python repoforge/cli.py serve-docs
+python repoforge/cli.py update-prompts
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode Prompts
+### Don't: Skip Chapter Prompts
 
-Hardcoding prompts reduces flexibility and maintainability in your documentation.
+Neglecting to use chapter prompts can lead to disorganized documentation and user confusion.
 
 ```python
 # BAD
-def get_hardcoded_prompt():
-    return "This is a hardcoded prompt."
+def generate_chapter():
+    return "This is a chapter without prompts."
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Get index prompt         | `index_prompt`              |
-| Get overview prompt      | `overview_prompt`           |
+| Task | Pattern |
+|------|---------|
+| Generate index | `index_prompt` |
+| Create overview | `overview_prompt` |

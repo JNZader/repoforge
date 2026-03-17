@@ -28,7 +28,7 @@ def add_user(user_data: dict):
 
 ### Get Users Endpoint
 
-Set up an endpoint to retrieve a list of users.
+Set up an endpoint to retrieve the list of users.
 
 ```python
 from fastapi import FastAPI
@@ -43,9 +43,9 @@ def list_users():
 
 ## When to Use
 
-- When adding new user management features to the test_ripgrep module.
-- When integrating user data retrieval in the application.
-- To debug user creation issues in the FastAPI application.
+- When adding new user management features in the test_ripgrep module.
+- When needing to expose user data through an API.
+- To debug user creation issues in the application.
 
 ## Commands
 
@@ -55,19 +55,20 @@ pytest tests/test_ripgrep.py
 
 ## Anti-Patterns
 
-### Don't: Use Blocking I/O
+### Don't: Hardcode User Data
 
-Using blocking I/O in FastAPI endpoints can lead to performance issues.
+Hardcoding user data can lead to maintenance issues and security risks.
 
 ```python
 # BAD
-def blocking_user_creation():
-    time.sleep(5)  # Simulates a blocking operation
+def add_user():
+    user_data = {"name": "John Doe", "email": "john@example.com"}
+    return create_user(user_data)
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Create user endpoint     | `add_user`                  |
-| Get users endpoint       | `list_users`                |
+| Task                     | Pattern                          |
+|--------------------------|----------------------------------|
+| Create user endpoint     | `add_user`                       |
+| Get users endpoint       | `list_users`                    |

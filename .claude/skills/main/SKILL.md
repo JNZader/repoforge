@@ -46,15 +46,15 @@ from repoforge.docs_generator import generate_docs
 ## When to Use
 
 - Creating new CLI commands
-- Generating project documentation
-- Implementing evaluation scenarios
+- Generating or updating project documentation
+- Implementing evaluation scenarios for modules
 
 ## Adding a New CLI Command
 
 1. Modify `repoforge/cli.py` to include the new command.
-2. Define the command's functionality in a new function.
-3. Update the command's help text and options.
-4. Test the command using the CLI interface.
+2. Implement the command logic in a new function.
+3. Update the documentation in `repoforge/docs_generator.py`.
+4. Test the command using the CLI.
 
 ## Commands
 
@@ -65,8 +65,8 @@ python -m repoforge.docs_generator
 
 ## Anti-Patterns
 
-- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
-- **Don't**: Modify the documentation prompts in `repoforge/docs_prompts.py` without ensuring all documentation chapters are updated — this can lead to inconsistencies in generated documentation.
+- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent modules — this can break existing CLI commands.
+- **Don't**: Modify the documentation prompts in `repoforge/docs_prompts.py` without ensuring all documentation references are updated — this can lead to inconsistencies in generated documentation.
 
 ## Quick Reference
 
