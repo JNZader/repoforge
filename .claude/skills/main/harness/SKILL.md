@@ -27,8 +27,8 @@ This skill covers adding the parent directory to the path when running the harne
 
 | Task | Pattern |
 |------|---------|
-| Create FastAPI CRUD module | `make_fastapi_crud_module()` |
-| Create Next.js page module | `make_nextjs_page_module()` |
+| Create FastAPI CRUD module | `make_fastapi_crud_module` |
+| Create Next.js page module | `make_nextjs_page_module` |
 
 ## Critical Patterns (Summary)
 - **Create FastAPI CRUD module**: Generates a CRUD module for FastAPI.
@@ -55,12 +55,12 @@ This pattern generates a page module for Next.js, facilitating frontend developm
 ```python
 from eval.harness import make_nextjs_page_module
 
-page = make_nextjs_page_module("HomePage")
+module = make_nextjs_page_module("HomePage")
 ```
 
 ## When to Use
 
-- When developing a FastAPI application and needing CRUD operations.
+- When developing a new API using FastAPI.
 - When creating a new page in a Next.js application.
 
 ## Commands
