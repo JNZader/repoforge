@@ -2,7 +2,7 @@
 name: add-docs-prompts-endpoint
 description: >
   This skill covers the integration of shared system prompts into your application.
-  Trigger: When you need to utilize prompts for documentation generation.
+  Trigger: When implementing documentation prompts in your project.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,29 +13,31 @@ metadata:
 
 ### Use Index Prompt
 
-Utilize the `index_prompt` to generate the main index for your documentation.
+Utilize the `index_prompt` to generate the main entry point for documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-documentation_index = index_prompt()
+def generate_index():
+    return index_prompt()
 ```
 
-### Get Chapter Prompts
+### Implement Overview Prompt
 
-Leverage `get_chapter_prompts` to retrieve prompts for specific chapters in your documentation.
+Leverage the `overview_prompt` to provide a summary of your project.
 
 ```python
-from repoforge.docs_prompts import get_chapter_prompts
+from repoforge.docs_prompts import overview_prompt
 
-chapter_prompts = get_chapter_prompts('architecture')
+def generate_overview():
+    return overview_prompt()
 ```
 
 ## When to Use
 
-- When generating an index for your documentation.
-- To retrieve prompts for specific sections of your documentation.
-- When needing to classify project documentation effectively.
+- When creating a structured documentation system for your application.
+- To provide users with a quickstart guide using `quickstart_prompt`.
+- When needing to classify project types with `classify_project`.
 
 ## Commands
 
@@ -52,12 +54,13 @@ Hardcoding prompts reduces flexibility and maintainability in your documentation
 
 ```python
 # BAD
-documentation_index = "This is a hardcoded index prompt."
+def generate_hardcoded_prompt():
+    return "This is a hardcoded prompt."
 ```
 
 ## Quick Reference
 
-| Task                       | Pattern                     |
-|----------------------------|-----------------------------|
-| Generate documentation index| `index_prompt()`            |
-| Retrieve chapter prompts    | `get_chapter_prompts('chapter_name')` |
+| Task                     | Pattern                     |
+|--------------------------|-----------------------------|
+| Generate index prompt    | `index_prompt()`            |
+| Create overview section   | `overview_prompt()`         |

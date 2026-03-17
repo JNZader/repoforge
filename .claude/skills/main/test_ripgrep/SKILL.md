@@ -44,8 +44,8 @@ def list_users():
 ## When to Use
 
 - When adding new user management features in the test_ripgrep module.
-- When needing to expose user data through an API.
-- To debug user creation issues in the application.
+- When integrating user data retrieval in the application.
+- To debug user creation issues during testing.
 
 ## Commands
 
@@ -68,7 +68,7 @@ def add_user():
 
 ## Quick Reference
 
-| Task                | Pattern                      |
-|---------------------|------------------------------|
-| Create user endpoint | `add_user`                  |
-| Get users endpoint   | `list_users`                |
+| Task                     | Pattern                      |
+|--------------------------|------------------------------|
+| Create user endpoint     | `add_user`                   |
+| Get users endpoint       | `list_users`                 |

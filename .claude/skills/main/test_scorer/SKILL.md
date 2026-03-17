@@ -1,8 +1,8 @@
 ---
 name: add-test-scorer-endpoint
 description: >
-  This skill covers patterns for implementing scoring functionality in tests.
-  Trigger: When creating endpoints for test scoring.
+  This skill covers patterns for implementing scoring endpoints in tests.
+  Trigger: When creating test cases for scoring functionality.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,35 +11,31 @@ metadata:
 
 ## Critical Patterns
 
-### Use `scorer` for scoring logic
+### Create User for Scoring
 
-Utilize the `scorer` function to encapsulate scoring logic for tests.
-
-```python
-from tests.test_scorer import scorer
-
-def test_score():
-    result = scorer(user_data)
-    assert result == expected_score
-```
-
-### Create users with `create_user`
-
-Leverage `create_user` to set up test users before scoring.
+Use `create_user` to set up a user for scoring tests.
 
 ```python
 from tests.test_scorer import create_user
 
-def test_user_creation():
-    user = create_user(name="Test User")
-    assert user.name == "Test User"
+user = create_user(name="Test User", score=100)
+```
+
+### Retrieve Users for Scoring
+
+Utilize `get_users` to fetch users for scoring validation.
+
+```python
+from tests.test_scorer import get_users
+
+users = get_users()
 ```
 
 ## When to Use
 
-- When setting up test scenarios that require user scoring.
-- When validating user creation and scoring integration.
-- To ensure completeness of test cases using `TestCompleteness`.
+- When setting up test cases for user scoring.
+- To validate scoring logic against multiple users.
+- During debugging of scoring-related test failures.
 
 ## Commands
 
@@ -49,20 +45,18 @@ pytest tests/test_scorer.py
 
 ## Anti-Patterns
 
-### Don't: Use hardcoded user data
+### Don't: Use Hardcoded User Data
 
-Hardcoding user data can lead to brittle tests that are hard to maintain.
+Hardcoding user data can lead to brittle tests that fail on changes.
 
 ```python
 # BAD
-def test_hardcoded_user():
-    user = {"name": "Hardcoded User"}
-    result = scorer(user)
+user = create_user(name="Hardcoded User", score=50)
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Score a user             | `scorer(user_data)`         |
-| Create a test user       | `create_user(name="...")`   |
+| Task                     | Pattern                          |
+|--------------------------|----------------------------------|
+| Create a test user      | `create_user(name="User", score=0)` |
+| Fetch all test users    | `get_users()`                   |

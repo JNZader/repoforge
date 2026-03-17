@@ -13,7 +13,7 @@ metadata:
 
 ### Create FastAPI CRUD Module
 
-Use this pattern to create a CRUD module for FastAPI within the harness.
+Use this pattern to generate a CRUD module for FastAPI.
 
 ```python
 from eval.harness import make_fastapi_crud_module
@@ -21,9 +21,9 @@ from eval.harness import make_fastapi_crud_module
 app = make_fastapi_crud_module("Item")
 ```
 
-### Generate Next.js Page Module
+### Create Next.js Page Module
 
-This pattern helps in generating a Next.js page module for the harness.
+Utilize this pattern to create a new page module for Next.js.
 
 ```python
 from eval.harness import make_nextjs_page_module
@@ -33,9 +33,9 @@ page = make_nextjs_page_module("HomePage")
 
 ## When to Use
 
-- When building RESTful APIs using FastAPI in the harness.
-- When creating frontend pages with Next.js for the harness.
-- To evaluate the performance of different modules in the harness.
+- When you need to expose a new API endpoint in the harness.
+- To create a new frontend page that interacts with the harness.
+- When evaluating the performance of different module integrations.
 
 ## Commands
 
@@ -48,11 +48,10 @@ python repoforge/cli.py test
 
 ### Don't: Hardcode Paths
 
-Hardcoding paths can lead to issues with module imports and execution.
+Hardcoding paths can lead to maintenance issues and reduce flexibility.
 
 ```python
 # BAD
-import sys
 sys.path.append('/absolute/path/to/harness')
 ```
 
@@ -60,5 +59,5 @@ sys.path.append('/absolute/path/to/harness')
 
 | Task                     | Pattern                          |
 |--------------------------|----------------------------------|
-| Create FastAPI Module    | `make_fastapi_crud_module`      |
-| Generate Next.js Page    | `make_nextjs_page_module`       |
+| Add FastAPI endpoint     | `make_fastapi_crud_module`      |
+| Create Next.js page      | `make_nextjs_page_module`       |

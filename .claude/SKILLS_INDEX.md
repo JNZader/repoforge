@@ -7,8 +7,8 @@
 - `/home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_scorer/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_adapters/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/ripgrep/SKILL.md`
 
 ## Agents
 - `/home/runner/work/repoforge/repoforge/.claude/agents/main-agent/AGENT.md`
