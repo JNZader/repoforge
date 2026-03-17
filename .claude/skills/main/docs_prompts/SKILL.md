@@ -46,7 +46,6 @@ Use `index_prompt` to create an index for documentation, helping users navigate 
 from repoforge.docs_prompts import index_prompt
 
 index = index_prompt()
-print(index)
 ```
 
 ### Generate overview prompt
@@ -57,13 +56,12 @@ Use `overview_prompt` to provide an overview of the documentation, summarizing k
 from repoforge.docs_prompts import overview_prompt
 
 overview = overview_prompt()
-print(overview)
 ```
 
 ## When to Use
 
 - When creating structured documentation for a project.
-- When needing to provide users with a clear overview of the documentation content.
+- When needing to provide users with a clear index or overview of the content.
 
 ## Commands
 
@@ -75,7 +73,7 @@ python repoforge/cli.py generate-docs
 
 ### Don't: Hardcode prompts
 
-Hardcoding prompts reduces flexibility and maintainability of documentation.
+Hardcoding prompts reduces flexibility and maintainability of the documentation.
 
 ```python
 # BAD

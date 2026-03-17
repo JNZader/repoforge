@@ -28,7 +28,7 @@ Before starting ANY task:
 
 Task execution:
 1. Execute evaluation logic using `eval/__init__.py`
-2. Manage harness operations via `eval/harness.py`
+2. Manage harness operations through `eval/harness.py`
 3. Verify outcomes with `eval/scenarios_real.py`
 4. Report back to orchestrator with: files changed, tests status, blockers
 

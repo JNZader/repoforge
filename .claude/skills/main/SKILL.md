@@ -1,14 +1,14 @@
 ---
 name: main-layer
 description: >
-  This layer encompasses the core functionality of the project, managing the main application logic and integrations.
+  This layer encompasses the core functionality of the project, including evaluation and adaptation modules.
   Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 800
+  token_estimate: 450
   dependencies: []
   related_skills: []
   load_priority: high
@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # main-layer
 
-This skill covers the core functionalities and integrations of the project.
+This skill covers the core functionalities of the project, including evaluation and adaptation modules.
 
 **Trigger**: When working in main/ directory and its main responsibility.
 <!-- L1:END -->
@@ -27,41 +27,40 @@ This skill covers the core functionalities and integrations of the project.
 
 | Task | Pattern |
 |------|---------|
-| Create a new module | `eval/harness.py` |
+| Create a FastAPI CRUD module | `make_fastapi_crud_module()` |
 
 ## Critical Patterns (Summary)
-- **Module Creation**: Follow the structure in `eval/harness.py` for new module exports.
-- **Data Handling**: Use `repoforge/compressor.py` for managing data models.
+- **FastAPI CRUD Module**: Use `make_fastapi_crud_module` to quickly scaffold a CRUD API.
+- **Adaptation for Targets**: Utilize `adapt_for_*` functions to ensure compatibility with various target identifiers.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Module Creation
+### FastAPI CRUD Module
 
-When creating a new module, ensure to follow the export conventions established in `eval/harness.py`.
+Use `make_fastapi_crud_module` to quickly scaffold a CRUD API for your data models.
 
 ```python
-# eval/harness.py
-def make_fastapi_crud_module():
-    # Implementation here
+from eval.harness import make_fastapi_crud_module
+
+app = make_fastapi_crud_module(model_name="User")
 ```
 
-### Data Handling
+### Adaptation for Targets
 
-Utilize the data model defined in `repoforge/compressor.py` for consistent data management across the application.
+Utilize `adapt_for_*` functions to ensure compatibility with various target identifiers.
 
 ```python
-# repoforge/compressor.py
-class SkillCompressor:
-    def compress_file(self, file_path):
-        # Compression logic here
+from repoforge.adapters import adapt_for_cursor
+
+result = adapt_for_cursor(data)
 ```
 
 ## When to Use
 
-- When adding new functionalities to the core application.
-- When integrating external services or modules.
+- When creating new API endpoints for data models.
+- When adapting data for different target systems.
 
 ## Commands
 
@@ -72,13 +71,13 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-### Don't: Modify core logic without testing
+### Don't: Modify core evaluation logic without testing
 
-Changing core functionalities without proper testing can lead to application instability.
+Changing core evaluation logic can lead to unexpected behavior across the project.
 
 ```python
 # BAD
-def main_logic():
-    # Directly modifying core behavior without tests
+def faulty_logic():
+    return "This will break things!"
 ```
 <!-- L3:END -->

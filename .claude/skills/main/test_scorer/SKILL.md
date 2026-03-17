@@ -28,11 +28,11 @@ This skill covers patterns for creating and managing test scorers.
 | Task | Pattern |
 |------|---------|
 | Create a user | `create_user` |
-| Get users | `get_users` |
+| Retrieve users | `get_users` |
 
 ## Critical Patterns (Summary)
 - **Create User**: Use `create_user` to add a new user to the scorer.
-- **Get Users**: Utilize `get_users` to retrieve a list of users for scoring.
+- **Get Users**: Utilize `get_users` to fetch all users for scoring.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -45,12 +45,12 @@ Use `create_user` to add a new user to the scorer, ensuring the user is properly
 ```python
 from tests.test_scorer import create_user
 
-new_user = create_user(name="John Doe", score=0)
+new_user = create_user(name="John Doe", score=85)
 ```
 
 ### Get Users
 
-Utilize `get_users` to retrieve a list of users for scoring, which can be used for various operations.
+Utilize `get_users` to fetch all users for scoring, which can be useful for batch processing.
 
 ```python
 from tests.test_scorer import get_users
@@ -60,8 +60,8 @@ users = get_users()
 
 ## When to Use
 
-- When you need to add a new user to the scoring system.
-- When retrieving users for evaluation or scoring purposes.
+- When you need to add a new user for scoring in your tests.
+- When retrieving all users to evaluate their scores.
 
 ## Commands
 
