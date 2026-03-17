@@ -36,7 +36,7 @@ from repoforge.cli import main
 
 ### Documentation Generation
 
-Use `repoforge/docs_generator.py` to create documentation for new features.
+Use `repoforge/docs_generator.py` to create documentation files.
 
 ```python
 # Example
@@ -46,7 +46,7 @@ from repoforge.docs_generator import generate_docs
 ## When to Use
 
 - Creating new CLI commands
-- Generating documentation for new modules
+- Generating project documentation
 - Implementing evaluation scenarios
 
 ## Adding a New CLI Command
@@ -60,12 +60,13 @@ from repoforge.docs_generator import generate_docs
 
 ```bash
 python -m repoforge.cli
+python -m repoforge.docs_generator
 ```
 
 ## Anti-Patterns
 
 - **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
-- **Don't**: Modify `eval/scenarios_real.py` without ensuring compatibility with existing evaluation scenarios — this can lead to runtime errors.
+- **Don't**: Modify the documentation prompts in `repoforge/docs_prompts.py` without ensuring all documentation chapters are updated — this can lead to inconsistencies in generated documentation.
 
 ## Quick Reference
 
