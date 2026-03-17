@@ -1,7 +1,7 @@
 ---
 name: add-test-scorer-endpoint
 description: >
-  This skill covers patterns for creating and managing test scorer endpoints.
+  This skill covers patterns for implementing scoring functionality in tests.
   Trigger: Load this skill when working with the test_scorer module.
 license: Apache-2.0
 metadata:
@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # add-test-scorer-endpoint
 
-This skill covers patterns for creating and managing test scorer endpoints.
+This skill covers patterns for implementing scoring functionality in tests.
 
 **Trigger**: Load this skill when working with the test_scorer module.
 <!-- L1:END -->
@@ -27,41 +27,37 @@ This skill covers patterns for creating and managing test scorer endpoints.
 
 | Task | Pattern |
 |------|---------|
-| Create a user | `create_user` |
-| Get users | `get_users` |
+| Get users | `get_users()` |
+| Create user | `create_user()` |
 
 ## Critical Patterns (Summary)
-- **Create User**: Use `create_user` to add a new user to the system.
-- **Get Users**: Utilize `get_users` to retrieve a list of all users.
+- **Get Users**: Retrieve a list of users for scoring.
+- **Create User**: Add a new user to the scoring system.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Create User
-
-Use `create_user` to add a new user to the system, ensuring proper validation and storage.
-
-```python
-from tests.test_scorer import create_user
-
-new_user = create_user(name="John Doe", email="john@example.com")
-```
-
 ### Get Users
 
-Utilize `get_users` to retrieve a list of all users, which can be useful for displaying user data.
+Retrieve a list of users for scoring purposes.
 
 ```python
-from tests.test_scorer import get_users
-
 users = get_users()
+```
+
+### Create User
+
+Add a new user to the scoring system.
+
+```python
+new_user = create_user(name="John Doe", score=0)
 ```
 
 ## When to Use
 
-- When you need to add new users for testing purposes.
-- When retrieving user data for validation in tests.
+- When you need to retrieve users for scoring in tests.
+- When adding new users to the scoring system for evaluation.
 
 ## Commands
 
@@ -73,10 +69,10 @@ pytest tests/test_scorer.py
 
 ### Don't: Use hardcoded user data
 
-Hardcoding user data can lead to brittle tests that fail when data changes.
+Hardcoding user data can lead to brittle tests that fail with changes in user requirements.
 
 ```python
 # BAD
-user = create_user(name="Hardcoded User", email="hardcoded@example.com")
+user = create_user(name="Hardcoded User", score=100)
 ```
 <!-- L3:END -->

@@ -1,8 +1,8 @@
 ---
-name: test-compressor-fixtures
+name: create-test-compressor-user
 description: >
-  This skill covers patterns for creating fixtures to test compression passes.
-  Trigger: Load this skill when working with the test_compressor module.
+  This skill covers creating users for testing compression passes.
+  Trigger: Load this skill when setting up test_compressor fixtures.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# test-compressor-fixtures
+# create-test-compressor-user
 
-This skill covers patterns for creating fixtures to test compression passes.
+This skill covers creating users for testing compression passes.
 
-**Trigger**: Load this skill when working with the test_compressor module.
+**Trigger**: Load this skill when setting up test_compressor fixtures.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,45 +27,41 @@ This skill covers patterns for creating fixtures to test compression passes.
 
 | Task | Pattern |
 |------|---------|
-| Create a user fixture | `create_user` |
-| Retrieve user data | `get_user` |
+| Create a user for tests | `create_user` |
 
 ## Critical Patterns (Summary)
-- **Create User Fixture**: Use `create_user` to set up user data for tests.
-- **Retrieve User Data**: Utilize `get_user` to fetch user information during tests.
+- **Create User**: Use `create_user` to set up test users.
+- **Get Users**: Retrieve users with `get_users` for validation.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Create User Fixture
+### Create User
 
-Use `create_user` to set up user data for tests, ensuring that the necessary user context is available.
+Use `create_user` to set up test users for the compression tests.
 
 ```python
 from tests.test_compressor import create_user
 
-def test_user_creation():
-    user = create_user(name="Test User", email="test@example.com")
-    assert user.name == "Test User"
+user = create_user(name="Test User", email="test@example.com")
 ```
 
-### Retrieve User Data
+### Get Users
 
-Utilize `get_user` to fetch user information during tests, allowing for validation of user-related functionality.
+Retrieve users with `get_users` to validate the created users in tests.
 
 ```python
-from tests.test_compressor import get_user
+from tests.test_compressor import get_users
 
-def test_user_retrieval():
-    user = get_user(user_id=1)
-    assert user.email == "test@example.com"
+users = get_users()
+assert len(users) > 0
 ```
 
 ## When to Use
 
-- When setting up tests that require user data.
-- When validating user-related functionality in compression tests.
+- When initializing test data for compression tests.
+- To ensure user data is available for validation during tests.
 
 ## Commands
 
@@ -75,13 +71,15 @@ pytest tests/test_compressor.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode User Data
+### Don't: Create Users Without Validation
 
-Hardcoding user data can lead to brittle tests that fail when data changes.
+Creating users without checking existing data can lead to duplicates and test failures.
 
 ```python
 # BAD
-def test_hardcoded_user():
-    assert get_user(user_id=1).name == "Hardcoded Name"
+from tests.test_compressor import create_user
+
+create_user(name="Duplicate User", email="duplicate@example.com")
+create_user(name="Duplicate User", email="duplicate@example.com")  # This can cause issues
 ```
 <!-- L3:END -->

@@ -1,7 +1,7 @@
 ---
 name: test-security-fixtures
 description: >
-  This skill covers patterns for testing security using crafted content.
+  This skill covers patterns for testing security using crafted fixtures.
   Trigger: test_security.
 license: Apache-2.0
 metadata:
@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # test-security-fixtures
 
-This skill covers patterns for testing security using crafted content.
+This skill covers patterns for testing security using crafted fixtures.
 
 **Trigger**: test_security.
 <!-- L1:END -->
@@ -32,7 +32,7 @@ This skill covers patterns for testing security using crafted content.
 
 ## Critical Patterns (Summary)
 - **Get Users**: Retrieve user data for security tests.
-- **Vulnerability Scanner**: Execute a scan to identify security issues.
+- **Vulnerability Scanner**: Execute a security scan on the application.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers patterns for testing security using crafted content.
 
 ### Get Users for Testing
 
-This pattern retrieves user data that can be used in security tests.
+This pattern retrieves user data to be used in security tests.
 
 ```python
 # Example of retrieving users
@@ -49,7 +49,7 @@ users = get_users()
 
 ### Vulnerability Scanner
 
-This pattern executes a scan to identify potential security vulnerabilities in the application.
+This pattern executes a security scan to identify potential vulnerabilities.
 
 ```python
 # Example of running the scanner
@@ -58,8 +58,8 @@ results = scanner()
 
 ## When to Use
 
-- When you need user data for security testing scenarios.
-- When scanning your application for vulnerabilities before deployment.
+- When setting up tests for user authentication and authorization.
+- When validating security measures against known vulnerabilities.
 
 ## Commands
 
@@ -69,12 +69,13 @@ pytest tests/test_security.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode User Data
+### Don't: Hardcode Sensitive Data
 
-Hardcoding user data can lead to security risks and unmaintainable tests.
+Hardcoding sensitive data can lead to security breaches and is against best practices.
 
 ```python
 # BAD
-users = [{"username": "admin", "password": "1234"}]
+username = "admin"
+password = "password123"
 ```
 <!-- L3:END -->

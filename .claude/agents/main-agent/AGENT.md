@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the execution of evaluation scenarios, harness operations, and data compression. It never interacts with other layers or external systems.
+This agent owns the execution of evaluation scenarios, harness operations, and data compression. It never interacts with other layers or modules outside its domain.
 
 ## Capabilities
 

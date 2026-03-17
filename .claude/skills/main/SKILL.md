@@ -1,14 +1,14 @@
 ---
 name: main-layer
 description: >
-  This layer encompasses the core functionality and utilities of the project.
-  Trigger: When working in main/ — adding, modifying, or debugging core features.
+  This layer encompasses the core functionality of the project, managing the primary modules and their interactions.
+  Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
-  token_estimate: 450
+  complexity: medium
+  token_estimate: 800
   dependencies: []
   related_skills: []
   load_priority: high
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # main-layer
 
-This skill covers the core functionality and utilities of the project.
+This skill covers the core functionalities and modules of the project.
 
-**Trigger**: When working in main/ — adding, modifying, or debugging core features.
+**Trigger**: When working in main/ directory and its main responsibility.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,43 +27,43 @@ This skill covers the core functionality and utilities of the project.
 
 | Task | Pattern |
 |------|---------|
-| Create a FastAPI CRUD module | `make_fastapi_crud_module()` |
-| Generate a Next.js page module | `make_nextjs_page_module()` |
+| Create a new module | `eval/harness.py` |
 
 ## Critical Patterns (Summary)
-- **FastAPI CRUD Module Creation**: Use `make_fastapi_crud_module()` to scaffold a new CRUD API.
-- **Next.js Page Module Generation**: Utilize `make_nextjs_page_module()` for creating a new page in Next.js.
+- **Module Initialization**: Ensure proper path setup when running modules directly.
+- **Data Adaptation**: Use adapters for valid target identifiers in the project.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### FastAPI CRUD Module Creation
+### Module Initialization
 
-This pattern allows you to quickly scaffold a CRUD API using FastAPI.
+Ensure proper path setup when running modules directly to avoid import errors.
 
 ```python
-from eval.harness import make_fastapi_crud_module
+# eval/harness.py
+import sys
+import os
 
-# Example usage
-make_fastapi_crud_module('Item', 'items')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 ```
 
-### Next.js Page Module Generation
+### Data Adaptation
 
-This pattern helps in generating a new page module for a Next.js application.
+Use adapters to manage valid target identifiers, ensuring consistent data handling across modules.
 
 ```python
-from eval.harness import make_nextjs_page_module
-
-# Example usage
-make_nextjs_page_module('HomePage', '/')
+# repoforge/adapters.py
+def adapt_for_cursor(data):
+    # Adapt data for cursor usage
+    pass
 ```
 
 ## When to Use
 
-- When you need to create a new API endpoint for your application.
-- When developing a new page for the frontend using Next.js.
+- When creating or modifying core modules that interact with the main functionality.
+- When integrating new features that require adjustments to existing modules.
 
 ## Commands
 
@@ -73,14 +73,13 @@ python -m eval.harness
 
 ## Anti-Patterns
 
-### Don't: Modify core utilities without testing
+### Don't: Modify core modules without testing
 
-Changing core functionalities can lead to unexpected behavior across the project.
+Changing core modules can lead to unexpected behavior across the project.
 
 ```python
 # BAD
 def broken_function():
-    # This change can break existing functionality
-    pass
+    return undefined_variable
 ```
 <!-- L3:END -->
