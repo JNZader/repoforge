@@ -1,29 +1,56 @@
 ---
-name: add-harness-endpoint
+name: add-harness-parent-path
 description: >
-  This skill covers adding endpoints to the harness module.
-  Trigger: When integrating new functionalities into the harness.
+  This skill covers adding the parent directory to the path when running the harness directly.
+  Trigger: When executing the harness module.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
+  complexity: low
+  token_estimate: 350
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
-## Critical Patterns
+<!-- L1:START -->
+# add-harness-parent-path
 
-### Create FastAPI CRUD Module
+This skill covers adding the parent directory to the path when running the harness directly.
 
-Use this pattern to create a CRUD module for FastAPI within the harness.
+**Trigger**: When executing the harness module.
+<!-- L1:END -->
+
+<!-- L2:START -->
+## Quick Reference
+
+| Task | Pattern |
+|------|---------|
+| Create FastAPI CRUD module | `make_fastapi_crud_module` |
+| Create Next.js page module | `make_nextjs_page_module` |
+
+## Critical Patterns (Summary)
+- **Create FastAPI CRUD module**: Generates a CRUD module for FastAPI.
+- **Create Next.js page module**: Generates a page module for Next.js.
+<!-- L2:END -->
+
+<!-- L3:START -->
+## Critical Patterns (Detailed)
+
+### Create FastAPI CRUD module
+
+This pattern generates a CRUD module for FastAPI, allowing for quick API development.
 
 ```python
 from eval.harness import make_fastapi_crud_module
 
-app = make_fastapi_crud_module("Item")
+module = make_fastapi_crud_module("User")
 ```
 
-### Generate Next.js Page Module
+### Create Next.js page module
 
-This pattern helps in generating a Next.js page module for the harness.
+This pattern generates a page module for Next.js, facilitating frontend development.
 
 ```python
 from eval.harness import make_nextjs_page_module
@@ -33,31 +60,24 @@ page = make_nextjs_page_module("HomePage")
 
 ## When to Use
 
-- When building RESTful APIs in the harness.
-- To create dynamic web pages using Next.js in the harness.
-- When evaluating the performance of different modules in the harness.
+- When developing a new API using FastAPI.
+- When creating a new page in a Next.js application.
 
 ## Commands
 
 ```bash
 python repoforge/cli.py run
-python repoforge/cli.py test
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode Paths
+### Don't: Hardcode paths
 
-Hardcoding paths can lead to maintenance issues and reduce flexibility.
+Hardcoding paths can lead to issues with portability and maintainability.
 
 ```python
 # BAD
+import sys
 sys.path.append('/absolute/path/to/harness')
 ```
-
-## Quick Reference
-
-| Task                     | Pattern                          |
-|--------------------------|----------------------------------|
-| Create FastAPI module    | `make_fastapi_crud_module`      |
-| Generate Next.js page    | `make_nextjs_page_module`       |
+<!-- L3:END -->

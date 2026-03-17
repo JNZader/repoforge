@@ -1,63 +1,64 @@
 ---
 name: main-layer
 description: >
-  This layer owns the core functionality of the project, including evaluation and adaptation modules.
+  This layer encompasses the core functionality of the project, including evaluation and adaptation modules.
   Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
+  complexity: medium
+  token_estimate: 800
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
-## Layer Structure
+<!-- L1:START -->
+# main-layer
 
-```
-./
-├── eval/__init__.py — Initializes the eval module
-├── eval/harness.py — Adds parent to path when running directly
-├── eval/scenarios_real.py — Contains real module snapshots
-├── repoforge/__init__.py — Initializes the repoforge module
-├── repoforge/adapters.py — Contains all valid target identifiers
-├── repoforge/cli.py — Shared options factory for command line interface
-└── repoforge/disclosure.py — Manages tier markers
-```
+This skill covers the core functionalities of the project, including evaluation and adaptation modules.
 
-## Critical Patterns
+**Trigger**: When working in main/ directory and its main responsibility.
+<!-- L1:END -->
+
+<!-- L2:START -->
+## Quick Reference
+
+| Task | Pattern |
+|------|---------|
+| Generate documentation | `generate_docs()` |
+
+## Critical Patterns (Summary)
+- **Module Initialization**: Ensure proper initialization of modules for evaluation.
+- **Adaptation Handling**: Use the correct adaptation functions for target identifiers.
+<!-- L2:END -->
+
+<!-- L3:START -->
+## Critical Patterns (Detailed)
 
 ### Module Initialization
 
-Always initialize modules in `__init__.py` to ensure proper imports.
+Ensure proper initialization of modules for evaluation to avoid import errors.
 
 ```python
-# eval/__init__.py
-from .harness import make_fastapi_crud_module
+# Example using real exported names
+from eval.harness import make_fastapi_crud_module
 ```
 
-### Command Line Interface
+### Adaptation Handling
 
-Use `repoforge/cli.py` for shared command line options.
+Use the correct adaptation functions for target identifiers to maintain compatibility.
 
 ```python
-# repoforge/cli.py
-import click
-
-@click.command()
-def main():
-    pass
+# Example
+from repoforge.adapters import adapt_for_cursor
 ```
 
 ## When to Use
 
-- Implementing new evaluation scenarios
-- Adapting modules for different targets
-- Generating documentation for core functionalities
-
-## Adding a New Module
-
-1. Create a new file in the `eval/` directory, e.g., `eval/new_module.py`.
-2. Define the necessary functions and classes.
-3. Update `eval/__init__.py` to include the new module.
-4. Verify by running the CLI commands to ensure integration.
+- When generating documentation for the project.
+- When adapting modules for different target identifiers.
 
 ## Commands
 
@@ -67,13 +68,12 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-- **Don't**: Modify `eval/harness.py` without updating dependent modules — this can break the entire evaluation flow.
-- **Don't**: Change the structure of `repoforge/adapters.py` without notifying other layers — it can lead to integration issues across the project.
+### Don't: Modify core modules without testing
 
-## Quick Reference
+Changing core modules can lead to unexpected behavior across the project.
 
-| Task                | File                        | Pattern                       |
-|---------------------|-----------------------------|-------------------------------|
-| Initialize module   | `eval/__init__.py`         | `from .harness import ...`    |
-| Add CLI command     | `repoforge/cli.py`         | `@click.command()`            |
-| Generate docs       | `repoforge/docs_generator.py` | `generate_docs()`            |
+```python
+# BAD
+from eval.harness import make_fastapi_crud_module  # Modifying this without tests can break functionality
+```
+<!-- L3:END -->

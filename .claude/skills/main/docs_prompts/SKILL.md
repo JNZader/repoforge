@@ -1,66 +1,82 @@
 ---
-name: add-docs-prompts-endpoint
+name: get-chapter-prompts
 description: >
-  This skill covers the integration of shared system prompts into your documentation.
-  Trigger: When utilizing the `docs_prompts` for chapter calls.
+  This skill covers the generation of chapter prompts for documentation.
+  Trigger: Load this skill when working with docs_prompts.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
+  complexity: low
+  token_estimate: 250
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
-## Critical Patterns
+<!-- L1:START -->
+# get-chapter-prompts
 
-### Use Index Prompt
+This skill covers the generation of chapter prompts for documentation.
 
-Utilize the `index_prompt` to provide a structured introduction to your documentation.
+**Trigger**: Load this skill when working with docs_prompts.
+<!-- L1:END -->
+
+<!-- L2:START -->
+## Quick Reference
+
+| Task                     | Pattern                     |
+|--------------------------|-----------------------------|
+| Generate index prompt    | `index_prompt`              |
+| Generate overview prompt  | `overview_prompt`           |
+
+## Critical Patterns (Summary)
+- **Generate index prompt**: Use `index_prompt` to create an index for documentation.
+- **Generate overview prompt**: Use `overview_prompt` to create an overview for documentation.
+<!-- L2:END -->
+
+<!-- L3:START -->
+## Critical Patterns (Detailed)
+
+### Generate index prompt
+
+Use `index_prompt` to create an index for documentation, providing a structured overview of the content.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def generate_index():
-    return index_prompt()
+index = index_prompt()
 ```
 
-### Implement Overview Prompt
+### Generate overview prompt
 
-Incorporate the `overview_prompt` to summarize the key aspects of your project.
+Use `overview_prompt` to create an overview for documentation, summarizing key points.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
-def generate_overview():
-    return overview_prompt()
+overview = overview_prompt()
 ```
 
 ## When to Use
 
-- When generating documentation for a new project chapter.
-- To provide a quick start guide for users unfamiliar with the system.
-- During the review process to ensure all chapters have consistent prompts.
+- When creating structured documentation for a project.
+- When needing to summarize key points in documentation.
 
 ## Commands
 
 ```bash
 python repoforge/cli.py generate-docs
-python repoforge/cli.py update-prompts
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode Prompts
+### Don't: Hardcode prompts
 
-Hardcoding prompts leads to inconsistency and maintenance challenges.
+Hardcoding prompts reduces flexibility and maintainability.
 
 ```python
 # BAD
-def generate_hardcoded_prompt():
-    return "This is a hardcoded prompt."
+index = "This is a hardcoded index."
 ```
-
-## Quick Reference
-
-| Task | Pattern |
-|------|---------|
-| Generate index | `index_prompt()` |
-| Create overview | `overview_prompt()` |
+<!-- L3:END -->

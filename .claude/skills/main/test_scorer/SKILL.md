@@ -1,41 +1,67 @@
 ---
 name: add-test-scorer-endpoint
 description: >
-  This skill covers patterns for implementing scoring functionality in tests.
-  Trigger: When creating endpoints for test scoring.
+  This skill covers patterns for creating and managing test scorers.
+  Trigger: Load this skill when working with the test_scorer module.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
+  complexity: medium
+  token_estimate: 450
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
-## Critical Patterns
+<!-- L1:START -->
+# add-test-scorer-endpoint
 
-### Use `scorer` for scoring logic
+This skill covers patterns for creating and managing test scorers.
 
-Utilize the `scorer` function to implement the core scoring logic in your tests.
+**Trigger**: Load this skill when working with the test_scorer module.
+<!-- L1:END -->
 
-```python
-from tests.test_scorer import scorer
+<!-- L2:START -->
+## Quick Reference
 
-result = scorer(user_data)
-```
+| Task | Pattern |
+|------|---------|
+| Create a user | `create_user` |
+| Get users | `get_users` |
 
-### Create users with `create_user`
+## Critical Patterns (Summary)
+- **Create User**: Use `create_user` to add a new user to the scorer.
+- **Get Users**: Utilize `get_users` to retrieve a list of users for scoring.
+<!-- L2:END -->
 
-Leverage the `create_user` function to set up test users for scoring.
+<!-- L3:START -->
+## Critical Patterns (Detailed)
+
+### Create User
+
+Use `create_user` to add a new user to the scorer, ensuring the user is properly initialized.
 
 ```python
 from tests.test_scorer import create_user
 
-user = create_user(name="Test User", score=100)
+new_user = create_user(name="John Doe", score=0)
+```
+
+### Get Users
+
+Utilize `get_users` to retrieve a list of users for scoring, which can be used for various operations.
+
+```python
+from tests.test_scorer import get_users
+
+users = get_users()
 ```
 
 ## When to Use
 
-- When you need to score test results based on user data.
-- To set up users for various test scenarios.
-- When validating the completeness of test cases.
+- When you need to add a new user to the scoring system.
+- When retrieving all users for evaluation or reporting.
 
 ## Commands
 
@@ -45,18 +71,12 @@ pytest tests/test_scorer.py
 
 ## Anti-Patterns
 
-### Don't: Use hardcoded user data
+### Don't: Use hardcoded values
 
-Hardcoding user data can lead to brittle tests that are difficult to maintain.
+Hardcoding values can lead to maintenance issues and reduce flexibility.
 
 ```python
 # BAD
-user = {"name": "Hardcoded User", "score": 50}
+user = create_user(name="Hardcoded User", score=100)
 ```
-
-## Quick Reference
-
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Score a user             | `scorer(user_data)`         |
-| Create a test user       | `create_user(name, score)`  |
+<!-- L3:END -->

@@ -17,6 +17,10 @@
 ## Skill Registry
 - `/home/runner/work/repoforge/repoforge/.atl/skill-registry.md`
 
+## Discovery Index
+- `/home/runner/work/repoforge/repoforge/.claude/skills/DISCOVERY_INDEX.md`
+  Load this first — lightweight index of all skills for agent discovery.
+
 ## Usage
 In Claude Code, skills and agents in `.claude/` are loaded automatically.
 In OpenCode, use `.opencode/` — same structure.

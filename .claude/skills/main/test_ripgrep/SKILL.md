@@ -1,53 +1,77 @@
 ---
 name: add-test-ripgrep-endpoint
 description: >
-  This skill covers patterns for managing user endpoints in the test_ripgrep module.
-  Trigger: When implementing user management features.
+  This skill covers adding endpoints for user management in the test_ripgrep module.
+  Trigger: When implementing user management features in the test_ripgrep context.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
+  complexity: medium
+  token_estimate: 450
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
-## Critical Patterns
+<!-- L1:START -->
+# add-test-ripgrep-endpoint
+
+This skill covers adding endpoints for user management in the test_ripgrep module.
+
+**Trigger**: When implementing user management features in the test_ripgrep context.
+<!-- L1:END -->
+
+<!-- L2:START -->
+## Quick Reference
+
+| Task | Pattern |
+|------|---------|
+| Create user endpoint | `create_user` |
+| Get users endpoint | `get_users` |
+
+## Critical Patterns (Summary)
+- **Create User Endpoint**: Implements a FastAPI endpoint to create a new user.
+- **Get Users Endpoint**: Implements a FastAPI endpoint to retrieve a list of users.
+<!-- L2:END -->
+
+<!-- L3:START -->
+## Critical Patterns (Detailed)
 
 ### Create User Endpoint
 
-Define an endpoint to create a new user using the UserRouter.
+This pattern demonstrates how to create a FastAPI endpoint for user creation using `create_user`.
 
 ```python
 from fastapi import FastAPI
-from tests.test_ripgrep import create_user, UserRouter
+from your_module import create_user
 
 app = FastAPI()
-app.include_router(UserRouter)
 
 @app.post("/users/")
-def add_user(user_data: dict):
+async def add_user(user_data: dict):
     return create_user(user_data)
 ```
 
 ### Get Users Endpoint
 
-Set up an endpoint to retrieve a list of users.
+This pattern shows how to implement an endpoint to retrieve users using `get_users`.
 
 ```python
 from fastapi import FastAPI
-from tests.test_ripgrep import get_users, UserRouter
+from your_module import get_users
 
 app = FastAPI()
-app.include_router(UserRouter)
 
 @app.get("/users/")
-def list_users():
+async def list_users():
     return get_users()
 ```
 
 ## When to Use
 
-- When adding new user management features to the test_ripgrep module.
-- When integrating user data retrieval in the application.
-- To debug user creation issues in the test_ripgrep context.
+- When you need to implement user creation functionality in the test_ripgrep module.
+- When you want to expose user data retrieval through an API endpoint.
 
 ## Commands
 
@@ -57,21 +81,12 @@ pytest tests/test_ripgrep.py
 
 ## Anti-Patterns
 
-### Don't: Use Global State
+### Don't: Hardcode User Data
 
-Using global variables for user data can lead to unpredictable behavior.
+Hardcoding user data can lead to maintenance issues and security vulnerabilities.
 
 ```python
 # BAD
-users = []
-
-def add_user(user):
-    users.append(user)
+user_data = {"name": "John Doe", "email": "john@example.com"}
 ```
-
-## Quick Reference
-
-| Task               | Pattern                      |
-|--------------------|------------------------------|
-| Create a user      | `create_user(user_data)`     |
-| List users         | `get_users()`                |
+<!-- L3:END -->

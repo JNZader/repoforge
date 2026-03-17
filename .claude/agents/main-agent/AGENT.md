@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the execution of evaluation tasks, harness operations, and documentation generation. It never interacts with other layers or agents.
+This agent owns the execution of evaluation tasks, harness operations, and documentation generation. It never interacts with other layers or external systems.
 
 ## Capabilities
 

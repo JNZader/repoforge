@@ -2,42 +2,64 @@
 name: test-adapters-strip-yaml-frontmatter
 description: >
   This skill covers testing the _strip_yaml_frontmatter helper.
-  Trigger: When validating YAML frontmatter in test_adapters.
+  Trigger: test_adapters.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
+  complexity: low
+  token_estimate: 350
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
-## Critical Patterns
+<!-- L1:START -->
+# test-adapters-strip-yaml-frontmatter
 
-### TestStripYamlFrontmatter
+This skill covers testing the _strip_yaml_frontmatter helper.
 
-Ensure the _strip_yaml_frontmatter function correctly removes YAML frontmatter from strings.
+**Trigger**: test_adapters.
+<!-- L1:END -->
+
+<!-- L2:START -->
+## Quick Reference
+
+| Task | Pattern |
+|------|---------|
+| Get users | `get_users()` |
+| Sample skills | `sample_skills` |
+
+## Critical Patterns (Summary)
+- **Get Users**: Retrieve user data for testing.
+- **Sample Skills**: Access predefined skills for validation.
+<!-- L2:END -->
+
+<!-- L3:START -->
+## Critical Patterns (Detailed)
+
+### Get Users
+
+This pattern retrieves user data for testing purposes.
 
 ```python
-def test_strip_yaml_frontmatter():
-    input_data = "---\ntitle: Test\n---\nContent"
-    expected_output = "Content"
-    assert TestStripYamlFrontmatter.strip_yaml_frontmatter(input_data) == expected_output
+# Example usage of get_users
+users = get_users()
 ```
 
-### TestSkillNameFromPath
+### Sample Skills
 
-Verify that skill names are correctly derived from file paths.
+This pattern provides access to predefined skills for validation in tests.
 
 ```python
-def test_skill_name_from_path():
-    path = "skills/test_adapters.py"
-    expected_name = "test-adapters"
-    assert TestSkillNameFromPath.from_path(path) == expected_name
+# Example usage of sample_skills
+skills = sample_skills
 ```
 
 ## When to Use
 
-- When writing tests for YAML processing in test_adapters.
-- To validate skill name extraction from file paths.
-- During debugging of YAML frontmatter issues in test scenarios.
+- When validating user data in tests.
+- When needing predefined skills for comparison in test cases.
 
 ## Commands
 
@@ -47,19 +69,12 @@ pytest tests/test_adapters.py
 
 ## Anti-Patterns
 
-### Don't: Use hardcoded strings
+### Don't: Use hardcoded values
 
-Hardcoded strings can lead to brittle tests that fail on minor changes.
+Hardcoded values can lead to brittle tests that fail with changes in data.
 
 ```python
 # BAD
-def test_hardcoded_string():
-    assert TestStripYamlFrontmatter.strip_yaml_frontmatter("---\ntitle: Test\n---\nContent") == "Wrong Content"
+assert user['name'] == 'John Doe'
 ```
-
-## Quick Reference
-
-| Task | Pattern |
-|------|---------|
-| Validate YAML frontmatter | `TestStripYamlFrontmatter` |
-| Extract skill name from path | `TestSkillNameFromPath` |
+<!-- L3:END -->
