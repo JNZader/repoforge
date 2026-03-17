@@ -82,6 +82,10 @@ def main():
     help="Output directory for skills and agents.")
 @click.option("--no-opencode", is_flag=True, default=False,
     help="Skip mirroring output to .opencode/ directory.")
+@click.option("--complexity",
+    default="auto", show_default=True,
+    type=click.Choice(["auto", "small", "medium", "large"], case_sensitive=False),
+    help="Override auto-detected repo complexity (affects generation depth).")
 @click.option("--serve", "do_serve", is_flag=True, default=False,
     help="After generating, open the skills browser.")
 @click.option("--port", default=8765, show_default=True,
@@ -89,7 +93,7 @@ def main():
 @click.option("--serve-only", is_flag=True, default=False,
     help="Skip generation, only open browser for existing skills.")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
-           output_dir, no_opencode, do_serve, port, serve_only):
+           output_dir, no_opencode, complexity, do_serve, port, serve_only):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -116,6 +120,7 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             also_opencode=not no_opencode,
             verbose=not quiet,
             dry_run=dry_run,
+            complexity=complexity,
         )
 
     if do_serve or serve_only:
@@ -144,6 +149,10 @@ SUPPORTED_LANGUAGES = [
     help="Language for the generated documentation.")
 @click.option("--name", "project_name", default=None,
     help="Project name override (auto-detected from config files by default).")
+@click.option("--complexity",
+    default="auto", show_default=True,
+    type=click.Choice(["auto", "small", "medium", "large"], case_sensitive=False),
+    help="Override auto-detected repo complexity (affects chapter count).")
 @click.option("--theme", default="vue", show_default=True,
     type=click.Choice(["vue", "dark", "buble", "pure"], case_sensitive=False),
     help="Docsify visual theme.")
@@ -154,7 +163,7 @@ SUPPORTED_LANGUAGES = [
 @click.option("--serve-only", is_flag=True, default=False,
     help="Skip generation, only serve existing docs in output-dir.")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
-         output_dir, language, project_name, theme, do_serve, port, serve_only):
+         output_dir, language, project_name, complexity, theme, do_serve, port, serve_only):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -197,6 +206,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             project_name=project_name,
             verbose=not quiet,
             dry_run=dry_run,
+            complexity=complexity,
         )
 
     if do_serve or serve_only:

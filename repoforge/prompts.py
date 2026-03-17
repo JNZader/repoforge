@@ -101,9 +101,34 @@ RULES:
 6. Minimum 2 Critical Patterns, minimum 1 Anti-Pattern
 """
 
+# Detail-level instructions appended to user prompts
+_DETAIL_INSTRUCTIONS = {
+    "detailed": (
+        "\n\n## Detail level: DETAILED\n"
+        "- Include 3+ Critical Patterns with full explanations and longer code examples\n"
+        "- Include 2+ Anti-Patterns with before/after code\n"
+        "- Include usage examples for every exported function\n"
+        "- Quick Reference table should have 5+ rows\n"
+    ),
+    "standard": "",  # default — no extra instructions
+    "concise": (
+        "\n\n## Detail level: CONCISE\n"
+        "- Keep to 2 Critical Patterns only — the most important ones\n"
+        "- Keep to 1 Anti-Pattern — the most dangerous mistake\n"
+        "- Code examples should be minimal (3-5 lines each)\n"
+        "- Quick Reference table: 3 rows max\n"
+        "- Total output under 80 lines\n"
+    ),
+}
 
-def skill_prompt(module: dict, layer_name: str, repo_map: dict) -> tuple[str, str]:
-    """Build prompt for a module-level SKILL.md."""
+
+def skill_prompt(module: dict, layer_name: str, repo_map: dict,
+                 prompt_detail: str = "standard") -> tuple[str, str]:
+    """Build prompt for a module-level SKILL.md.
+
+    Args:
+        prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
+    """
     tech = ", ".join(repo_map.get("tech_stack", []))
     exports = module.get("exports", [])
     imports = module.get("imports", [])
@@ -127,6 +152,8 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict) -> tuple[str, st
         "Java": "java", "Kotlin": "kotlin", "Ruby": "ruby",
         "C#": "csharp", "PHP": "php", "Swift": "swift",
     }.get(module.get("language", ""), "text")
+
+    detail_suffix = _DETAIL_INSTRUCTIONS.get(prompt_detail, "")
 
     user = f"""Generate a SKILL.md for this module.
 
@@ -153,7 +180,7 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict) -> tuple[str, st
 - Code blocks MUST use `{lang_hint}` language tag
 - Commands must be real {tech} commands (not placeholders)
 - Trigger in description must mention: `{module['name']}` or its domain
-"""
+{detail_suffix}"""
     return SKILL_SYSTEM, user
 
 
@@ -242,8 +269,13 @@ RULES:
 """
 
 
-def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict) -> tuple[str, str]:
-    """Build prompt for a layer-level SKILL.md."""
+def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
+                      prompt_detail: str = "standard") -> tuple[str, str]:
+    """Build prompt for a layer-level SKILL.md.
+
+    Args:
+        prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
+    """
     tech = ", ".join(repo_map.get("tech_stack", []))
     modules = layer.get("modules", [])
 
@@ -269,6 +301,8 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict) -> tuple[st
     languages = list(by_lang.keys())
     is_multilang = len(languages) > 1
 
+    detail_suffix = _DETAIL_INSTRUCTIONS.get(prompt_detail, "")
+
     user = f"""Generate a layer-level SKILL.md for the **"{layer_name}"** layer.
 
 ## Layer
@@ -290,7 +324,7 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict) -> tuple[st
 {"- MULTILANGUAGE LAYER: include one code block per language: " + ", ".join(languages) if is_multilang else "- Single language: " + (languages[0] if languages else "unknown")}
 - 'Adding a New X' step names must match real file structure shown above
 - Anti-patterns must cover cross-layer issues (what breaks when {layer_name} changes)
-"""
+{detail_suffix}"""
     return LAYER_SKILL_SYSTEM, user
 
 

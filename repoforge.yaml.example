@@ -21,3 +21,11 @@
 
 # Default LLM model (avoids passing --model every time)
 # model: github/gpt-4o-mini
+
+# Override auto-detected complexity (affects generation depth and verbosity).
+# "auto" detects from file count + layer count.
+# Options: auto | small | medium | large
+#   small  → detailed skills, skip orchestrator/agents, fewer chapters
+#   medium → standard depth (default behavior)
+#   large  → concise skills, fewer per layer, more chapters
+# complexity: auto

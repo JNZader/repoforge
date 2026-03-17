@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .scanner import scan_repo
+from .scanner import scan_repo, classify_complexity
 from .llm import build_llm
 from .docs_prompts import get_chapter_prompts
 from .docsify import build_docsify_files
@@ -31,6 +31,7 @@ def generate_docs(
     project_name: Optional[str] = None,
     verbose: bool = True,
     dry_run: bool = False,
+    complexity: str = "auto",
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -63,6 +64,11 @@ def generate_docs(
     if cfg.get("project_name") and project_name is None:
         project_name = cfg["project_name"]
 
+    # Resolve complexity: CLI flag > config file > auto
+    if complexity == "auto":
+        complexity = cfg.get("complexity", "auto")
+    cx = classify_complexity(repo_map, override=complexity)
+
     stats = repo_map.get("stats", {})
     rg = stats.get("rg_version", None)
     rg_status = f"ripgrep {rg}" if rg else "fallback mode"
@@ -72,6 +78,7 @@ def generate_docs(
     log(f"🗂  Layers: {', '.join(layers)}")
     log(f"🔧 Stack:  {', '.join(repo_map['tech_stack']) or 'unknown'}")
     log(f"📊 Files:  {total_files}  [{rg_status}]")
+    log(f"📐 Complexity: {cx['size']} → max_chapters={cx['max_chapters']}")
 
     # ------------------------------------------------------------------
     # 2. Resolve project name
@@ -88,10 +95,17 @@ def generate_docs(
     log(f"🌐 Language: {language}")
 
     # ------------------------------------------------------------------
-    # 4. Get chapter list
+    # 4. Get chapter list (trimmed by complexity)
     # ------------------------------------------------------------------
-    chapters = get_chapter_prompts(repo_map, language, project_name)
-    log(f"\n📋 Chapters to generate: {len(chapters)}")
+    all_chapters = get_chapter_prompts(repo_map, language, project_name)
+    max_ch = cx["max_chapters"]
+    if len(all_chapters) > max_ch:
+        # Always keep index + first chapters; trim type-specific ones from the end
+        chapters = all_chapters[:max_ch]
+        log(f"\n📋 Chapters to generate: {len(chapters)} (capped from {len(all_chapters)} by {cx['size']} complexity)")
+    else:
+        chapters = all_chapters
+        log(f"\n📋 Chapters to generate: {len(chapters)}")
     for c in chapters:
         log(f"   • {c['file']} — {c['title']}")
 

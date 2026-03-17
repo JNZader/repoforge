@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .scanner import scan_repo
+from .scanner import scan_repo, classify_complexity
 from .llm import build_llm, LLM
 from .prompts import (
     skill_prompt,
@@ -30,11 +30,8 @@ from .prompts import (
 )
 
 
-# How many top modules per layer to generate individual SKILL.md files for
-# (to keep costs low on cheap models)
+# Defaults — overridden by complexity classification at runtime
 MAX_MODULE_SKILLS_PER_LAYER = 5
-
-# Minimum exports for a module to be "interesting" enough for its own skill
 MIN_EXPORTS_FOR_SKILL = 2
 
 
@@ -47,9 +44,13 @@ def generate_artifacts(
     also_opencode: bool = True,
     verbose: bool = True,
     dry_run: bool = False,
+    complexity: str = "auto",
 ) -> dict:
     """
     Main entry point. Scans the repo and generates SKILL.md + AGENT.md files.
+
+    Args:
+        complexity: "auto" (detect), or force "small" / "medium" / "large".
 
     Returns a summary dict with all generated file paths.
     """
@@ -66,6 +67,11 @@ def generate_artifacts(
     if cfg.get("model") and model is None:
         model = cfg["model"]
 
+    # Resolve complexity: CLI flag > config file > auto
+    if complexity == "auto":
+        complexity = cfg.get("complexity", "auto")
+    cx = classify_complexity(repo_map, override=complexity)
+
     stats = repo_map.get("stats", {})
     rg = stats.get("rg_version", None)
     rg_status = f"ripgrep {rg}" if rg else "ripgrep not found — using fallback"
@@ -75,13 +81,26 @@ def generate_artifacts(
     log(f"🗂  Layers detected: {', '.join(layers)}")
     log(f"🔧 Tech stack: {', '.join(repo_map['tech_stack'])}")
     log(f"📊 Files found: {total_files}  [{rg_status}]")
+    log(f"📐 Complexity: {cx['size']} "
+        f"(files={cx['total_files']}, layers={cx['num_layers']}, modules={cx['total_modules']})")
+    log(f"   → skills/layer={cx['max_module_skills_per_layer']}, "
+        f"min_exports={cx['min_exports_for_skill']}, "
+        f"detail={cx['prompt_detail']}, "
+        f"orchestrator={'yes' if cx['generate_orchestrator'] else 'skip'}, "
+        f"layer_agents={'yes' if cx['generate_layer_agents'] else 'skip'}")
 
     llm = build_llm(model=model, api_key=api_key, api_base=api_base)
     log(f"🤖 Using model: {llm.model}")
 
+    # Extract routing parameters from complexity
+    max_skills = cx["max_module_skills_per_layer"]
+    min_exports = cx["min_exports_for_skill"]
+    detail = cx["prompt_detail"]
+
     generated = {
         "skills": [],
         "agents": [],
+        "complexity": cx,
     }
 
     # -----------------------------------------------------------------------
@@ -89,7 +108,8 @@ def generate_artifacts(
     # -----------------------------------------------------------------------
     for layer_name, layer_data in repo_map["layers"].items():
         log(f"\n✏️  Generating layer skill: {layer_name} ...")
-        system, user = layer_skill_prompt(layer_name, layer_data, repo_map)
+        system, user = layer_skill_prompt(layer_name, layer_data, repo_map,
+                                          prompt_detail=detail)
         content = _generate(llm, system, user, dry_run)
         path = out / "skills" / layer_name / "SKILL.md"
         _write(path, content, dry_run)
@@ -97,16 +117,19 @@ def generate_artifacts(
         log(f"   ✅ {_rel(path, root)}")
 
     # -----------------------------------------------------------------------
-    # 2. Per-module skills (top modules only)
+    # 2. Per-module skills (top modules only, filtered by complexity)
     # -----------------------------------------------------------------------
     for layer_name, layer_data in repo_map["layers"].items():
         modules = _rank_modules(layer_data.get("modules", []))
-        top = modules[:MAX_MODULE_SKILLS_PER_LAYER]
+        # Filter by minimum exports threshold from complexity
+        eligible = [m for m in modules if len(m.get("exports", [])) >= min_exports]
+        top = eligible[:max_skills]
 
         for module in top:
             mod_name = Path(module["path"]).stem
             log(f"✏️  Module skill: {module['path']} ...")
-            system, user = skill_prompt(module, layer_name, repo_map)
+            system, user = skill_prompt(module, layer_name, repo_map,
+                                        prompt_detail=detail)
             content = _generate(llm, system, user, dry_run)
             path = out / "skills" / layer_name / mod_name / "SKILL.md"
             _write(path, content, dry_run)
@@ -114,35 +137,40 @@ def generate_artifacts(
             log(f"   ✅ {_rel(path, root)}")
 
     # -----------------------------------------------------------------------
-    # 3. Layer agents (AFTER skills are generated — so we can pass real paths)
+    # 3. Layer agents (skip for small repos)
     # -----------------------------------------------------------------------
-    for layer_name, layer_data in repo_map["layers"].items():
-        log(f"\n🤖 Generating agent: {layer_name}-agent ...")
-        # Collect real skill paths already written for this layer
-        layer_skills = [
-            p for p in generated["skills"]
-            if f"/skills/{layer_name}/" in p
-        ]
-        system, user = agent_prompt(
-            layer_name, layer_data, repo_map, layers,
-            generated_skills=layer_skills,
-        )
+    if cx["generate_layer_agents"]:
+        for layer_name, layer_data in repo_map["layers"].items():
+            log(f"\n🤖 Generating agent: {layer_name}-agent ...")
+            layer_skills = [
+                p for p in generated["skills"]
+                if f"/skills/{layer_name}/" in p
+            ]
+            system, user = agent_prompt(
+                layer_name, layer_data, repo_map, layers,
+                generated_skills=layer_skills,
+            )
+            content = _generate(llm, system, user, dry_run)
+            path = out / "agents" / f"{layer_name}-agent" / "AGENT.md"
+            _write(path, content, dry_run)
+            generated["agents"].append(str(path))
+            log(f"   ✅ {_rel(path, root)}")
+    else:
+        log("\n⏭️  Skipping layer agents (small repo)")
+
+    # -----------------------------------------------------------------------
+    # 4. Orchestrator agent (skip for small repos)
+    # -----------------------------------------------------------------------
+    if cx["generate_orchestrator"]:
+        log("\n🤖 Generating orchestrator agent ...")
+        system, user = orchestrator_prompt(repo_map)
         content = _generate(llm, system, user, dry_run)
-        path = out / "agents" / f"{layer_name}-agent" / "AGENT.md"
+        path = out / "agents" / "orchestrator" / "AGENT.md"
         _write(path, content, dry_run)
         generated["agents"].append(str(path))
         log(f"   ✅ {_rel(path, root)}")
-
-    # -----------------------------------------------------------------------
-    # 4. Orchestrator agent
-    # -----------------------------------------------------------------------
-    log("\n🤖 Generating orchestrator agent ...")
-    system, user = orchestrator_prompt(repo_map)
-    content = _generate(llm, system, user, dry_run)
-    path = out / "agents" / "orchestrator" / "AGENT.md"
-    _write(path, content, dry_run)
-    generated["agents"].append(str(path))
-    log(f"   ✅ {_rel(path, root)}")
+    else:
+        log("\n⏭️  Skipping orchestrator (small repo)")
 
     # -----------------------------------------------------------------------
     # 5. Generate skill-registry.md (agent-teams-lite compatible)
