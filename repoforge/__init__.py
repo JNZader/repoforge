@@ -25,6 +25,12 @@ from .disclosure import (
     has_tier_markers,
     count_tier_markers,
 )
+from .compressor import (
+    SkillCompressor,
+    CompressionResult,
+    compress_file,
+    compress_directory,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -47,4 +53,8 @@ __all__ = [
     "estimate_tokens",
     "has_tier_markers",
     "count_tier_markers",
+    "SkillCompressor",
+    "CompressionResult",
+    "compress_file",
+    "compress_directory",
 ]
