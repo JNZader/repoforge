@@ -1,8 +1,8 @@
 ---
 name: main-layer
 description: >
-  This layer encompasses the core functionality and utilities of the project.
-  Trigger: When working in main/ — adding, modifying, or debugging core features.
+  This layer encompasses the core functionality of the project, managing the main application logic and integrations.
+  Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # main-layer
 
-This skill covers the core functionality and utilities of the project.
+This skill covers the core functionalities and integrations of the project.
 
-**Trigger**: When working in main/ — adding, modifying, or debugging core features.
+**Trigger**: When working in main/ directory and its main responsibility.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,57 +27,58 @@ This skill covers the core functionality and utilities of the project.
 
 | Task | Pattern |
 |------|---------|
-| Generate documentation | `generate_docs()` |
+| Create a new module | `eval/harness.py` |
 
 ## Critical Patterns (Summary)
-- **Module Initialization**: Ensure proper initialization of modules in the main layer.
-- **Command-Line Interface**: Utilize shared options for CLI commands.
+- **Module Creation**: Follow the structure in `eval/harness.py` for new module exports.
+- **Data Handling**: Use `repoforge/compressor.py` for managing data models.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Module Initialization
+### Module Creation
 
-Ensure proper initialization of modules in the main layer to maintain a clean import structure.
+When creating a new module, ensure to follow the export conventions established in `eval/harness.py`.
 
 ```python
-# eval/__init__.py
-from .harness import make_fastapi_crud_module
+# eval/harness.py
+def make_fastapi_crud_module():
+    # Implementation here
 ```
 
-### Command-Line Interface
+### Data Handling
 
-Utilize shared options for CLI commands to maintain consistency across command executions.
+Utilize the data model defined in `repoforge/compressor.py` for consistent data management across the application.
 
 ```python
-# repoforge/cli.py
-def main():
-    # Shared options setup
-    pass
+# repoforge/compressor.py
+class SkillCompressor:
+    def compress_file(self, file_path):
+        # Compression logic here
 ```
 
 ## When to Use
 
-- When creating or modifying core functionalities.
-- When integrating new features that require CLI support.
+- When adding new functionalities to the core application.
+- When integrating external services or modules.
 
 ## Commands
 
 ```bash
+python -m eval.harness
 python -m repoforge.cli
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify core modules without testing
+### Don't: Modify core logic without testing
 
-Changing core modules can lead to unexpected behavior across the project.
+Changing core functionalities without proper testing can lead to application instability.
 
 ```python
 # BAD
-def main():
-    # Directly modifying core functionality without tests
-    pass
+def main_logic():
+    # Directly modifying core behavior without tests
 ```
 <!-- L3:END -->

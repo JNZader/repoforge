@@ -59,7 +59,7 @@ skills = sample_skills
 ## When to Use
 
 - When validating the functionality of YAML frontmatter stripping.
-- When testing user data retrieval in the context of adapters.
+- When testing user-related features in the application.
 
 ## Commands
 
@@ -71,7 +71,7 @@ pytest tests/test_adapters.py
 
 ### Don't: Ignore Test Coverage
 
-Neglecting test coverage can lead to untested code paths and potential bugs.
+Neglecting test coverage can lead to untested code paths.
 
 ```python
 # BAD
