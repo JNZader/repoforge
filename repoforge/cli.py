@@ -1,15 +1,18 @@
 """
 cli.py - Command-line interface for RepoForge.
 
-Two modes:
+Three modes:
 
   repoforge skills [options]   — Generate SKILL.md + AGENT.md for Claude Code / OpenCode
   repoforge docs   [options]   — Generate technical documentation (Docsify / GH Pages ready)
+  repoforge export [options]   — Flatten repo into a single LLM-optimized file (no API key needed)
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
   repoforge docs   -w /my/repo --lang Spanish -o docs
   repoforge docs   -w /my/repo --model gpt-4o-mini --lang English --dry-run
+  repoforge export -w /my/repo -o context.md
+  repoforge export -w /my/repo --max-tokens 100000 --format xml
   repoforge skills --model ollama/qwen2.5-coder:14b   # free local
   repoforge skills --model github/gpt-4o-mini          # GitHub Copilot
 """
@@ -56,12 +59,15 @@ def main():
     Commands:
       skills   Generate SKILL.md + AGENT.md for Claude Code / OpenCode
       docs     Generate technical documentation (Docsify-ready, GH Pages compatible)
+      export   Flatten repo into a single LLM-optimized file (no API key needed)
 
     \b
     Examples:
       repoforge skills -w .
       repoforge docs -w . --lang Spanish -o docs
       repoforge docs --model gpt-4o-mini --dry-run
+      repoforge export -w . -o context.md
+      repoforge export -w . --max-tokens 100000 --format xml
     """
     pass
 
@@ -198,6 +204,71 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
         from pathlib import Path
         out = Path(output_dir) if Path(output_dir).is_absolute() else Path(working_dir) / output_dir
         serve_docs(str(out), port=port, open_browser=True)
+
+
+# ---------------------------------------------------------------------------
+# export subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--working-dir",
+    default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("-o", "--output", "output_path", default=None,
+    help="Output file path. If not set, prints to stdout.",
+    type=click.Path(),
+)
+@click.option("--max-tokens", default=None, type=int,
+    help="Token budget limit. Prioritizes important files first.")
+@click.option("--no-contents", is_flag=True, default=False,
+    help="Skip file contents — only output tree + definitions.")
+@click.option("--format", "fmt",
+    default="markdown", show_default=True,
+    type=click.Choice(["markdown", "xml"], case_sensitive=False),
+    help="Output format: markdown or xml (CXML-style, like rendergit).")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def export(working_dir, output_path, max_tokens, no_contents, fmt, quiet):
+    """
+    Flatten a repo into a single LLM-optimized file (no API key needed).
+
+    \b
+    Generates a single document with:
+      - Project overview (tech stack, entry points)
+      - Directory tree
+      - Key definitions (functions, classes, constants)
+      - Full file contents (respecting token budget)
+
+    \b
+    Examples:
+      repoforge export -w .                     # print to stdout
+      repoforge export -w . -o context.md       # save to file
+      repoforge export -w . --max-tokens 100000 # limit output size
+      repoforge export -w . --no-contents       # tree + definitions only
+      repoforge export -w . --format xml        # XML output (CXML-style)
+    """
+    import sys
+    from .exporter import export_llm_view
+
+    if not quiet:
+        print(f"Exporting LLM view for {working_dir} ...", file=sys.stderr)
+
+    result = export_llm_view(
+        workspace=working_dir,
+        output_path=output_path,
+        max_tokens=max_tokens,
+        include_contents=not no_contents,
+        fmt=fmt,
+    )
+
+    if output_path:
+        if not quiet:
+            tokens = len(result) // 4
+            print(f"Written to {output_path} (~{tokens:,} tokens)", file=sys.stderr)
+    else:
+        click.echo(result)
 
 
 # ---------------------------------------------------------------------------
