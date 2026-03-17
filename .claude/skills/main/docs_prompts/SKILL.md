@@ -2,7 +2,7 @@
 name: get-chapter-prompts
 description: >
   This skill covers the generation of chapter prompts for documentation.
-  Trigger: When working with docs_prompts to create structured documentation.
+  Trigger: When integrating shared system prompts in documentation workflows.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,16 +19,16 @@ metadata:
 
 This skill covers the generation of chapter prompts for documentation.
 
-**Trigger**: When working with docs_prompts to create structured documentation.
+**Trigger**: When integrating shared system prompts in documentation workflows.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
-| Generate index prompt | `index_prompt` |
-| Generate overview prompt | `overview_prompt` |
+| Task                     | Pattern                     |
+|--------------------------|-----------------------------|
+| Generate index prompt    | `index_prompt`              |
+| Generate overview prompt  | `overview_prompt`           |
 
 ## Critical Patterns (Summary)
 - **Generate index prompt**: Use `index_prompt` to create an index for documentation.
@@ -61,7 +61,7 @@ overview = overview_prompt()
 ## When to Use
 
 - When creating structured documentation for a project.
-- When needing to summarize key points in documentation.
+- When needing to summarize key sections of documentation for quick reference.
 
 ## Commands
 
@@ -73,7 +73,7 @@ python repoforge/cli.py generate-docs
 
 ### Don't: Hardcode prompts
 
-Hardcoding prompts reduces flexibility and maintainability.
+Hardcoding prompts reduces flexibility and maintainability of documentation.
 
 ```python
 # BAD

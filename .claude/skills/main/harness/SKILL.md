@@ -2,7 +2,7 @@
 name: add-harness-parent-path
 description: >
   This skill covers adding the parent directory to the path when running the harness directly.
-  Trigger: When using the harness module in a standalone context.
+  Trigger: When initializing the harness module.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers adding the parent directory to the path when running the harness directly.
 
-**Trigger**: When using the harness module in a standalone context.
+**Trigger**: When initializing the harness module.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -60,7 +60,7 @@ page = make_nextjs_page_module("HomePage")
 
 ## When to Use
 
-- When developing a FastAPI application and needing CRUD operations.
+- When developing a new API using FastAPI.
 - When creating a new page in a Next.js application.
 
 ## Commands

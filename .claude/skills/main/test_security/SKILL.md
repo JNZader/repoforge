@@ -1,8 +1,8 @@
 ---
 name: test-security-fixtures
 description: >
-  This skill covers patterns for testing security using crafted fixtures.
-  Trigger: test_security.
+  This skill covers patterns for testing security using crafted content.
+  Trigger: Load this skill when working with test_security scenarios.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # test-security-fixtures
 
-This skill covers patterns for testing security using crafted fixtures.
+This skill covers patterns for testing security using crafted content.
 
-**Trigger**: test_security.
+**Trigger**: Load this skill when working with test_security scenarios.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -32,7 +32,7 @@ This skill covers patterns for testing security using crafted fixtures.
 
 ## Critical Patterns (Summary)
 - **Get Users**: Retrieve user data for security tests.
-- **Vulnerability Scanner**: Execute a security scan on the application.
+- **Vulnerability Scanner**: Execute a scan to identify security issues.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers patterns for testing security using crafted fixtures.
 
 ### Get Users for Testing
 
-This pattern retrieves user data to be used in security tests.
+This pattern retrieves user data necessary for conducting security tests.
 
 ```python
 # Example of retrieving users
@@ -49,7 +49,7 @@ users = get_users()
 
 ### Vulnerability Scanner
 
-This pattern executes a security scan to identify potential vulnerabilities.
+This pattern executes a scan to identify potential security vulnerabilities in the application.
 
 ```python
 # Example of running the scanner
@@ -58,8 +58,8 @@ results = scanner()
 
 ## When to Use
 
-- When setting up tests for user authentication and authorization.
-- When validating security measures against known vulnerabilities.
+- When you need user data for security-related tests.
+- When scanning the application for vulnerabilities during testing.
 
 ## Commands
 
@@ -69,13 +69,12 @@ pytest tests/test_security.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode Sensitive Data
+### Don't: Hardcode User Data
 
-Hardcoding sensitive data can lead to security breaches and is against best practices.
+Hardcoding user data can lead to security risks and unreliable tests.
 
 ```python
 # BAD
-username = "admin"
-password = "password123"
+users = [{"username": "admin", "password": "1234"}]
 ```
 <!-- L3:END -->
