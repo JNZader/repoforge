@@ -1,8 +1,8 @@
 ---
 name: add-harness-endpoint
 description: >
-  This skill covers adding endpoints to the harness module.
-  Trigger: When integrating new functionalities into the harness.
+  This skill covers patterns for adding endpoints in the harness layer.
+  Trigger: When integrating new functionalities in the harness.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,29 +13,29 @@ metadata:
 
 ### Create FastAPI CRUD Module
 
-Use this pattern to create a CRUD module for FastAPI within the harness.
+Use this pattern to generate a CRUD module for FastAPI.
 
 ```python
 from eval.harness import make_fastapi_crud_module
 
-app = make_fastapi_crud_module("Item")
+app = make_fastapi_crud_module("Item", "items")
 ```
 
 ### Create Next.js Page Module
 
-This pattern helps in generating a Next.js page module for the harness.
+Utilize this pattern to create a new page module for Next.js.
 
 ```python
 from eval.harness import make_nextjs_page_module
 
-page = make_nextjs_page_module("HomePage")
+page = make_nextjs_page_module("HomePage", "/")
 ```
 
 ## When to Use
 
-- When you need to expose new API endpoints in the harness.
-- To create a new frontend page that interacts with the harness.
-- When evaluating the performance of new features in the harness.
+- When building RESTful APIs in the harness layer.
+- When developing frontend pages that interact with backend services.
+- To evaluate the performance of different module integrations.
 
 ## Commands
 
@@ -45,18 +45,20 @@ python -m eval.harness
 
 ## Anti-Patterns
 
-### Don't: Skip Path Adjustment
+### Don't: Skip Module Integration
 
-Not adjusting the parent path can lead to module import errors.
+Neglecting to integrate modules properly can lead to broken functionality.
 
 ```python
 # BAD
-import eval.harness
+from eval.harness import make_fastapi_crud_module
+
+# Missing app initialization
 ```
 
 ## Quick Reference
 
 | Task                     | Pattern                          |
 |--------------------------|----------------------------------|
-| Create FastAPI module    | `make_fastapi_crud_module`      |
-| Create Next.js page      | `make_nextjs_page_module`       |
+| Create FastAPI Module    | `make_fastapi_crud_module`      |
+| Create Next.js Page      | `make_nextjs_page_module`       |

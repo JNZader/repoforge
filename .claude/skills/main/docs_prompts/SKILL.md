@@ -1,8 +1,8 @@
 ---
 name: add-docs-prompts-endpoint
 description: >
-  This skill covers the integration of shared system prompts into your documentation.
-  Trigger: When utilizing the docs_prompts in chapter calls.
+  This skill covers the integration of shared system prompts into your application.
+  Trigger: When you need to utilize prompts for documentation generation.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,33 +11,31 @@ metadata:
 
 ## Critical Patterns
 
-### Using Index Prompt
+### Use Index Prompt
 
-Inject the index prompt into your documentation flow to provide a structured overview.
+Utilize the `index_prompt` to generate the main index for your documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def generate_index():
-    return index_prompt
+documentation_index = index_prompt()
 ```
 
-### Implementing Overview Prompt
+### Get Chapter Prompts
 
-Utilize the overview prompt to give users a concise introduction to the documentation.
+Retrieve chapter-specific prompts using `get_chapter_prompts` for tailored documentation.
 
 ```python
-from repoforge.docs_prompts import overview_prompt
+from repoforge.docs_prompts import get_chapter_prompts
 
-def generate_overview():
-    return overview_prompt
+chapter_prompts = get_chapter_prompts('architecture')
 ```
 
 ## When to Use
 
-- When generating documentation for a new chapter.
-- To provide users with a quickstart guide for your project.
-- During the debugging process to ensure prompts are correctly integrated.
+- When generating an index for your documentation using shared prompts.
+- When retrieving specific prompts for different chapters in your documentation.
+- To ensure consistency in documentation across various sections.
 
 ## Commands
 
@@ -50,17 +48,16 @@ python repoforge/cli.py update-prompts
 
 ### Don't: Hardcode Prompts
 
-Hardcoding prompts reduces flexibility and maintainability in your documentation.
+Hardcoding prompts leads to maintenance issues and inconsistency across documentation.
 
 ```python
 # BAD
-def generate_hardcoded_prompt():
-    return "This is a hardcoded prompt."
+documentation_index = "This is a hardcoded index prompt."
 ```
 
 ## Quick Reference
 
 | Task                       | Pattern                     |
 |----------------------------|-----------------------------|
-| Generate index prompt      | `index_prompt`              |
-| Create overview section     | `overview_prompt`           |
+| Generate documentation index| `index_prompt()`            |
+| Retrieve chapter prompts    | `get_chapter_prompts('chapter_name')` |

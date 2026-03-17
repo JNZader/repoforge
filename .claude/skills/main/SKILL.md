@@ -1,7 +1,7 @@
 ---
 name: main-layer
 description: >
-  This layer owns the core functionality of the project, including evaluation and documentation generation.
+  This layer owns the core functionality of the project, including CLI commands, documentation generation, and evaluation scenarios.
   Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
@@ -17,45 +17,44 @@ metadata:
 ├── eval/harness.py — Adds parent to path when running directly
 ├── eval/scenarios_real.py — Contains real module snapshots
 ├── repoforge/__init__.py — Initializes the repoforge module
-├── repoforge/cli.py — Shared options factory
+├── repoforge/cli.py — Shared options factory for CLI commands
 ├── repoforge/docs_generator.py — Generates documentation
-├── repoforge/docs_prompts.py — Shared system prompts
-└── repoforge/docsify.py — Main entry point for documentation
+├── repoforge/docs_prompts.py — Shared system prompts for documentation
+└── repoforge/docsify.py — Main entry point for building documentation
 ```
 
 ## Critical Patterns
 
-### Module Initialization
+### CLI Command Structure
 
-Always initialize modules in `__init__.py` to ensure proper imports.
+All CLI commands should follow the structure defined in `repoforge/cli.py`.
 
 ```python
-# eval/__init__.py
-from .harness import make_fastapi_crud_module
+# Example using real exported names
+from repoforge.cli import main
 ```
 
 ### Documentation Generation
 
-Use the `generate_docs` function to create documentation from prompts.
+Use `repoforge/docs_generator.py` to create documentation for new features.
 
 ```python
-# repoforge/docs_generator.py
-from .docs_prompts import index_prompt
-generate_docs(index_prompt)
+# Example
+from repoforge.docs_generator import generate_docs
 ```
 
 ## When to Use
 
-- Creating new evaluation scenarios
-- Generating project documentation
-- Modifying shared CLI options
+- Creating new CLI commands
+- Generating documentation for new modules
+- Implementing evaluation scenarios
 
-## Adding a New Module
+## Adding a New CLI Command
 
-1. Create a new file in the `eval/` directory, e.g., `eval/new_module.py`.
-2. Define the necessary functions and classes.
-3. Update `eval/__init__.py` to include the new module.
-4. Verify functionality by running tests in the `eval/` directory.
+1. Modify `repoforge/cli.py` to include the new command.
+2. Define the command's functionality in a new function.
+3. Update the command's help text and options.
+4. Test the command using the CLI interface.
 
 ## Commands
 
@@ -65,12 +64,12 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-- **Don't**: Modify `eval/harness.py` without updating dependent modules — this can break the path resolution for other scripts.
-- **Don't**: Change the structure of `repoforge/docs_prompts.py` without ensuring all documentation generation calls are updated — this can lead to missing prompts in generated docs.
+- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
+- **Don't**: Modify `eval/scenarios_real.py` without ensuring compatibility with existing evaluation scenarios — this can lead to runtime errors.
 
 ## Quick Reference
 
-| Task                | File                          | Pattern                     |
-|---------------------|-------------------------------|-----------------------------|
-| Generate documentation | `repoforge/docs_generator.py` | `generate_docs`            |
-| Add new evaluation scenario | `eval/scenarios_real.py` | `get_reports_backend_module` |
+| Task                | File                          | Pattern                          |
+|---------------------|-------------------------------|----------------------------------|
+| Add a new CLI command | `repoforge/cli.py`          | `from repoforge.cli import main` |
+| Generate documentation | `repoforge/docs_generator.py` | `from repoforge.docs_generator import generate_docs` |
