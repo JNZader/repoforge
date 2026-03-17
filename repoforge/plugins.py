@@ -161,6 +161,12 @@ def build_commands(repo_map: dict, skills: dict[str, str], complexity: dict) -> 
     for layer_data in repo_map.get("layers", {}).values():
         for mod in layer_data.get("modules", []):
             all_modules.add(mod.get("name", ""))
+            # Also add directory names from path for broader matching
+            # e.g. "src/hooks/useAuth.ts" → adds "hooks"
+            for part in Path(mod.get("path", "")).parts:
+                stem = Path(part).stem.lower()
+                if stem and stem not in ("src", ".", ""):
+                    all_modules.add(stem)
             if "test" in mod.get("path", "").lower():
                 has_tests = True
 
