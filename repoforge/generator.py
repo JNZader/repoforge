@@ -13,6 +13,12 @@ Output layout (default: .claude/):
       <layer>-agent/AGENT.md
 
 Also mirrors to .opencode/ with identical structure.
+
+Multi-tool targets (via --targets flag):
+  cursor  → .cursor/rules/<name>.mdc
+  codex   → AGENTS.md (project root)
+  gemini  → GEMINI.md (project root)
+  copilot → .github/copilot-instructions.md
 """
 
 import sys
@@ -29,6 +35,7 @@ from .prompts import (
     build_skill_registry,
     hooks_prompt,
 )
+from .adapters import resolve_targets, run_adapters, ADAPTER_TARGETS
 
 
 # Defaults — overridden by complexity classification at runtime
@@ -47,6 +54,7 @@ def generate_artifacts(
     dry_run: bool = False,
     complexity: str = "auto",
     with_hooks: bool = False,
+    targets: Optional[str] = None,
 ) -> dict:
     """
     Main entry point. Scans the repo and generates SKILL.md + AGENT.md files.
@@ -54,6 +62,9 @@ def generate_artifacts(
     Args:
         complexity: "auto" (detect), or force "small" / "medium" / "large".
         with_hooks: Generate HOOKS.md with Claude Code hook recommendations.
+        targets: Comma-separated list of output targets.
+                 Default: "claude,opencode". Use "all" for all targets.
+                 Valid: claude, opencode, cursor, codex, gemini, copilot.
 
     Returns a summary dict with all generated file paths.
     """
@@ -61,6 +72,13 @@ def generate_artifacts(
     out = Path(output_dir) if Path(output_dir).is_absolute() else root / output_dir
 
     log = _make_logger(verbose)
+
+    # Resolve targets: --targets flag > config file > legacy also_opencode default
+    if targets is None:
+        # Will be resolved after config is loaded (see below)
+        _targets_from_cli = None
+    else:
+        _targets_from_cli = targets
 
     log(f"📂 Scanning {root} ...")
     repo_map = scan_repo(str(root))
@@ -78,6 +96,23 @@ def generate_artifacts(
     # Resolve hooks: CLI flag > config file > off
     if not with_hooks:
         with_hooks = cfg.get("generate_hooks", False)
+
+    # Resolve targets: CLI --targets > config targets > legacy also_opencode default
+    if _targets_from_cli is not None:
+        active_targets = resolve_targets(_targets_from_cli)
+    elif cfg.get("targets"):
+        # Config file: targets: [claude, opencode, cursor]
+        cfg_targets = cfg["targets"]
+        if isinstance(cfg_targets, list):
+            active_targets = resolve_targets(",".join(cfg_targets))
+        else:
+            active_targets = resolve_targets(str(cfg_targets))
+    else:
+        # Legacy default: claude + opencode (unless --no-opencode was set)
+        active_targets = ["claude", "opencode"] if also_opencode else ["claude"]
+
+    # Override also_opencode based on resolved targets
+    also_opencode = "opencode" in active_targets
 
     stats = repo_map.get("stats", {})
     rg = stats.get("rg_version", None)
@@ -221,11 +256,42 @@ def generate_artifacts(
         log(f"\n📁 Also mirrored to {_rel(opencode_out, root)}")
 
     # -----------------------------------------------------------------------
+    # 7b. Multi-tool adapter outputs (cursor, codex, gemini, copilot)
+    # -----------------------------------------------------------------------
+    adapter_targets = [t for t in active_targets if t in ADAPTER_TARGETS]
+    if adapter_targets:
+        log(f"\n🔀 Generating multi-tool output: {', '.join(adapter_targets)}")
+
+        # Read back generated skill/agent contents for adapter input
+        skill_contents = _collect_contents(generated.get("skills", []), out, root, dry_run)
+        agent_contents = _collect_contents(generated.get("agents", []), out, root, dry_run)
+
+        adapter_output = run_adapters(
+            targets=adapter_targets,
+            skills=skill_contents,
+            agents=agent_contents if agent_contents else None,
+            repo_map=repo_map,
+        )
+
+        # Write adapter outputs
+        adapter_paths: list[str] = []
+        for rel_path, content in adapter_output.items():
+            full_path = root / rel_path
+            _write(full_path, content, dry_run)
+            adapter_paths.append(rel_path)
+            log(f"   ✅ {rel_path}")
+
+        generated["adapter_targets"] = adapter_targets
+        generated["adapter_outputs"] = adapter_paths
+
+    # -----------------------------------------------------------------------
     # 8. Write index
     # -----------------------------------------------------------------------
     _write_index(out, repo_map, generated, dry_run)
 
+    targets_summary = ", ".join(active_targets)
     log(f"\n🎉 Done! Generated {len(generated['skills'])} skills, {len(generated['agents'])} agents")
+    log(f"   Targets: {targets_summary}")
     log(f"   Output: {_rel(out, root)}")
 
     return generated
@@ -234,6 +300,36 @@ def generate_artifacts(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _collect_contents(
+    paths: list[str], output_root: Path, project_root: Path, dry_run: bool,
+) -> dict[str, str]:
+    """
+    Read back generated files and return {relative_path: content}.
+
+    Relative paths are computed from the output_root (e.g. "backend/SKILL.md").
+    In dry-run mode, returns placeholder content keyed by the relative path.
+    """
+    result: dict[str, str] = {}
+    for abs_path_str in paths:
+        abs_path = Path(abs_path_str)
+        # Compute relative to output_root for skill paths
+        try:
+            # Try relative to output_root first (skills/ and agents/ structure)
+            rel = str(abs_path.relative_to(output_root))
+        except ValueError:
+            # Fallback to project root
+            try:
+                rel = str(abs_path.relative_to(project_root))
+            except ValueError:
+                rel = abs_path.name
+
+        if dry_run:
+            result[rel] = f"# DRY RUN placeholder for {rel}\n"
+        elif abs_path.exists():
+            result[rel] = abs_path.read_text(encoding="utf-8")
+    return result
+
 
 def _generate(llm: LLM, system: str, user: str, dry_run: bool) -> str:
     if dry_run:
@@ -350,9 +446,23 @@ def _write_index(out: Path, repo_map: dict, generated: dict, dry_run: bool):
     if generated.get("hooks"):
         lines.append("\n## Hooks\n")
         lines.append(f"- `{generated['hooks']}`\n")
+    # Multi-tool adapter outputs
+    adapter_outputs = generated.get("adapter_outputs", [])
+    if adapter_outputs:
+        lines.append("\n## Multi-Tool Outputs\n")
+        for p in adapter_outputs:
+            lines.append(f"- `{p}`\n")
     lines.append("\n## Usage\n")
     lines.append("In Claude Code, skills and agents in `.claude/` are loaded automatically.\n")
     lines.append("In OpenCode, use `.opencode/` — same structure.\n")
+    if any("cursor" in p for p in adapter_outputs):
+        lines.append("In Cursor, rules in `.cursor/rules/` are loaded based on file globs.\n")
+    if any(p == "AGENTS.md" for p in adapter_outputs):
+        lines.append("In Codex / OpenAI, `AGENTS.md` is loaded as project instructions.\n")
+    if any(p == "GEMINI.md" for p in adapter_outputs):
+        lines.append("In Gemini CLI, `GEMINI.md` is loaded as project instructions.\n")
+    if any("copilot" in p for p in adapter_outputs):
+        lines.append("In GitHub Copilot, `.github/copilot-instructions.md` provides context.\n")
     lines.append("Skill registry at `.atl/skill-registry.md` is read by sub-agents automatically.\n")
 
     _write(out / "SKILLS_INDEX.md", "".join(lines), dry_run)

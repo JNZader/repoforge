@@ -34,3 +34,12 @@
 # Hooks protect critical files, enforce linting, and suggest test runs.
 # Can also be enabled with --with-hooks flag.
 # generate_hooks: false
+
+# Output targets for multi-tool support.
+# Controls which AI coding tools receive generated output.
+# Default: [claude, opencode]
+# Valid: claude, opencode, cursor, codex, gemini, copilot
+# Use "all" or list all to generate for every tool.
+# Can also be set with --targets flag (CLI takes precedence).
+# targets: [claude, opencode]
+# targets: [claude, opencode, cursor, codex, gemini, copilot]  # all tools

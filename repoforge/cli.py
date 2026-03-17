@@ -10,6 +10,8 @@ Four modes:
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
+  repoforge skills -w /my/repo --targets all            # generate for all AI tools
+  repoforge skills -w /my/repo --targets claude,cursor   # Claude + Cursor only
   repoforge score  -w /my/repo --format table
   repoforge docs   -w /my/repo --lang Spanish -o docs
   repoforge docs   -w /my/repo --model gpt-4o-mini --lang English --dry-run
@@ -101,9 +103,15 @@ def main():
     help="Generate HOOKS.md with recommended Claude Code hooks.")
 @click.option("--score/--no-score", "do_score", default=False, show_default=True,
     help="After generation, score quality of generated SKILL.md files.")
+@click.option("--targets", default=None,
+    help=(
+        "Comma-separated list of output targets. "
+        "Default: claude,opencode. "
+        "Valid: claude, opencode, cursor, codex, gemini, copilot, all."
+    ))
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
-           with_hooks, do_score):
+           with_hooks, do_score, targets):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -116,6 +124,13 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
         agents/orchestrator/AGENT.md
 
     Also mirrors to .opencode/ unless --no-opencode is set.
+
+    \b
+    Multi-tool output (via --targets):
+      cursor  → .cursor/rules/<name>.mdc
+      codex   → AGENTS.md (project root)
+      gemini  → GEMINI.md (project root)
+      copilot → .github/copilot-instructions.md
     """
     from .generator import generate_artifacts
     from .server import serve_skills
@@ -132,6 +147,7 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             dry_run=dry_run,
             complexity=complexity,
             with_hooks=with_hooks,
+            targets=targets,
         )
 
     if do_score and not dry_run:
