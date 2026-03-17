@@ -1,14 +1,16 @@
 """
 cli.py - Command-line interface for RepoForge.
 
-Three modes:
+Four modes:
 
   repoforge skills [options]   — Generate SKILL.md + AGENT.md for Claude Code / OpenCode
+  repoforge score  [options]   — Score quality of generated SKILL.md files (no API key needed)
   repoforge docs   [options]   — Generate technical documentation (Docsify / GH Pages ready)
   repoforge export [options]   — Flatten repo into a single LLM-optimized file (no API key needed)
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
+  repoforge score  -w /my/repo --format table
   repoforge docs   -w /my/repo --lang Spanish -o docs
   repoforge docs   -w /my/repo --model gpt-4o-mini --lang English --dry-run
   repoforge export -w /my/repo -o context.md
@@ -58,12 +60,15 @@ def main():
     \b
     Commands:
       skills   Generate SKILL.md + AGENT.md for Claude Code / OpenCode
+      score    Score quality of generated SKILL.md files (no API key needed)
       docs     Generate technical documentation (Docsify-ready, GH Pages compatible)
       export   Flatten repo into a single LLM-optimized file (no API key needed)
 
     \b
     Examples:
       repoforge skills -w .
+      repoforge score -w . --format table
+      repoforge score -w . --min-score 0.7
       repoforge docs -w . --lang Spanish -o docs
       repoforge docs --model gpt-4o-mini --dry-run
       repoforge export -w . -o context.md
@@ -94,9 +99,11 @@ def main():
     help="Skip generation, only open browser for existing skills.")
 @click.option("--with-hooks/--no-hooks", default=False, show_default=True,
     help="Generate HOOKS.md with recommended Claude Code hooks.")
+@click.option("--score/--no-score", "do_score", default=False, show_default=True,
+    help="After generation, score quality of generated SKILL.md files.")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
-           with_hooks):
+           with_hooks, do_score):
     """
     Generate SKILL.md and AGENT.md files from your codebase.
 
@@ -126,6 +133,20 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             complexity=complexity,
             with_hooks=with_hooks,
         )
+
+    if do_score and not dry_run:
+        from pathlib import Path as _Path
+        from .scorer import SkillScorer
+        out_path = (
+            _Path(output_dir) if _Path(output_dir).is_absolute()
+            else _Path(working_dir) / output_dir
+        )
+        skills_dir = out_path / "skills"
+        if skills_dir.exists():
+            scorer = SkillScorer()
+            scores = scorer.score_directory(str(skills_dir))
+            if scores:
+                click.echo(scorer.report(scores, fmt="table"), err=True)
 
     if do_serve or serve_only:
         from pathlib import Path
@@ -283,6 +304,83 @@ def export(working_dir, output_path, max_tokens, no_contents, fmt, quiet):
             print(f"Written to {output_path} (~{tokens:,} tokens)", file=sys.stderr)
     else:
         click.echo(result)
+
+
+# ---------------------------------------------------------------------------
+# score subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--working-dir",
+    default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("-d", "--skills-dir", default=None,
+    help="Skills directory to score. Default: <working-dir>/.claude/skills/",
+    type=click.Path(file_okay=False),
+)
+@click.option("--format", "fmt",
+    default="table", show_default=True,
+    type=click.Choice(["table", "json", "markdown"], case_sensitive=False),
+    help="Output format for the report.")
+@click.option("--min-score", default=None, type=float,
+    help="Minimum acceptable score (0.0-1.0). Exit code 1 if any skill scores below.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def score(working_dir, skills_dir, fmt, min_score, quiet):
+    """
+    Score quality of generated SKILL.md files (no API key needed).
+
+    \b
+    Scans .claude/skills/ for SKILL.md files and scores each across
+    7 dimensions: completeness, clarity, specificity, examples,
+    format, safety, and agent readiness.
+
+    \b
+    Examples:
+      repoforge score -w .                     # score with table output
+      repoforge score -w . --format json       # JSON output
+      repoforge score -w . --min-score 0.7     # fail if any skill < 70%
+      repoforge score -d /path/to/skills/      # score specific directory
+    """
+    import sys
+    from pathlib import Path
+    from .scorer import SkillScorer
+
+    if skills_dir:
+        target = Path(skills_dir)
+    else:
+        target = Path(working_dir) / ".claude" / "skills"
+
+    if not target.exists():
+        click.echo(f"Skills directory not found: {target}", err=True)
+        click.echo("Run 'repoforge skills' first to generate skills.", err=True)
+        sys.exit(1)
+
+    if not quiet:
+        click.echo(f"Scoring skills in {target} ...", err=True)
+
+    scorer = SkillScorer()
+    scores = scorer.score_directory(str(target))
+
+    if not scores:
+        click.echo("No SKILL.md files found.", err=True)
+        sys.exit(1)
+
+    report = scorer.report(scores, fmt=fmt)
+    click.echo(report)
+
+    # Exit code 1 if any score below min_score
+    if min_score is not None:
+        below = [s for s in scores if s.overall < min_score]
+        if below:
+            if not quiet:
+                click.echo(
+                    f"\n{len(below)} skill(s) scored below {min_score:.0%} threshold.",
+                    err=True,
+                )
+            sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
