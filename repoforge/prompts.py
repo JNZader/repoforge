@@ -706,3 +706,172 @@ def build_skill_registry(
     return "".join(lines)
 
 
+# ===========================================================================
+# HOOKS.md — Claude Code hook recommendations
+# ===========================================================================
+
+HOOKS_SYSTEM = _BASE_SYSTEM + """\
+
+You are generating a HOOKS.md documentation file for Claude Code hooks.
+
+Claude Code hooks intercept tool calls (PreToolUse / PostToolUse) and can:
+- Block dangerous operations (exit code 2)
+- Allow operations (exit code 0)
+- Ask the user for confirmation (JSON stdout with {"decision": "ask", "message": "..."})
+
+Hook scripts are Python files in `.claude/hooks/` that receive JSON on stdin
+with the tool input/output.
+
+You are NOT generating executable scripts — you are generating DOCUMENTATION
+that explains what hooks are recommended, why, and example implementations
+that the developer can review and install manually.
+
+FORMAT (mandatory):
+
+# Recommended Claude Code Hooks
+
+## Overview
+
+<1-2 sentences: what these hooks protect and why they matter for THIS project.>
+
+## PreToolUse Hooks
+
+### <hook name> — <matcher: Bash | Write | Edit>
+
+**Purpose**: <what it prevents>
+**Trigger**: <when it fires>
+
+```python
+# .claude/hooks/<script_name>.py
+<example implementation — complete, runnable>
+```
+
+**Configuration** (add to `.claude/settings.json`):
+```json
+<exact JSON snippet to enable this hook>
+```
+
+## PostToolUse Hooks
+
+### <hook name> — <matcher>
+
+<same format as above>
+
+## Installation
+
+1. Create `.claude/hooks/` directory
+2. Copy the scripts above into the directory
+3. Add the configuration snippets to `.claude/settings.json`
+4. Test each hook manually before relying on it
+
+## Hook Summary
+
+| Hook | Type | Matcher | Protects |
+|------|------|---------|----------|
+| <name> | Pre/Post | <matcher> | <what> |
+
+RULES:
+1. Every hook MUST be specific to the detected tech stack — no generic placeholders
+2. PreToolUse hooks MUST protect critical files (entry points, config)
+3. PostToolUse hooks MUST enforce code quality (lint, format, tests)
+4. Example scripts MUST be complete and runnable Python
+5. Configuration JSON MUST be valid and match Claude Code hook format
+6. Do NOT suggest more than 6 hooks total — focus on the most impactful ones
+7. Hook scripts MUST read from stdin (JSON) and use sys.exit() for decisions
+"""
+
+
+# Tech stack → recommended lint/format tools
+_STACK_TOOLS = {
+    "Python": {"linter": "ruff check", "formatter": "ruff format --check", "test": "pytest"},
+    "FastAPI": {"linter": "ruff check", "formatter": "ruff format --check", "test": "pytest"},
+    "Django": {"linter": "ruff check", "formatter": "ruff format --check", "test": "pytest"},
+    "Flask": {"linter": "ruff check", "formatter": "ruff format --check", "test": "pytest"},
+    "Node.js": {"linter": "npx eslint", "formatter": "npx prettier --check", "test": "npm test"},
+    "React": {"linter": "npx eslint", "formatter": "npx prettier --check", "test": "npm test"},
+    "Next.js": {"linter": "npx next lint", "formatter": "npx prettier --check", "test": "npm test"},
+    "Vue": {"linter": "npx eslint", "formatter": "npx prettier --check", "test": "npm test"},
+    "TypeScript": {"linter": "npx eslint", "formatter": "npx prettier --check", "test": "npm test"},
+    "Go": {"linter": "golangci-lint run", "formatter": "gofmt -l", "test": "go test ./..."},
+    "Rust": {"linter": "cargo clippy", "formatter": "cargo fmt --check", "test": "cargo test"},
+    "Java": {"linter": "mvn checkstyle:check", "formatter": "mvn spotless:check", "test": "mvn test"},
+    "Ruby": {"linter": "rubocop", "formatter": "rubocop --format simple", "test": "bundle exec rspec"},
+}
+
+
+def hooks_prompt(repo_map: dict, complexity: dict) -> tuple[str, str]:
+    """Build prompt for HOOKS.md — Claude Code hook recommendations.
+
+    Args:
+        repo_map: Output from scan_repo().
+        complexity: Output from classify_complexity().
+
+    Returns:
+        (system, user) tuple for LLM completion.
+    """
+    tech = repo_map.get("tech_stack", [])
+    tech_str = ", ".join(tech) or "unknown"
+    entry_points = repo_map.get("entry_points", [])
+    config_files = repo_map.get("config_files", [])
+    layers = repo_map.get("layers", {})
+    size = complexity.get("size", "medium")
+
+    # Collect relevant tools for the detected stack
+    tools_seen: dict[str, str] = {}
+    for t in tech:
+        if t in _STACK_TOOLS:
+            for role, cmd in _STACK_TOOLS[t].items():
+                if role not in tools_seen:
+                    tools_seen[role] = cmd
+
+    tools_text = "\n".join(
+        f"  - {role}: `{cmd}`"
+        for role, cmd in tools_seen.items()
+    ) or "  (none detected — suggest common ones for the stack)"
+
+    # Critical files to protect
+    critical = entry_points + config_files
+    critical_text = "\n".join(f"  - `{f}`" for f in critical) or "  (none detected)"
+
+    # Detect if tests/ directory exists in any layer
+    has_tests = any(
+        any("test" in m.get("path", "").lower() for m in layer.get("modules", []))
+        for layer in layers.values()
+    )
+
+    # Scope based on complexity
+    scope = {
+        "small": "2-3 hooks (minimal, focused on the most critical protections)",
+        "medium": "3-4 hooks (balanced protection and code quality)",
+        "large": "4-6 hooks (comprehensive protection across layers)",
+    }.get(size, "3-4 hooks")
+
+    user = f"""Generate a HOOKS.md with recommended Claude Code hooks for this project.
+
+## Project
+- Tech stack: {tech_str}
+- Complexity: {size}
+- Layers: {", ".join(layers.keys()) or "main"}
+- Has tests: {"yes" if has_tests else "no"}
+
+## Critical files to protect (MUST NOT be deleted or overwritten carelessly)
+{critical_text}
+
+## Available tools for this stack
+{tools_text}
+
+## Scope
+Generate {scope}.
+
+## Requirements
+- PreToolUse hooks MUST protect the critical files listed above from deletion
+- If tools are available: include a PostToolUse hook for lint/format checking on Write
+- If tests exist: suggest a PostToolUse hook that reminds to run tests after changes
+- Hook scripts must use `import sys, json` and read from `sys.stdin`
+- Exit codes: 0 = allow, 2 = block, JSON stdout with decision "ask" = prompt user
+- Each hook example must be complete and runnable — no placeholders
+- Configuration JSON must use exact Claude Code hook format:
+  {{"hooks": {{"PreToolUse": [{{"matcher": "...", "hooks": [{{"type": "command", "command": "..."}}]}}]}}}}
+"""
+    return HOOKS_SYSTEM, user
+
