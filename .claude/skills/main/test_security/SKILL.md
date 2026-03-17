@@ -58,8 +58,8 @@ results = scanner()
 
 ## When to Use
 
-- When you need user data for security-related tests.
-- When scanning the application for vulnerabilities during testing.
+- When you need user data for security testing.
+- When scanning for vulnerabilities in your application.
 
 ## Commands
 
@@ -75,6 +75,6 @@ Hardcoding user data can lead to security risks and unreliable tests.
 
 ```python
 # BAD
-users = [{"username": "admin", "password": "1234"}]
+users = ["admin", "user1", "user2"]
 ```
 <!-- L3:END -->

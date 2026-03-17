@@ -37,9 +37,9 @@ Task execution:
 - /home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md — load when working with main
 - /home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md — load when working with harness
 - /home/runner/work/repoforge/repoforge/.claude/skills/main/test_compressor/SKILL.md — load when working with test_compressor
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/test_plugins/SKILL.md — load when working with test_plugins
 - /home/runner/work/repoforge/repoforge/.claude/skills/main/test_scorer/SKILL.md — load when working with test_scorer
 - /home/runner/work/repoforge/repoforge/.claude/skills/main/test_security/SKILL.md — load when working with test_security
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md — load when working with docs_prompts
 
 ## Constraints
 

@@ -27,41 +27,37 @@ This skill covers patterns for creating and managing test scorers.
 
 | Task | Pattern |
 |------|---------|
-| Create a user | `create_user` |
-| Get users | `get_users` |
+| Get users | `get_users()` |
+| Create user | `create_user()` |
 
 ## Critical Patterns (Summary)
-- **Create User**: Use `create_user` to add a new user to the scorer.
-- **Get Users**: Utilize `get_users` to retrieve a list of users for scoring.
+- **Get Users**: Retrieve a list of users from the database.
+- **Create User**: Add a new user to the database.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Create User
-
-Use `create_user` to add a new user to the scorer, ensuring the user is properly initialized.
-
-```python
-from tests.test_scorer import create_user
-
-new_user = create_user(name="John Doe", score=85)
-```
-
 ### Get Users
 
-Utilize `get_users` to retrieve a list of users for scoring, which can be used for various operations.
+Retrieve a list of users from the database using the `get_users` function.
 
 ```python
-from tests.test_scorer import get_users
-
 users = get_users()
+```
+
+### Create User
+
+Add a new user to the database with the `create_user` function.
+
+```python
+new_user = create_user(name="John Doe", email="john@example.com")
 ```
 
 ## When to Use
 
-- When you need to add new users to the scoring system.
-- When retrieving user data for analysis or scoring purposes.
+- When you need to fetch user data for scoring.
+- When creating new users for testing purposes.
 
 ## Commands
 
@@ -73,10 +69,10 @@ pytest tests/test_scorer.py
 
 ### Don't: Use hardcoded user data
 
-Hardcoding user data can lead to maintenance issues and reduced flexibility.
+Hardcoding user data can lead to maintenance issues and reduced test reliability.
 
 ```python
 # BAD
-user = create_user(name="Hardcoded User", score=100)
+user = create_user(name="Hardcoded User", email="hardcoded@example.com")
 ```
 <!-- L3:END -->

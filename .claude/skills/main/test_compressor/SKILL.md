@@ -28,11 +28,11 @@ This skill covers patterns for creating fixtures to test compression passes.
 | Task | Pattern |
 |------|---------|
 | Create user fixture | `create_user` |
-| Get user data | `get_user` |
+| Get user fixture | `get_user` |
 
 ## Critical Patterns (Summary)
-- **Create User Fixture**: Use `create_user` to set up user data for tests.
-- **Get User Data**: Utilize `get_user` to retrieve user information during tests.
+- **Create User Fixture**: Use `create_user` to set up a user for testing.
+- **Get User Fixture**: Utilize `get_user` to retrieve user data for tests.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,32 +40,28 @@ This skill covers patterns for creating fixtures to test compression passes.
 
 ### Create User Fixture
 
-Use `create_user` to set up user data for tests, ensuring that the necessary user context is available.
+Use `create_user` to set up a user for testing compression functionality.
 
 ```python
 from tests.test_compressor import create_user
 
-def test_user_creation():
-    user = create_user(name="Test User", email="test@example.com")
-    assert user.name == "Test User"
+user = create_user(name="Test User", email="test@example.com")
 ```
 
-### Get User Data
+### Get User Fixture
 
-Utilize `get_user` to retrieve user information during tests, allowing for validation of user-related functionality.
+Utilize `get_user` to retrieve user data for tests, ensuring the user exists.
 
 ```python
 from tests.test_compressor import get_user
 
-def test_get_user():
-    user = get_user(user_id=1)
-    assert user.email == "test@example.com"
+user = get_user(user_id=1)
 ```
 
 ## When to Use
 
-- When setting up user data for testing compression functionality.
-- When validating user retrieval in compression tests.
+- When you need to create a user for testing compression passes.
+- When you need to retrieve user data to validate compression results.
 
 ## Commands
 
@@ -77,11 +73,10 @@ pytest tests/test_compressor.py
 
 ### Don't: Hardcode User Data
 
-Hardcoding user data can lead to brittle tests that fail when data changes.
+Hardcoding user data can lead to brittle tests that fail with changes in the data model.
 
 ```python
 # BAD
-def test_hardcoded_user():
-    assert get_user(user_id=1).name == "Hardcoded User"
+user = {"name": "Hardcoded User", "email": "bad@example.com"}
 ```
 <!-- L3:END -->
