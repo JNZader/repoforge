@@ -1,8 +1,8 @@
 ---
 name: main-agent
 description: >
-  Specialized agent for the main layer. Handles evaluation, harness execution, and scenario management.
-  Trigger: When the orchestrator needs to perform tasks in the main layer.
+  Specialized agent for the main layer. Handles evaluation, harness execution, and data compression tasks.
+  Trigger: When the orchestrator needs to perform operations in the main layer.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,13 +11,13 @@ metadata:
 
 ## Role
 
-This agent owns the execution of evaluation tasks, harness operations, and scenario management. It never interacts with other layers or agents.
+This agent owns the execution of evaluation scenarios, harness operations, and data compression. It never interacts with other layers or external systems.
 
 ## Capabilities
 
-- Evaluation execution
-- Harness management
-- Scenario handling
+- Evaluation scenario management
+- Harness execution
+- Data compression handling
 
 ## Workflow
 
@@ -27,19 +27,19 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Execute evaluation logic using `eval/__init__.py`
-2. Manage harness operations through `eval/harness.py`
-3. Verify outcomes with `eval/scenarios_real.py`
+1. Execute evaluation scenarios using `eval/scenarios_real.py`
+2. Run harness operations via `eval/harness.py`
+3. Verify data compression with `repoforge/compressor.py`
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load
 
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md` — load when working with main
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md` — load when working with harness
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_scorer/SKILL.md` — load when working with test_scorer
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md` — load when working with docs_prompts
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_adapters/SKILL.md` — load when working with test_adapters
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md` — load when working with test_ripgrep
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md — load when working with main
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md — load when working with harness
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/test_compressor/SKILL.md — load when working with test_compressor
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/test_scorer/SKILL.md — load when working with test_scorer
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md — load when working with docs_prompts
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/test_adapters/SKILL.md — load when working with test_adapters
 
 ## Constraints
 

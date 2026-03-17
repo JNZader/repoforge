@@ -59,7 +59,7 @@ skills = sample_skills
 ## When to Use
 
 - When validating user data in tests.
-- When checking predefined skills against expected outcomes.
+- When checking the integrity of predefined skills.
 
 ## Commands
 
@@ -71,7 +71,7 @@ pytest tests/test_adapters.py
 
 ### Don't: Use hardcoded values
 
-Hardcoding values can lead to brittle tests that fail with changes in data.
+Hardcoded values can lead to brittle tests that fail with changes in data.
 
 ```python
 # BAD

@@ -1,7 +1,7 @@
 ---
 name: main-layer
 description: >
-  This layer encompasses the core functionality of the project, including evaluation and adaptation modules.
+  This layer encompasses the core functionality of the project, managing the primary modules and their interactions.
   Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # main-layer
 
-This skill covers the core functionalities of the project, including evaluation and adaptation modules.
+This skill covers the core functionalities and modules of the project.
 
 **Trigger**: When working in main/ directory and its main responsibility.
 <!-- L1:END -->
@@ -27,57 +27,58 @@ This skill covers the core functionalities of the project, including evaluation 
 
 | Task | Pattern |
 |------|---------|
-| Create a FastAPI CRUD module | `make_fastapi_crud_module()` |
+| Create a new module | `eval/harness.py` |
 
 ## Critical Patterns (Summary)
-- **FastAPI CRUD Module**: Use `make_fastapi_crud_module` to quickly scaffold a CRUD API.
-- **Adaptation for Targets**: Utilize `adapt_for_*` functions to ensure compatibility with various target identifiers.
+- **Module Initialization**: Ensure proper path setup when running modules directly.
+- **Data Adaptation**: Use adapters for valid target identifiers in the project.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### FastAPI CRUD Module
+### Module Initialization
 
-Use `make_fastapi_crud_module` to quickly scaffold a CRUD API for your data models.
+Ensure proper path setup when running modules directly to avoid import errors.
 
 ```python
-from eval.harness import make_fastapi_crud_module
+# eval/harness.py
+import sys
+import os
 
-app = make_fastapi_crud_module(model_name="User")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 ```
 
-### Adaptation for Targets
+### Data Adaptation
 
-Utilize `adapt_for_*` functions to ensure compatibility with various target identifiers.
+Use adapters for valid target identifiers to maintain a consistent display order across the application.
 
 ```python
-from repoforge.adapters import adapt_for_cursor
-
-result = adapt_for_cursor(data)
+# repoforge/adapters.py
+def adapt_for_cursor(data):
+    # Adapt data for cursor usage
+    pass
 ```
 
 ## When to Use
 
-- When creating new API endpoints for data models.
-- When adapting data for different target systems.
+- When creating or modifying core modules that interact with the main application.
+- When integrating new features that require adjustments to existing modules.
 
 ## Commands
 
 ```bash
 python -m eval.harness
-python -m repoforge.cli
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify core evaluation logic without testing
+### Don't: Change core module structure without updating imports
 
-Changing core evaluation logic can lead to unexpected behavior across the project.
+This can lead to broken references and runtime errors across the application.
 
 ```python
 # BAD
-def faulty_logic():
-    return "This will break things!"
+from eval.harness import some_function  # If harness.py is moved or renamed
 ```
 <!-- L3:END -->

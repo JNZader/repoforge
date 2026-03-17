@@ -61,7 +61,7 @@ overview = overview_prompt()
 ## When to Use
 
 - When creating structured documentation for a project.
-- When needing to provide users with a clear index or overview of the content.
+- When needing to provide users with a clear overview of the documentation content.
 
 ## Commands
 

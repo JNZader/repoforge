@@ -43,7 +43,7 @@ Before handling any task:
 
 ## Sub-agents
 
-- `main-agent` — handles `./` (29 modules, Python)
+- `main-agent` — handles `./` (30 modules, Python)
 
 ## For Complex Features (SDD mode)
 
