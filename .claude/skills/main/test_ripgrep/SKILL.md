@@ -1,8 +1,8 @@
 ---
 name: add-test-ripgrep-endpoint
 description: >
-  This skill covers adding endpoints to the user management router.
-  Trigger: When implementing new user-related features in test_ripgrep.
+  This skill covers patterns for managing user endpoints in the test_ripgrep module.
+  Trigger: When implementing user management features.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,7 +13,7 @@ metadata:
 
 ### Create User Endpoint
 
-Define an endpoint to create a new user in the user management system.
+Define a FastAPI endpoint to create a new user.
 
 ```python
 from fastapi import FastAPI
@@ -28,7 +28,7 @@ def add_user(user_data: dict):
 
 ### Get Users Endpoint
 
-Implement an endpoint to retrieve a list of users.
+Set up an endpoint to retrieve the list of users.
 
 ```python
 from fastapi import FastAPI
@@ -45,7 +45,7 @@ def list_users():
 
 - When adding new user management features in the test_ripgrep module.
 - When integrating user data retrieval in the application.
-- To debug user creation issues in the user management router.
+- To debug user creation issues during testing.
 
 ## Commands
 
@@ -57,7 +57,7 @@ pytest tests/test_ripgrep.py
 
 ### Don't: Hardcode User Data
 
-Hardcoding user data can lead to maintenance issues and security vulnerabilities.
+Hardcoding user data can lead to maintenance issues and security risks.
 
 ```python
 # BAD
@@ -68,7 +68,7 @@ def add_user():
 
 ## Quick Reference
 
-| Task                | Pattern                      |
-|---------------------|------------------------------|
-| Create user endpoint | `add_user`                  |
-| Get users endpoint   | `list_users`                |
+| Task                     | Pattern                      |
+|--------------------------|------------------------------|
+| Create user endpoint     | `add_user`                   |
+| Get users endpoint       | `list_users`                 |

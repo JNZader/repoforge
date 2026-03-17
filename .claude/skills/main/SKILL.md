@@ -17,10 +17,10 @@ metadata:
 ├── eval/harness.py — Adds parent to path when running directly
 ├── eval/scenarios_real.py — Contains real module snapshots
 ├── repoforge/__init__.py — Initializes the repoforge module
-├── repoforge/cli.py — Shared options factory for CLI commands
-├── repoforge/docs_generator.py — Generates project documentation
-├── repoforge/docs_prompts.py — Shared system prompts for documentation
-└── repoforge/docsify.py — Main entry point for documentation building
+├── repoforge/cli.py — Shared options factory
+├── repoforge/docs_generator.py — Generates documentation
+├── repoforge/docs_prompts.py — Shared system prompts
+└── repoforge/docsify.py — Main entry point for documentation
 ```
 
 ## Critical Patterns
@@ -36,7 +36,7 @@ from repoforge.cli import main
 
 ### Documentation Generation
 
-Use `repoforge/docs_generator.py` to create documentation for new features.
+Use `repoforge/docs_generator.py` to create documentation files.
 
 ```python
 # Example
@@ -46,26 +46,27 @@ from repoforge.docs_generator import generate_docs
 ## When to Use
 
 - Creating new CLI commands
-- Generating documentation for new modules
+- Generating project documentation
 - Implementing evaluation scenarios
 
 ## Adding a New CLI Command
 
 1. Modify `repoforge/cli.py` to include the new command.
-2. Implement the command logic in a new function.
-3. Update the documentation in `repoforge/docs_generator.py`.
-4. Test the command using the CLI.
+2. Define the command's functionality in a new function.
+3. Update the command's help text and options.
+4. Test the command using the CLI interface.
 
 ## Commands
 
 ```bash
 python -m repoforge.cli
+python -m repoforge.docs_generator
 ```
 
 ## Anti-Patterns
 
-- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent modules — this can break existing CLI commands.
-- **Don't**: Modify `eval/scenarios_real.py` without ensuring compatibility with the main evaluation logic — this can lead to inconsistent behavior.
+- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
+- **Don't**: Modify the documentation prompts in `repoforge/docs_prompts.py` without ensuring all documentation generation processes are updated — this can lead to inconsistent documentation.
 
 ## Quick Reference
 
