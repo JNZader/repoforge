@@ -38,6 +38,16 @@ from .security import (
     Severity,
     scan_generated_output,
 )
+from .plugins import (
+    Command,
+    PluginManifest,
+    build_commands,
+    build_plugin_manifest,
+    commands_prompt,
+    manifest_to_json,
+    manifest_to_markdown,
+    write_plugin,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -69,4 +79,12 @@ __all__ = [
     "Finding",
     "Severity",
     "scan_generated_output",
+    "Command",
+    "PluginManifest",
+    "build_commands",
+    "build_plugin_manifest",
+    "commands_prompt",
+    "manifest_to_json",
+    "manifest_to_markdown",
+    "write_plugin",
 ]
