@@ -75,6 +75,7 @@ def main():
       docs      Generate technical documentation (Docsify-ready, GH Pages compatible)
       export    Flatten repo into a single LLM-optimized file (no API key needed)
       compress  Token-optimize generated .md files (no API key needed)
+      graph     Build a code knowledge graph from scanner data (no API key needed)
 
     \b
     Examples:
@@ -90,6 +91,8 @@ def main():
       repoforge export -w . -o context.md
       repoforge export -w . --max-tokens 100000 --format xml
       repoforge compress -w . --aggressive --dry-run
+      repoforge graph -w . --format mermaid
+      repoforge graph -w . --blast-radius src/auth.py
     """
     pass
 
@@ -671,6 +674,115 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     else:
         click.echo("No .md files found.", err=True)
         sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# graph subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--workspace",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("-o", "--output", "output_path", default=None,
+    help="Output file path. If not set, prints to stdout.",
+    type=click.Path(),
+)
+@click.option("--format", "fmt",
+    default="summary", show_default=True,
+    type=click.Choice(["mermaid", "json", "dot", "summary"], case_sensitive=False),
+    help="Output format: mermaid, json, dot, or summary.")
+@click.option("--blast-radius", default=None,
+    help="Show blast radius for a specific module (path or name).")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def graph(workspace, output_path, fmt, blast_radius, quiet):
+    """
+    Build a code knowledge graph from scanner data (no API key needed).
+
+    \b
+    Scans the repo and builds a lightweight dependency graph based on
+    import/export name matching. No tree-sitter needed — uses RepoMap data.
+
+    \b
+    Output formats:
+      summary  — Human-readable stats (modules, deps, most connected)
+      mermaid  — Mermaid flowchart diagram (for docs / README)
+      json     — D3/Cytoscape-compatible nodes + edges
+      dot      — Graphviz DOT format
+
+    \b
+    Examples:
+      repoforge graph -w .                             # summary to stdout
+      repoforge graph -w . --format mermaid            # Mermaid diagram
+      repoforge graph -w . --format json -o graph.json # JSON to file
+      repoforge graph -w . --format dot -o graph.dot   # DOT to file
+      repoforge graph -w . --blast-radius src/auth.py  # blast radius
+    """
+    import sys
+    from .graph import build_graph_from_workspace
+
+    if not quiet:
+        print(f"Building code graph for {workspace} ...", file=sys.stderr)
+
+    code_graph = build_graph_from_workspace(workspace)
+
+    # Handle blast radius mode
+    if blast_radius:
+        # Try exact match first, then fuzzy match on module name
+        node = code_graph.get_node(blast_radius)
+        if not node:
+            # Search by name or partial path
+            for n in code_graph.nodes:
+                if n.name == blast_radius or blast_radius in n.id:
+                    node = n
+                    break
+
+        if not node:
+            click.echo(f"Module not found: {blast_radius}", err=True)
+            click.echo("Available modules:", err=True)
+            for n in code_graph.nodes:
+                if n.node_type == "module":
+                    click.echo(f"  {n.id} ({n.name})", err=True)
+            sys.exit(1)
+
+        affected = code_graph.get_blast_radius(node.id)
+        lines = [
+            f"Blast radius for: {node.id}",
+            f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
+            f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
+            f"Total affected by change: {len(affected)} module(s)",
+        ]
+        if affected:
+            lines.append("")
+            lines.append("Affected modules:")
+            for mid in affected:
+                anode = code_graph.get_node(mid)
+                name = anode.name if anode else mid
+                lines.append(f"  {name} ({mid})")
+
+        output = "\n".join(lines)
+    else:
+        # Normal format output
+        if fmt == "mermaid":
+            output = code_graph.to_mermaid()
+        elif fmt == "json":
+            output = code_graph.to_json()
+        elif fmt == "dot":
+            output = code_graph.to_dot()
+        else:
+            output = code_graph.summary()
+
+    # Write output
+    if output_path:
+        from pathlib import Path
+        Path(output_path).write_text(output, encoding="utf-8")
+        if not quiet:
+            print(f"Written to {output_path}", file=sys.stderr)
+    else:
+        click.echo(output)
 
 
 # ---------------------------------------------------------------------------
