@@ -58,5 +58,5 @@ import some_module  # Fails if not in the correct path
 
 | Task                     | Pattern                          |
 |--------------------------|----------------------------------|
-| Create FastAPI module    | `make_fastapi_crud_module`      |
-| Create Next.js page      | `make_nextjs_page_module`       |
+| Create FastAPI Module    | `make_fastapi_crud_module`      |
+| Create Next.js Page      | `make_nextjs_page_module`       |

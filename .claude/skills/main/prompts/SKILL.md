@@ -18,10 +18,10 @@ Utilize `skill_prompt` to define a new skill prompt for the system.
 ```python
 from repoforge.prompts import skill_prompt
 
-new_skill = skill_prompt("example_skill", "This is an example skill prompt.")
+new_skill = skill_prompt("New skill description")
 ```
 
-### Building a skill registry
+### Building skill registry
 
 Leverage `build_skill_registry` to create a registry of all defined skills.
 
@@ -34,8 +34,8 @@ registry = build_skill_registry([new_skill])
 ## When to Use
 
 - When defining new skills for the application using prompts.
-- To create a centralized registry of skills for easier management.
-- When integrating prompts into various layers of the application.
+- When creating a registry of skills for orchestration.
+- To debug prompt-related issues in the skill definitions.
 
 ## Commands
 
@@ -45,21 +45,22 @@ python repoforge/cli.py add-prompts-endpoint
 
 ## Anti-Patterns
 
-### Don't: Overuse hooks_prompt
+### Don't: Overuse skill_prompt
 
-Overusing `hooks_prompt` can lead to complex and unmanageable code. 
+Overusing `skill_prompt` can lead to a cluttered and unmanageable skill set.
 
 ```python
-from repoforge.prompts import hooks_prompt
+# BAD
+from repoforge.prompts import skill_prompt
 
-# BAD: Excessive use of hooks leading to confusion
-hooks_prompt("hook1", "First hook")
-hooks_prompt("hook2", "Second hook")
+skill1 = skill_prompt("Skill 1")
+skill2 = skill_prompt("Skill 2")
+skill3 = skill_prompt("Skill 3")  # Too many skills without organization
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                     |
-|--------------------------|-----------------------------|
-| Define a new skill prompt| `skill_prompt(...)`         |
-| Create a skill registry   | `build_skill_registry(...)` |
+| Task | Pattern |
+|------|---------|
+| Define a new skill prompt | `skill_prompt("description")` |
+| Create a skill registry | `build_skill_registry([skills])` |

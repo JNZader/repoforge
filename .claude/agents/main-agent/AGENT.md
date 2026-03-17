@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the execution of tasks related to evaluation, documentation, and command-line interface operations. It never interacts with other layers or agents.
+This agent owns the execution of tasks related to evaluation and documentation within the main layer. It never interacts with other layers or external systems.
 
 ## Capabilities
 
@@ -29,7 +29,7 @@ Before starting ANY task:
 Task execution:
 1. Execute evaluation logic from `eval/harness.py`
 2. Generate documentation using `repoforge/docs_generator.py`
-3. Verify the output and functionality
+3. Verify the output and ensure correctness
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load

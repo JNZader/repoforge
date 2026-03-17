@@ -1,8 +1,8 @@
 ---
 name: main-layer
 description: >
-  This layer owns the core functionality of the project, including evaluation and documentation generation.
-  Trigger: When working in main/ — adding, modifying, or debugging core features and documentation.
+  This layer owns the core functionality of the project, including CLI commands, documentation generation, and module exports.
+  Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -25,36 +25,38 @@ metadata:
 
 ## Critical Patterns
 
-### Module Export Convention
+### Module Exporting
 
-Always export functions at the module level for easy access.
+Always export necessary functions at the module level for easy access.
 
 ```python
-# Example using real exported names
-from eval.harness import make_fastapi_crud_module
+# eval/harness.py
+def make_fastapi_crud_module():
+    pass
 ```
 
 ### Documentation Generation
 
-Use the `generate_docs` function to create documentation from prompts.
+Use the docs generator to create up-to-date documentation.
 
 ```python
-# Example
-from repoforge.docs_generator import generate_docs
+# repoforge/docs_generator.py
+def generate_docs():
+    pass
 ```
 
 ## When to Use
 
-- Creating new evaluation modules
-- Generating project documentation
-- Modifying shared prompts for documentation
+- Creating new CLI commands
+- Generating or updating project documentation
+- Integrating new modules into the core functionality
 
-## Adding a New Module
+## Adding a New CLI Command
 
-1. Create a new file in the `eval/` directory, e.g., `eval/new_module.py`
-2. Define the necessary functions and export them
-3. Update the `__init__.py` file to include the new module
-4. Verify by running the documentation generation command
+1. Modify `repoforge/cli.py` to include the new command.
+2. Implement the command logic in a new function.
+3. Update the documentation in `repoforge/docs_generator.py`.
+4. Verify the command works by running it in the terminal.
 
 ## Commands
 
@@ -64,12 +66,13 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-- **Don't**: Change the structure of the `eval/` directory without updating imports — this will break module references.
-- **Don't**: Modify shared prompts in `repoforge/docs_prompts.py` without coordinating with documentation updates — this can lead to inconsistencies in generated docs.
+- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent modules — this can break command execution.
+- **Don't**: Remove exports from `eval/harness.py` without ensuring all modules that rely on them are updated — this can lead to runtime errors.
 
 ## Quick Reference
 
-| Task                | File                          | Pattern                          |
-|---------------------|-------------------------------|----------------------------------|
-| Generate documentation | `repoforge/docs_generator.py` | `generate_docs`                  |
-| Create a new module | `eval/new_module.py`         | `make_fastapi_crud_module`       |
+| Task               | File                        | Pattern                     |
+|--------------------|-----------------------------|-----------------------------|
+| Add a new command   | `repoforge/cli.py`         | `def new_command():`       |
+| Generate docs       | `repoforge/docs_generator.py` | `generate_docs()`          |
+| Use shared prompts   | `repoforge/docs_prompts.py` | `index_prompt`             |
