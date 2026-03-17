@@ -13,31 +13,31 @@ metadata:
 
 ### Use Index Prompt
 
-Utilize the `index_prompt` to provide a structured entry point for your documentation.
+Utilize the `index_prompt` to provide a structured introduction to your documentation.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def generate_index():
+def inject_index():
     return index_prompt
 ```
 
 ### Implement Overview Prompt
 
-Leverage the `overview_prompt` to summarize the key aspects of your documentation.
+Incorporate the `overview_prompt` to summarize the key aspects of your documentation.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
-def generate_overview():
+def inject_overview():
     return overview_prompt
 ```
 
 ## When to Use
 
 - When creating a new chapter in your documentation.
-- To provide a quick reference for users navigating through the documentation.
-- During the review process to ensure all chapters have consistent prompts.
+- To provide a consistent introduction across multiple sections.
+- During the review process to ensure clarity and coherence.
 
 ## Commands
 
@@ -50,17 +50,17 @@ python repoforge/cli.py update-prompts
 
 ### Don't: Skip Prompt Integration
 
-Neglecting to integrate prompts can lead to disorganized documentation and user confusion.
+Neglecting to integrate prompts can lead to disjointed documentation. 
 
 ```python
 # BAD
-def generate_documentation():
-    return "This is a documentation without prompts."
+def inject_without_prompts():
+    return "This is a chapter without prompts."
 ```
 
 ## Quick Reference
 
 | Task | Pattern |
 |------|---------|
-| Generate index | `index_prompt` |
-| Create overview | `overview_prompt` |
+| Inject index prompt | `index_prompt` |
+| Use overview prompt | `overview_prompt` |

@@ -1,7 +1,7 @@
 ---
 name: main-layer
 description: >
-  This layer owns the core functionality of the project, including CLI commands, documentation generation, and evaluation scenarios.
+  This layer owns the core functionality of the project, including evaluation and documentation generation.
   Trigger: When working in main/ — adding, modifying, or debugging core functionalities.
 license: Apache-2.0
 metadata:
@@ -25,52 +25,53 @@ metadata:
 
 ## Critical Patterns
 
-### CLI Command Structure
+### Module Initialization
 
-All CLI commands should follow the pattern defined in `repoforge/cli.py`.
+Always initialize modules in `__init__.py` to ensure proper imports.
 
 ```python
-# Example using real exported names
-from repoforge.cli import main
+# eval/__init__.py
+from .harness import make_fastapi_crud_module
 ```
 
 ### Documentation Generation
 
-Use the `repoforge/docs_generator.py` to create documentation files.
+Use the `generate_docs` function to create documentation files.
 
 ```python
-# Example
-from repoforge.docs_generator import generate_docs
+# repoforge/docs_generator.py
+def generate_docs():
+    # Implementation here
 ```
 
 ## When to Use
 
-- Creating new CLI commands
+- Creating new evaluation scenarios
 - Generating project documentation
-- Implementing evaluation scenarios
+- Modifying shared CLI options
 
-## Adding a New CLI Command
+## Adding a New Module
 
-1. Modify `repoforge/cli.py` to include the new command.
-2. Implement the command logic in a new function.
-3. Update the command's help text and options.
-4. Test the command using the CLI interface.
+1. Create a new file in the `eval/` directory, e.g., `eval/new_module.py`.
+2. Implement the required functionality.
+3. Update `eval/__init__.py` to include the new module.
+4. Verify by running the documentation generation command.
 
 ## Commands
 
 ```bash
 python -m repoforge.cli
-python -m repoforge.docs_generator
 ```
 
 ## Anti-Patterns
 
-- **Don't**: Change the structure of `repoforge/cli.py` without updating all dependent commands — this can break existing CLI functionality.
-- **Don't**: Modify the exports in `eval/harness.py` without ensuring compatibility with all evaluation scenarios — this can lead to runtime errors.
+- **Don't**: Modify `eval/harness.py` without updating dependent modules — it can break the entire evaluation flow.
+- **Don't**: Change the structure of `repoforge/docs_prompts.py` without ensuring all documentation calls are updated — it can lead to missing prompts in generated docs.
 
 ## Quick Reference
 
-| Task                | File                          | Pattern                          |
-|---------------------|-------------------------------|----------------------------------|
-| Add a new CLI command | `repoforge/cli.py`          | `from repoforge.cli import main` |
-| Generate documentation | `repoforge/docs_generator.py` | `from repoforge.docs_generator import generate_docs` |
+| Task                | File                          | Pattern                     |
+|---------------------|-------------------------------|-----------------------------|
+| Generate Docs       | `repoforge/docs_generator.py` | `generate_docs()`           |
+| Add CLI Options     | `repoforge/cli.py`           | `main()`                    |
+| Initialize Module   | `eval/__init__.py`           | `from .harness import ...`  |

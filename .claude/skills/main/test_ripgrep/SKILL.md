@@ -68,7 +68,7 @@ def add_user():
 
 ## Quick Reference
 
-| Task                     | Pattern                       |
-|--------------------------|-------------------------------|
-| Create user endpoint     | `add_user`                    |
-| Get users endpoint       | `list_users`                  |
+| Task                     | Pattern                      |
+|--------------------------|------------------------------|
+| Create user endpoint     | `add_user`                   |
+| Get users endpoint       | `list_users`                 |

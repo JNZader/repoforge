@@ -1,7 +1,7 @@
 ---
 name: add-scenarios-real-endpoint
 description: >
-  This skill covers adding endpoints for scenarios_real.
+  This skill covers adding endpoints for scenarios in the real module.
   Trigger: When integrating new functionality into the scenarios_real module.
 license: Apache-2.0
 metadata:
@@ -13,7 +13,7 @@ metadata:
 
 ### Get Reports Backend Module
 
-Use this pattern to retrieve the reports backend module for scenarios.
+Use this function to retrieve the backend module for reports.
 
 ```python
 from eval.scenarios_real import get_reports_backend_module
@@ -23,7 +23,7 @@ reports_backend = get_reports_backend_module()
 
 ### Get Auth Backend Module
 
-This pattern allows you to access the authentication backend module.
+Utilize this function to access the authentication backend module.
 
 ```python
 from eval.scenarios_real import get_auth_backend_module
@@ -33,9 +33,9 @@ auth_backend = get_auth_backend_module()
 
 ## When to Use
 
-- When you need to fetch backend modules for reports in scenarios_real.
-- When implementing authentication features in scenarios_real.
-- To debug issues related to module retrieval in scenarios_real.
+- When you need to implement reporting features in the scenarios_real module.
+- To enhance authentication processes within the scenarios_real context.
+- During debugging of backend integrations in the scenarios_real module.
 
 ## Commands
 
@@ -45,13 +45,14 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-### Don't: Hardcode Module Imports
+### Don't: Hardcode Module Paths
 
-Hardcoding module imports can lead to maintenance issues and reduce flexibility.
+Hardcoding paths can lead to maintenance issues and reduce code portability.
 
 ```python
 # BAD
-from eval.scenarios_real import get_reports_backend_module, get_auth_backend_module
+import sys
+sys.path.append('/absolute/path/to/eval/scenarios_real')
 ```
 
 ## Quick Reference

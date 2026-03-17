@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the execution of tasks related to evaluation, documentation, and scenario management. It never interacts with other layers or agents.
+This agent owns the execution of evaluation tasks, documentation generation, and scenario management. It never interacts with other layers or agents.
 
 ## Capabilities
 
@@ -29,17 +29,17 @@ Before starting ANY task:
 Task execution:
 1. Execute evaluation logic from `eval/__init__.py`
 2. Generate documentation using `repoforge/docs_generator.py`
-3. Manage scenarios with `eval/scenarios_real.py`
+3. Verify the output and scenarios using `eval/scenarios_real.py`
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load
 
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md` — load when working with main
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md` — load when working with harness
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md` — load when working with docs_prompts
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md` — load when working with test_ripgrep
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/ripgrep/SKILL.md` — load when working with ripgrep
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/scenarios_real/SKILL.md` — load when working with scenarios_real
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md — load when working with main
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md — load when working with harness
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md — load when working with docs_prompts
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md — load when working with test_ripgrep
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/ripgrep/SKILL.md — load when working with ripgrep
+- /home/runner/work/repoforge/repoforge/.claude/skills/main/scenarios_real/SKILL.md — load when working with scenarios_real
 
 ## Constraints
 
