@@ -34,12 +34,12 @@ Task execution:
 
 ## Skills to Load
 
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md — load when working with main
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md — load when working with harness
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md — load when working with docs_prompts
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md — load when working with test_ripgrep
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/ripgrep/SKILL.md — load when working with ripgrep
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/prompts/SKILL.md — load when working with prompts
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md` — load when working with main
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md` — load when working with harness
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md` — load when working with docs_prompts
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md` — load when working with test_ripgrep
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/ripgrep/SKILL.md` — load when working with ripgrep
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/prompts/SKILL.md` — load when working with prompts
 
 ## Constraints
 

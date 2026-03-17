@@ -28,7 +28,7 @@ def add_user(user_data: dict):
 
 ### Get Users Endpoint
 
-Set up an endpoint to retrieve the list of users.
+Set up an endpoint to retrieve a list of users.
 
 ```python
 from fastapi import FastAPI
@@ -68,7 +68,7 @@ def add_user():
 
 ## Quick Reference
 
-| Task                     | Pattern                          |
-|--------------------------|----------------------------------|
-| Create user endpoint     | `add_user`                       |
-| Get users endpoint       | `list_users`                    |
+| Task               | Pattern                      |
+|--------------------|------------------------------|
+| Create user        | `add_user`                   |
+| List users         | `list_users`                 |

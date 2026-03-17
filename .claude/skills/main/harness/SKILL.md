@@ -23,7 +23,7 @@ app = make_fastapi_crud_module("Item")
 
 ### Create Next.js Page Module
 
-Utilize this pattern to generate a Next.js page module for the harness.
+This pattern helps in generating a Next.js page module for the harness.
 
 ```python
 from eval.harness import make_nextjs_page_module
@@ -45,18 +45,18 @@ python -m eval.harness
 
 ## Anti-Patterns
 
-### Don't: Hardcode Paths
+### Don't: Skip Path Management
 
-Hardcoding paths can lead to issues with portability and maintainability.
+Neglecting to manage the parent path can lead to module import errors.
 
 ```python
 # BAD
-sys.path.append('/absolute/path/to/harness')
+import some_module  # Fails if not in the correct path
 ```
 
 ## Quick Reference
 
 | Task                     | Pattern                          |
 |--------------------------|----------------------------------|
-| Create FastAPI Module    | `make_fastapi_crud_module`      |
-| Create Next.js Page      | `make_nextjs_page_module`       |
+| Create FastAPI module    | `make_fastapi_crud_module`      |
+| Create Next.js page      | `make_nextjs_page_module`       |
