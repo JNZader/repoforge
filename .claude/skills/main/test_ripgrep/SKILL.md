@@ -13,7 +13,7 @@ metadata:
 
 ### Create User Endpoint
 
-Define a FastAPI endpoint to create a new user.
+Define an endpoint to create a new user using FastAPI.
 
 ```python
 from fastapi import FastAPI
@@ -28,7 +28,7 @@ def add_user(user_data: dict):
 
 ### Get Users Endpoint
 
-Set up an endpoint to retrieve the list of users.
+Implement an endpoint to retrieve a list of users.
 
 ```python
 from fastapi import FastAPI
@@ -44,8 +44,8 @@ def list_users():
 ## When to Use
 
 - When adding new user management features in the test_ripgrep module.
-- When integrating user data retrieval in the application.
-- To debug user creation issues during testing.
+- When needing to expose user data through an API.
+- To debug user creation issues in the application.
 
 ## Commands
 
@@ -57,18 +57,18 @@ pytest tests/test_ripgrep.py
 
 ### Don't: Hardcode User Data
 
-Hardcoding user data can lead to maintenance issues and security risks.
+Hardcoding user data can lead to maintenance issues and security vulnerabilities.
 
 ```python
 # BAD
 def add_user():
-    user_data = {"name": "John Doe", "email": "john@example.com"}
-    return create_user(user_data)
+    user = {"name": "John Doe", "email": "john@example.com"}
+    return create_user(user)
 ```
 
 ## Quick Reference
 
-| Task                     | Pattern                      |
-|--------------------------|------------------------------|
-| Create user endpoint     | `add_user`                   |
-| Get users endpoint       | `list_users`                 |
+| Task                | Pattern                     |
+|---------------------|-----------------------------|
+| Create user endpoint | `add_user`                 |
+| Get users endpoint   | `list_users`               |

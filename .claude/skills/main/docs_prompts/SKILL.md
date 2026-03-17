@@ -2,7 +2,7 @@
 name: add-docs-prompts-endpoint
 description: >
   This skill covers the integration of shared system prompts into your documentation.
-  Trigger: When you need to inject prompts into chapter calls.
+  Trigger: When utilizing the docs_prompts in chapter calls.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,33 +11,33 @@ metadata:
 
 ## Critical Patterns
 
-### Use Index Prompt
+### Using Index Prompt
 
-Utilize the `index_prompt` to provide a structured introduction to your documentation.
+Inject the index prompt into your documentation flow to provide a structured overview.
 
 ```python
 from repoforge.docs_prompts import index_prompt
 
-def inject_index():
+def generate_index():
     return index_prompt
 ```
 
-### Implement Overview Prompt
+### Implementing Overview Prompt
 
-Incorporate the `overview_prompt` to summarize the key aspects of your documentation.
+Utilize the overview prompt to give users a concise introduction to the documentation.
 
 ```python
 from repoforge.docs_prompts import overview_prompt
 
-def inject_overview():
+def generate_overview():
     return overview_prompt
 ```
 
 ## When to Use
 
-- When creating a new chapter in your documentation.
-- To provide a consistent introduction across multiple sections.
-- During the review process to ensure clarity and coherence.
+- When generating documentation for a new chapter.
+- To provide users with a quickstart guide for your project.
+- During the debugging process to ensure prompts are correctly integrated.
 
 ## Commands
 
@@ -48,19 +48,19 @@ python repoforge/cli.py update-prompts
 
 ## Anti-Patterns
 
-### Don't: Skip Prompt Integration
+### Don't: Hardcode Prompts
 
-Neglecting to integrate prompts can lead to disjointed documentation. 
+Hardcoding prompts reduces flexibility and maintainability in your documentation.
 
 ```python
 # BAD
-def inject_without_prompts():
-    return "This is a chapter without prompts."
+def generate_hardcoded_prompt():
+    return "This is a hardcoded prompt."
 ```
 
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
-| Inject index prompt | `index_prompt` |
-| Use overview prompt | `overview_prompt` |
+| Task                       | Pattern                     |
+|----------------------------|-----------------------------|
+| Generate index prompt      | `index_prompt`              |
+| Create overview section     | `overview_prompt`           |

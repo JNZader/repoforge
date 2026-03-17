@@ -15,9 +15,9 @@ This agent owns the execution of evaluation tasks, documentation generation, and
 
 ## Capabilities
 
-- Evaluation execution
-- Documentation generation
-- Scenario management
+- Evaluation execution using `eval/harness.py`
+- Documentation generation with `repoforge/docs_generator.py`
+- Scenario management through `eval/scenarios_real.py`
 
 ## Workflow
 
@@ -27,19 +27,19 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Execute evaluation logic from `eval/__init__.py`
-2. Generate documentation using `repoforge/docs_generator.py`
-3. Verify the output and scenarios using `eval/scenarios_real.py`
+1. Execute evaluation tasks using `eval/harness.py`
+2. Generate documentation with `repoforge/docs_generator.py`
+3. Manage scenarios using `eval/scenarios_real.py`
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load
 
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md — load when working with main
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md — load when working with harness
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md — load when working with docs_prompts
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md — load when working with test_ripgrep
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/ripgrep/SKILL.md — load when working with ripgrep
-- /home/runner/work/repoforge/repoforge/.claude/skills/main/scenarios_real/SKILL.md — load when working with scenarios_real
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md` — load when working with main
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md` — load when working with harness
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/docs_prompts/SKILL.md` — load when working with docs_prompts
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_ripgrep/SKILL.md` — load when working with test_ripgrep
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/ripgrep/SKILL.md` — load when working with ripgrep
+- `/home/runner/work/repoforge/repoforge/.claude/skills/main/scenarios_real/SKILL.md` — load when working with scenarios_real
 
 ## Constraints
 

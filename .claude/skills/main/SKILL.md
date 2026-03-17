@@ -36,12 +36,12 @@ from .harness import make_fastapi_crud_module
 
 ### Documentation Generation
 
-Use the `generate_docs` function to create documentation files.
+Use the `generate_docs` function to create documentation from prompts.
 
 ```python
 # repoforge/docs_generator.py
-def generate_docs():
-    # Implementation here
+from .docs_prompts import index_prompt
+generate_docs(index_prompt)
 ```
 
 ## When to Use
@@ -53,9 +53,9 @@ def generate_docs():
 ## Adding a New Module
 
 1. Create a new file in the `eval/` directory, e.g., `eval/new_module.py`.
-2. Implement the required functionality.
+2. Define the necessary functions and classes.
 3. Update `eval/__init__.py` to include the new module.
-4. Verify by running the documentation generation command.
+4. Verify functionality by running tests in the `eval/` directory.
 
 ## Commands
 
@@ -65,13 +65,12 @@ python -m repoforge.cli
 
 ## Anti-Patterns
 
-- **Don't**: Modify `eval/harness.py` without updating dependent modules — it can break the entire evaluation flow.
-- **Don't**: Change the structure of `repoforge/docs_prompts.py` without ensuring all documentation calls are updated — it can lead to missing prompts in generated docs.
+- **Don't**: Modify `eval/harness.py` without updating dependent modules — this can break the path resolution for other scripts.
+- **Don't**: Change the structure of `repoforge/docs_prompts.py` without ensuring all documentation generation calls are updated — this can lead to missing prompts in generated docs.
 
 ## Quick Reference
 
 | Task                | File                          | Pattern                     |
 |---------------------|-------------------------------|-----------------------------|
-| Generate Docs       | `repoforge/docs_generator.py` | `generate_docs()`           |
-| Add CLI Options     | `repoforge/cli.py`           | `main()`                    |
-| Initialize Module   | `eval/__init__.py`           | `from .harness import ...`  |
+| Generate documentation | `repoforge/docs_generator.py` | `generate_docs`            |
+| Add new evaluation scenario | `eval/scenarios_real.py` | `get_reports_backend_module` |
