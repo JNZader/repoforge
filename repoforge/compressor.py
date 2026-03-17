@@ -141,6 +141,9 @@ class SkillCompressor:
         if aggressive:
             result = self._pass_abbreviations(result, aggressive=True)
 
+        # Final whitespace cleanup — catches artifacts from earlier passes
+        result = self._pass_whitespace(result)
+
         compressed_tokens = _estimate_tokens(result)
         ratio = compressed_tokens / original_tokens if original_tokens > 0 else 1.0
 
