@@ -1,7 +1,7 @@
 ---
 name: backend-layer
 description: >
-  This layer encompasses the backend services for the RepoForge project, primarily built with FastAPI and async database interactions.
+  This layer encompasses the backend services for the RepoForge application, primarily built with FastAPI.
   Trigger: When working in backend/ — adding, modifying, or debugging backend services.
 license: Apache-2.0
 metadata:
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # backend-layer
 
-This skill covers the backend services for the RepoForge project.
+This skill covers the backend services for the RepoForge application.
 
-**Trigger**: When working in backend/ directory and its main responsibility is to manage backend services.
+**Trigger**: When working in backend/ — adding, modifying, or debugging backend services.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,56 +27,60 @@ This skill covers the backend services for the RepoForge project.
 
 | Task | Pattern |
 |------|---------|
-| Initialize FastAPI app | `from apps.server.app.main import lifespan` |
+| Configure logging | `from apps.server.app.middleware.logging_config import configure_logging` |
 
 ## Critical Patterns (Summary)
-- **Middleware Usage**: Implement custom middleware for request handling.
-- **Database Session Management**: Use async database sessions for efficient data access.
+- **Middleware Configuration**: Use custom middleware for request handling and logging.
+- **JWT Authentication**: Implement JWT for secure user authentication.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Middleware Usage
+### Middleware Configuration
 
-Implement custom middleware to handle cross-cutting concerns like logging and authentication.
+Use custom middleware to handle requests, logging, and security headers effectively.
 
 ```python
 # Example of middleware usage
 from apps.server.app.main import request_logging_middleware
+
+app.add_middleware(request_logging_middleware)
 ```
 
-### Database Session Management
+### JWT Authentication
 
-Utilize async database sessions to ensure non-blocking database operations.
+Implement JWT for secure user authentication in FastAPI applications.
 
 ```python
-# Example of database session management
-from apps.server.app.models.database import get_db
+# Example of JWT authentication
+from apps.server.app.middleware.auth import get_current_user
+
+@app.get("/users/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
 ```
 
 ## When to Use
 
-- When implementing new API endpoints that require authentication.
-- When setting up database interactions for new models.
+- When implementing request logging and security features.
+- When managing user authentication and authorization.
 
 ## Commands
 
 ```bash
-# Run migrations
-python apps/server/alembic/env.py run_migrations_online
-# Start FastAPI server
+# Run the FastAPI application
 uvicorn apps.server.app.main:app --reload
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify database models without migration
+### Don't: Change middleware without testing
 
-Changing database models directly can lead to inconsistencies and data loss.
+Changing middleware can break request handling and logging, leading to security vulnerabilities.
 
 ```python
 # BAD
-# Directly modifying models without running migrations
+app.add_middleware(SomeNewMiddleware)  # Without proper testing
 ```
 <!-- L3:END -->

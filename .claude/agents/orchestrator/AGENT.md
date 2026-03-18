@@ -43,7 +43,7 @@ Before handling any task:
 
 ## Sub-agents
 
-- `backend-agent` — handles `apps/server/` (27 modules, Python)
+- `backend-agent` — handles `apps/server/` (29 modules, Python)
 
 ## For Complex Features (SDD mode)
 

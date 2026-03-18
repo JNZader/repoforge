@@ -2,92 +2,87 @@
 name: add-auth-endpoint
 description: >
   This skill covers the implementation of authentication routes.
-  Trigger: When setting up user authentication in the backend.
+  Trigger: When setting up auth-related endpoints in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
-  token_estimate: 450
+  complexity: low
+  token_estimate: 350
   dependencies: []
   related_skills: []
   load_priority: high
 ---
 
 <!-- L1:START -->
-# Add Auth Endpoint
+# add-auth-endpoint
 
 This skill covers the implementation of authentication routes.
 
-**Trigger**: When setting up user authentication in the backend.
+**Trigger**: When setting up auth-related endpoints in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task               | Pattern                  |
-|--------------------|-------------------------|
-| User login         | `login`                 |
-| GitHub callback    | `callback`              |
-| Validate JWT token | `validate_token`        |
-| User logout        | `logout`                |
+| Task               | Pattern                     |
+|--------------------|-----------------------------|
+| User login         | `login`                     |
+| GitHub callback     | `callback`                  |
+| Validate JWT token | `validate_token`            |
+| User logout        | `logout`                    |
 
 ## Critical Patterns (Summary)
-- **User Login**: Handles user login via GitHub OAuth.
-- **Token Validation**: Validates JWT tokens for secure access.
+- **User login**: Handles user authentication via GitHub OAuth.
+- **JWT validation**: Validates the JWT token for secure access.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### User Login
+### User login
 
-Handles user login via GitHub OAuth, redirecting users to the GitHub login page.
+Handles user authentication via GitHub OAuth.
 
 ```python
-from fastapi import APIRouter
 from apps.server.app.routes.auth import login
 
-router = APIRouter()
-
-@router.get("/login")
-async def github_login():
-    return await login()
+@app.post("/login")
+async def login_user(credentials: OAuth2PasswordRequestForm = Depends()):
+    return await login(credentials)
 ```
 
-### Token Validation
+### JWT validation
 
-Validates JWT tokens to ensure secure access to protected routes.
+Validates the JWT token for secure access.
 
 ```python
-from fastapi import Depends
 from apps.server.app.routes.auth import validate_token
 
-@router.get("/protected")
-async def protected_route(token: str = Depends(validate_token)):
-    return {"message": "Access granted"}
+@app.get("/validate")
+async def validate_user(token: str):
+    return await validate_token(token)
 ```
 
 ## When to Use
 
-- When implementing user authentication for a web application.
-- When securing API endpoints with JWT tokens.
+- When implementing user authentication in a FastAPI application.
+- When needing to validate JWT tokens for protected routes.
 
 ## Commands
 
 ```bash
-python -m fastapi run apps/server/app/main.py
+python -m uvicorn apps.server.app.main:app --reload
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode Secrets
+### Don't: Hardcode secrets
 
-Hardcoding secrets like client IDs or secrets is insecure and should be avoided.
+Hardcoding secrets can lead to security vulnerabilities.
 
 ```python
 # BAD
-client_id = "your_client_id"
-client_secret = "your_client_secret"
+SECRET_KEY = "mysecretkey"
 ```
 <!-- L3:END -->

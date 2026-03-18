@@ -73,7 +73,7 @@ python -m apps.server.app.services.crypto
 
 ### Don't: Hardcode API Keys
 
-Hardcoding API keys in your source code exposes them to security risks.
+Hardcoding API keys in the source code exposes them to security risks.
 
 ```python
 # BAD

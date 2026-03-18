@@ -2,7 +2,7 @@
 name: define-request-response-schemas
 description: >
   This skill covers the creation of Pydantic v2 request and response schemas.
-  Trigger: Load when defining schemas for the RepoForge Web API.
+  Trigger: Load this skill when defining schemas for the RepoForge Web API.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# define-request-response-schemas
+# Define Request/Response Schemas
 
 This skill covers the creation of Pydantic v2 request and response schemas.
 
-**Trigger**: Load when defining schemas for the RepoForge Web API.
+**Trigger**: Load this skill when defining schemas for the RepoForge Web API.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,12 +27,12 @@ This skill covers the creation of Pydantic v2 request and response schemas.
 
 | Task | Pattern |
 |------|---------|
-| Define user info schema | `UserInfo` |
+| Define user information schema | `UserInfo` |
 | Create token response schema | `TokenResponse` |
 
 ## Critical Patterns (Summary)
 - **UserInfo**: Defines the schema for user information.
-- **TokenResponse**: Creates a schema for token responses.
+- **TokenResponse**: Creates a schema for the token response.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -45,12 +45,12 @@ Defines the schema for user information, ensuring all required fields are valida
 ```python
 from apps.server.app.models.schemas import UserInfo
 
-user_info = UserInfo(username="john_doe", email="john@example.com")
+user_info = UserInfo(username="john_doe", email="john@example.com", full_name="John Doe")
 ```
 
 ### TokenResponse
 
-Creates a schema for token responses, encapsulating the token and its expiration.
+Creates a schema for the token response, encapsulating the necessary fields for authentication.
 
 ```python
 from apps.server.app.models.schemas import TokenResponse
@@ -60,8 +60,8 @@ token_response = TokenResponse(access_token="abc123", token_type="bearer")
 
 ## When to Use
 
-- When creating user-related API endpoints that require validation.
-- When handling authentication responses in the API.
+- When defining schemas for user-related data in the API.
+- When creating responses for authentication endpoints.
 
 ## Commands
 
@@ -73,10 +73,10 @@ python -m apps.server.app.main
 
 ### Don't: Use unvalidated data
 
-Using unvalidated data can lead to security vulnerabilities and application errors.
+Using unvalidated data can lead to security vulnerabilities and data integrity issues.
 
 ```python
 # BAD
-user_info = UserInfo(username="john_doe", email="not-an-email")
+user_info = UserInfo(username="john_doe", email="invalid_email", full_name="John Doe")
 ```
 <!-- L3:END -->

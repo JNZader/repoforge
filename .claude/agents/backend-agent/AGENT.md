@@ -1,7 +1,7 @@
 ---
 name: backend-agent
 description: >
-  Specialized agent for backend development. Handles FastAPI application management, database interactions, and authentication.
+  Specialized agent for backend development. Handles FastAPI application management, database migrations, and authentication.
   Trigger: When the orchestrator needs to perform tasks in the backend layer.
 license: Apache-2.0
 metadata:
@@ -11,13 +11,13 @@ metadata:
 
 ## Role
 
-This agent manages the backend functionalities of the RepoForge application, including API handling and database operations. It never interacts with frontend components or external services outside its domain.
+This agent owns the backend functionalities, including API management and database migrations. It never interacts with frontend or other layers.
 
 ## Capabilities
 
 - FastAPI application management
-- Async database operations
-- JWT authentication handling
+- Database migration handling with Alembic
+- JWT authentication setup
 
 ## Workflow
 
@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Handle API requests through FastAPI
-2. Interact with the async database engine
-3. Verify authentication using JWT
+1. Manage FastAPI routes and middleware
+2. Apply database migrations using Alembic
+3. Verify authentication mechanisms
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load
@@ -44,7 +44,7 @@ Task execution:
 ## Constraints
 
 - ONLY modify files inside `apps/server/`
-- NEVER modify: frontend layer
+- NEVER modify: frontend or other layers
 - ALWAYS run tests before reporting done
 - NEVER push to remote — report back to orchestrator
 
