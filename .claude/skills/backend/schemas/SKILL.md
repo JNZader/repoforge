@@ -1,7 +1,7 @@
 ---
-name: define-request-response-schemas
+name: add-schemas-endpoint
 description: >
-  This skill covers the creation of Pydantic v2 request and response schemas.
+  This skill covers the creation of Pydantic schemas for API request and response handling.
   Trigger: Load this skill when defining schemas for the RepoForge Web API.
 license: Apache-2.0
 metadata:
@@ -15,9 +15,9 @@ metadata:
 ---
 
 <!-- L1:START -->
-# Define Request and Response Schemas
+# add-schemas-endpoint
 
-This skill covers the creation of Pydantic v2 request and response schemas.
+This skill covers the creation of Pydantic schemas for API request and response handling.
 
 **Trigger**: Load this skill when defining schemas for the RepoForge Web API.
 <!-- L1:END -->
@@ -27,56 +27,57 @@ This skill covers the creation of Pydantic v2 request and response schemas.
 
 | Task | Pattern |
 |------|---------|
-| Define user information schema | `UserInfo` |
-| Create authentication validation response | `AuthValidateResponse` |
+| Create User Info Schema | `UserInfo` |
+| Define Token Response Schema | `TokenResponse` |
 
 ## Critical Patterns (Summary)
-- **UserInfo**: Defines the schema for user information.
-- **AuthValidateResponse**: Creates a response schema for authentication validation.
+- **User Info Schema**: Defines the structure for user information in requests.
+- **Token Response Schema**: Specifies the format for token responses in authentication.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### UserInfo
+### User Info Schema
 
-Defines the schema for user information, ensuring all required fields are validated.
+Defines the structure for user information in requests, ensuring data validation and serialization.
 
 ```python
 from apps.server.app.models.schemas import UserInfo
 
-user_info = UserInfo(username="john_doe", email="john@example.com", full_name="John Doe")
+user_info = UserInfo(username="john_doe", email="john@example.com")
 ```
 
-### AuthValidateResponse
+### Token Response Schema
 
-Creates a response schema for authentication validation, encapsulating the necessary fields.
+Specifies the format for token responses in authentication, providing a clear structure for clients.
 
 ```python
-from apps.server.app.models.schemas import AuthValidateResponse
+from apps.server.app.models.schemas import TokenResponse
 
-auth_response = AuthValidateResponse(is_valid=True, user_id="12345")
+token_response = TokenResponse(access_token="abc123", token_type="bearer")
 ```
 
 ## When to Use
 
-- When creating schemas for user-related data in the API.
-- When defining responses for authentication processes.
+- When creating API endpoints that require user data validation.
+- When handling authentication responses in the RepoForge Web API.
 
 ## Commands
 
 ```bash
-docker-compose run app python apps/server/app/main.py
+docker-compose up
+python repoforge/cli.py run
 ```
 
 ## Anti-Patterns
 
-### Don't: Use unvalidated data
+### Don't: Use Unvalidated Data
 
-Using unvalidated data can lead to security vulnerabilities and data integrity issues.
+Using unvalidated data can lead to security vulnerabilities and application errors.
 
 ```python
 # BAD
-user_info = UserInfo(username="john_doe", email="invalid-email", full_name="John Doe")
+user_info = UserInfo(username="john_doe", email="invalid-email")
 ```
 <!-- L3:END -->

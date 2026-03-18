@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: low
-  token_estimate: 350
+  token_estimate: 250
   dependencies: []
   related_skills: []
   load_priority: high
@@ -31,8 +31,8 @@ This skill covers patterns for implementing authentication in a frontend applica
 | Use Auth Provider | `use-auth-provider` |
 
 ## Critical Patterns (Summary)
-- **Set API URL**: Define the base URL for API requests.
-- **Use Auth Provider**: Wrap your application with the AuthProvider for authentication context.
+- **Set API URL**: Define the API endpoint for authentication.
+- **Use Auth Provider**: Wrap your application with the AuthProvider for context.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,30 +40,30 @@ This skill covers patterns for implementing authentication in a frontend applica
 
 ### Set API URL
 
-Define the base URL for API requests to ensure all authentication requests are directed correctly.
+Define the API endpoint for authentication using the exported `API_URL`.
 
 ```typescript
-const apiUrl = API_URL; // Use the exported API_URL for consistent API endpoint
+const apiUrl = API_URL; // Set the API URL for authentication
 ```
 
 ### Use Auth Provider
 
-Wrap your application with the AuthProvider to provide authentication context to all components.
+Wrap your application with the `AuthProvider` to provide authentication context.
 
 ```typescript
 import { AuthProvider } from './lib/auth';
 
 const App = () => (
   <AuthProvider>
-    {/* Other components */}
+    {/* Your application components */}
   </AuthProvider>
 );
 ```
 
 ## When to Use
 
-- When setting up the authentication layer in your frontend application.
-- When you need to provide authentication context to child components.
+- When configuring the API endpoint for user authentication.
+- When setting up the authentication context for your application.
 
 ## Commands
 
@@ -76,9 +76,9 @@ python repoforge/cli.py run
 
 ### Don't: Hardcode API URLs
 
-Hardcoding API URLs can lead to maintenance issues and inconsistencies.
+Hardcoding API URLs can lead to maintenance issues and environment-specific bugs.
 
 ```typescript
-const apiUrl = 'http://localhost:3000/api'; // BAD
+const apiUrl = "http://localhost:3000/api"; // BAD
 ```
 <!-- L3:END -->

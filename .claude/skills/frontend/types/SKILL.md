@@ -7,7 +7,7 @@ license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
+  complexity: medium
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -79,15 +79,14 @@ python repoforge/cli.py generate
 
 ## Anti-Patterns
 
-### Don't: Use incorrect types
+### Don't: Use raw objects for requests
 
-Using incorrect types can lead to runtime errors and unexpected behavior.
+Using raw objects can lead to inconsistencies and errors in data handling.
 
 ```typescript
 // BAD
-const badRequest: GenerateRequest = {
-  providerKey: "invalidKey", // should be of type ProviderKey
-  mode: "invalidMode", // should be of type GenerationMode
+const request = {
+  // missing type definitions
 };
 ```
 <!-- L3:END -->

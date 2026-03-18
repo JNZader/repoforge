@@ -16,8 +16,8 @@ This agent owns the backend functionalities, including API management and middle
 ## Capabilities
 
 - FastAPI application management
-- JWT authentication handling
-- Database migration execution
+- JWT authentication setup
+- Database migration handling
 
 ## Workflow
 
@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Configure middleware as needed
-2. Manage FastAPI routes and endpoints
-3. Execute database migrations if applicable
+1. Configure or modify FastAPI application settings
+2. Implement or update middleware components
+3. Run database migrations if applicable
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load

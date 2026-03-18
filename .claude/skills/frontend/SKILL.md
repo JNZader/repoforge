@@ -1,7 +1,7 @@
 ---
 name: frontend-layer
 description: >
-  This layer manages the user interface and user experience of the application.
+  This layer manages the user interface and client-side logic of the application.
   Trigger: When working in frontend/ — adding, modifying, or debugging UI components and interactions.
 license: Apache-2.0
 metadata:
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # frontend-layer
 
-This layer manages the user interface and user experience of the application.
+This skill covers the frontend layer of the application, focusing on UI components and client-side logic.
 
-**Trigger**: When working in frontend/ — adding, modifying, or debugging UI components and interactions.
+**Trigger**: When working in frontend/ directory and its main responsibility is to manage user interactions and display data.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -39,48 +39,49 @@ This layer manages the user interface and user experience of the application.
 
 ### Component Structure
 
-Each component should be a functional component returning JSX.
+Each component should be a functional component returning JSX, ensuring a consistent structure across the application.
 
 ```typescript
-// Example using real exported names
-export const Layout = () => {
-  return <div className="layout">...</div>;
+// Example of a functional component
+export const NewComponent = () => {
+  return <div>Hello, World!</div>;
 };
 ```
 
 ### Error Handling
 
-Use ErrorBoundary to catch and display errors gracefully.
+Utilize the ErrorBoundary component to catch JavaScript errors in child components and display a fallback UI.
 
 ```typescript
-// Example
+// Example of using ErrorBoundary
 <ErrorBoundary>
-  <App />
+  <MyComponent />
 </ErrorBoundary>
 ```
 
 ## When to Use
 
 - When creating reusable UI components.
-- When implementing error boundaries for better user experience.
+- When implementing error handling for user interactions.
 
 ## Commands
 
 ```bash
-npm run start
+# Start the development server
+npm start
+
+# Build the application for production
 npm run build
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify shared components without coordination
+### Don't: Modify shared state directly
 
-Changing shared components can break the UI for other layers relying on them.
+Directly modifying shared state can lead to unpredictable UI behavior and bugs.
 
 ```typescript
 // BAD
-const Layout = () => {
-  return <div className="layout modified">...</div>; // This can affect other parts of the app
-};
+state.value = newValue; // This is incorrect
 ```
 <!-- L3:END -->

@@ -1,25 +1,25 @@
 ---
-name: exchange-github-oauth-code
+name: generate-github-oauth-state
 description: >
-  This skill covers the implementation of GitHub OAuth helper functions.
-  Trigger: Load this skill when handling GitHub OAuth processes.
+  This skill covers generating and validating GitHub OAuth states.
+  Trigger: Load this skill when implementing GitHub OAuth functionality.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
-  token_estimate: 450
+  complexity: low
+  token_estimate: 350
   dependencies: []
   related_skills: []
   load_priority: high
 ---
 
 <!-- L1:START -->
-# exchange-github-oauth-code
+# generate-github-oauth-state
 
-This skill covers the implementation of GitHub OAuth helper functions.
+This skill covers generating and validating GitHub OAuth states.
 
-**Trigger**: Load this skill when handling GitHub OAuth processes.
+**Trigger**: Load this skill when implementing GitHub OAuth functionality.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -31,8 +31,8 @@ This skill covers the implementation of GitHub OAuth helper functions.
 | Validate OAuth state | `validate_state()` |
 
 ## Critical Patterns (Summary)
-- **Generate OAuth state**: Create a unique state parameter for OAuth flow.
-- **Validate OAuth state**: Ensure the state parameter matches the expected value.
+- **Generate OAuth state**: Use `generate_state()` to create a unique state for OAuth.
+- **Validate OAuth state**: Use `validate_state()` to ensure the state matches during the callback.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers the implementation of GitHub OAuth helper functions.
 
 ### Generate OAuth state
 
-This function creates a unique state parameter to prevent CSRF attacks during the OAuth flow.
+Use `generate_state()` to create a unique state for OAuth, ensuring security against CSRF attacks.
 
 ```python
 from apps.server.app.services.github_oauth import generate_state
@@ -50,7 +50,7 @@ state = generate_state()
 
 ### Validate OAuth state
 
-This function checks if the provided state parameter matches the expected value to ensure security.
+Use `validate_state()` to ensure the state matches during the callback, preventing unauthorized access.
 
 ```python
 from apps.server.app.services.github_oauth import validate_state
@@ -60,8 +60,8 @@ is_valid = validate_state(received_state, expected_state)
 
 ## When to Use
 
-- When initiating the GitHub OAuth flow to generate a state parameter.
-- When validating the state parameter after the user is redirected back from GitHub.
+- When initiating the OAuth flow with GitHub.
+- When handling the callback from GitHub to verify the state.
 
 ## Commands
 
@@ -72,13 +72,12 @@ python -m apps.server.app.main
 
 ## Anti-Patterns
 
-### Don't: Ignore state validation
+### Don't: Hardcode state values
 
-Not validating the state parameter can lead to security vulnerabilities.
+Hardcoding state values can lead to security vulnerabilities and CSRF attacks.
 
 ```python
 # BAD
-if received_state != expected_state:
-    pass  # No validation
+state = "fixed_value"
 ```
 <!-- L3:END -->

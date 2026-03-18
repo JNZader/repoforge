@@ -7,7 +7,7 @@ license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
+  complexity: low
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -40,7 +40,7 @@ This skill covers adding main endpoints to the FastAPI application.
 
 ### health
 
-Implements a basic health check endpoint to verify the service is running.
+Implements a basic health check endpoint that returns the status of the application.
 
 ```python
 from fastapi import FastAPI
@@ -54,7 +54,7 @@ async def health():
 
 ### health_detailed
 
-Implements a detailed health check endpoint providing more information about the service status.
+Implements a detailed health check endpoint that provides more information about the application status.
 
 ```python
 from fastapi import FastAPI
@@ -75,7 +75,7 @@ async def health_detailed():
 ## When to Use
 
 - When you need to expose a health check endpoint for monitoring.
-- When detailed service status information is required for diagnostics.
+- When you want to provide detailed application status for diagnostics.
 
 ## Commands
 
@@ -85,17 +85,14 @@ docker run -d -p 8000:8000 your-image-name
 
 ## Anti-Patterns
 
-### Don't: Expose sensitive information
+### Don't: Hardcode health responses
 
-Exposing sensitive information in health checks can lead to security vulnerabilities.
+Hardcoding responses can lead to outdated information being served.
 
 ```python
 # BAD
-@app.get("/health/detailed")
-async def health_detailed():
-    return {
-        "status": "healthy",
-        "db_password": "secret"
-    }
+@app.get("/health")
+async def health():
+    return {"status": "not healthy"}  # This should be dynamic
 ```
 <!-- L3:END -->

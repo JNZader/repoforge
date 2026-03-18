@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 800
+  token_estimate: 450
   dependencies: []
   related_skills: []
   load_priority: high
@@ -31,8 +31,8 @@ This skill covers the backend services for the RepoForge project.
 | Run migrations | `run_migrations_online()` |
 
 ## Critical Patterns (Summary)
-- **Middleware Configuration**: Set up custom middleware for logging, authentication, and rate limiting.
-- **Migration Management**: Use Alembic for managing database migrations effectively.
+- **Middleware Configuration**: Set up custom middleware for authentication and logging.
+- **Database Migrations**: Manage database schema changes using Alembic.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers the backend services for the RepoForge project.
 
 ### Middleware Configuration
 
-Set up custom middleware for logging, authentication, and rate limiting to enhance the FastAPI application.
+Set up custom middleware for authentication and logging to enhance request handling.
 
 ```python
 # apps/server/app/main.py
@@ -49,9 +49,9 @@ app.add_middleware(request_logging_middleware)
 app.add_middleware(security_headers_middleware)
 ```
 
-### Migration Management
+### Database Migrations
 
-Use Alembic to manage database migrations effectively, ensuring the database schema is up to date.
+Manage database schema changes using Alembic to ensure the database is in sync with the application.
 
 ```python
 # apps/server/alembic/env.py
@@ -60,8 +60,8 @@ run_migrations_online()
 
 ## When to Use
 
-- When implementing new features that require backend services.
-- When debugging issues related to API endpoints or middleware.
+- When implementing new API endpoints that require authentication.
+- When updating the database schema to support new features.
 
 ## Commands
 
@@ -77,10 +77,10 @@ alembic upgrade head
 
 ### Don't: Change middleware without testing
 
-Changing middleware can break the authentication or logging flow, leading to security vulnerabilities or loss of important logs.
+Changing middleware can break existing functionality and lead to security vulnerabilities.
 
 ```python
 # BAD
-app.add_middleware(SomeNewMiddleware)
+app.add_middleware(SomeNewMiddleware)  # Without testing
 ```
 <!-- L3:END -->
