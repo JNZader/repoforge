@@ -1,4 +1,4 @@
-"""Generation routes — start, stream, cancel, download.
+"""Generation routes — start, stream, cancel, download, preview.
 
 Endpoints:
     POST /api/generate           — Start a new generation job (202 Accepted)
@@ -6,17 +6,21 @@ Endpoints:
     GET  /api/generate/{id}      — Get generation details (status, metadata)
     POST /api/generate/{id}/cancel — Cancel a running generation
     GET  /api/generate/{id}/download — Download ZIP artifact
+    GET  /api/generate/{id}/preview — Preview generated docs (serves index.html)
+    GET  /api/generate/{id}/files/{path} — Serve static assets from generated docs
 """
 
 from __future__ import annotations
 
 import json
+import mimetypes
+import zipfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
@@ -334,3 +338,160 @@ async def download_generation(
         media_type="application/zip",
         filename=filename,
     )
+
+
+# ---------- Preview helpers ----------
+
+PREVIEW_CACHE_DIR = Path("/tmp/repoforge-clones/preview")
+
+
+def _ensure_preview_extracted(generation_id: str, artifact_path: str) -> Path:
+    """Extract ZIP artifact to cache directory for preview serving.
+
+    Returns the root directory of the extracted docs.
+    Skips extraction if the cache directory already exists.
+    """
+    preview_dir = PREVIEW_CACHE_DIR / generation_id
+    if preview_dir.exists() and any(preview_dir.iterdir()):
+        return preview_dir
+
+    artifact = Path(artifact_path)
+    if not artifact.exists():
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={
+                "error": "artifact_expired",
+                "message": "Artifact file has been cleaned up. Run the generation again.",
+            },
+        )
+
+    preview_dir.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(artifact, "r") as zf:
+        zf.extractall(preview_dir)
+
+    return preview_dir
+
+
+def _build_file_listing_html(preview_dir: Path) -> str:
+    """Build a simple HTML page listing the generated files."""
+    files = sorted(p.relative_to(preview_dir) for p in preview_dir.rglob("*") if p.is_file())
+    items = "\n".join(f'<li><a href="files/{f}">{f}</a></li>' for f in files)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Generated Files</title>
+<style>body{{font-family:system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem}}
+a{{color:#2563eb;text-decoration:none}}a:hover{{text-decoration:underline}}
+li{{margin:.25rem 0}}</style></head>
+<body><h1>Generated Files</h1><ul>{items}</ul></body></html>"""
+
+
+def _get_verified_generation(generation: Generation | None) -> Generation:
+    """Validate that a generation exists, is completed, and has an artifact."""
+    if not generation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message": "Generation not found."},
+        )
+    if generation.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "not_completed",
+                "message": f"Generation is {generation.status}, not completed.",
+            },
+        )
+    if not generation.artifact_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "no_artifact", "message": "No artifact available for this generation."},
+        )
+    return generation
+
+
+# ---------- GET /api/generate/{generation_id}/preview ----------
+
+
+@router.get("/{generation_id}/preview")
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
+async def preview_generation(
+    request: Request,
+    generation_id: str,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """Preview the generated docs by serving the index.html from the artifact."""
+    user_id = current_user["sub"]
+    result = await db.execute(
+        select(Generation).where(
+            Generation.id == generation_id,
+            Generation.user_id == user_id,
+        )
+    )
+    generation = _get_verified_generation(result.scalar_one_or_none())
+
+    preview_dir = _ensure_preview_extracted(generation_id, generation.artifact_path)
+
+    # Look for index.html (Docsify root)
+    index_file = preview_dir / "index.html"
+    if not index_file.exists():
+        # Try one level deep (ZIP might have a top-level directory)
+        subdirs = [d for d in preview_dir.iterdir() if d.is_dir()]
+        for subdir in subdirs:
+            candidate = subdir / "index.html"
+            if candidate.exists():
+                index_file = candidate
+                break
+
+    if index_file.exists():
+        return HTMLResponse(content=index_file.read_text(encoding="utf-8"))
+
+    # Fallback: file listing
+    return HTMLResponse(content=_build_file_listing_html(preview_dir))
+
+
+# ---------- GET /api/generate/{generation_id}/files/{path} ----------
+
+
+@router.get("/{generation_id}/files/{file_path:path}")
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
+async def serve_preview_file(
+    request: Request,
+    generation_id: str,
+    file_path: str,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """Serve a static asset from the extracted preview directory (CSS, JS, MD, etc.)."""
+    user_id = current_user["sub"]
+    result = await db.execute(
+        select(Generation).where(
+            Generation.id == generation_id,
+            Generation.user_id == user_id,
+        )
+    )
+    generation = _get_verified_generation(result.scalar_one_or_none())
+
+    preview_dir = _ensure_preview_extracted(generation_id, generation.artifact_path)
+
+    # Resolve the requested file path safely
+    target = (preview_dir / file_path).resolve()
+
+    # Prevent directory traversal attacks
+    if not str(target).startswith(str(preview_dir.resolve())):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_path", "message": "Invalid file path."},
+        )
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "file_not_found", "message": f"File not found: {file_path}"},
+        )
+
+    # Guess content type; default to octet-stream
+    content_type, _ = mimetypes.guess_type(str(target))
+    if content_type is None:
+        content_type = "application/octet-stream"
+
+    return FileResponse(path=str(target), media_type=content_type)
