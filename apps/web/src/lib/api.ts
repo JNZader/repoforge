@@ -141,11 +141,15 @@ export async function fetchGenerations(params?: {
   page?: number;
   per_page?: number;
   status?: string;
+  mode?: string;
+  search?: string;
 }): Promise<PaginatedResponse<Generation>> {
   const query = new URLSearchParams();
   if (params?.page) query.set('page', String(params.page));
   if (params?.per_page) query.set('per_page', String(params.per_page));
   if (params?.status) query.set('status', params.status);
+  if (params?.mode) query.set('mode', params.mode);
+  if (params?.search) query.set('search', params.search);
   const qs = query.toString();
   return fetchApi<PaginatedResponse<Generation>>(`/api/history${qs ? `?${qs}` : ''}`);
 }
@@ -172,7 +176,7 @@ export async function fetchAnalyticsRepos(): Promise<RepoUsage[]> {
 
 // ─── TanStack Query Hooks ─────────────────────────────────
 
-export function useGenerations(params?: { page?: number; per_page?: number; status?: string }) {
+export function useGenerations(params?: { page?: number; per_page?: number; status?: string; mode?: string; search?: string }) {
   return useQuery({
     queryKey: ['generations', params],
     queryFn: () => fetchGenerations(params),
@@ -236,6 +240,69 @@ export function useCancelGeneration() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: cancelGeneration,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['generations'] });
+    },
+  });
+}
+
+// ─── Provider Mutations ──────────────────────────────────
+
+export function useCreateProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { provider: string; key: string; storage?: 'persistent' | 'session' }) =>
+      fetchApi<ProviderKey>('/api/providers', {
+        method: 'POST',
+        body: JSON.stringify({
+          provider: data.provider,
+          api_key: data.key,
+          storage: data.storage ?? 'persistent',
+        }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['providers'] });
+    },
+  });
+}
+
+export function useDeleteProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: string) =>
+      fetchApi<void>(`/api/providers/${provider}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['providers'] });
+    },
+  });
+}
+
+export function useDeleteSessionProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: string) =>
+      fetchApi<void>(`/api/providers/session/${provider}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['providers'] });
+    },
+  });
+}
+
+export function useValidateProvider() {
+  return useMutation({
+    mutationFn: (data: { provider: string; key: string }) =>
+      fetchApi<{ valid: boolean; error?: string }>('/api/providers/validate', {
+        method: 'POST',
+        body: JSON.stringify({ provider: data.provider, api_key: data.key }),
+      }),
+  });
+}
+
+export function useDeleteGeneration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchApi<void>(`/api/history/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['generations'] });
     },
