@@ -7,7 +7,7 @@ license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
+  complexity: low
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -31,41 +31,37 @@ This skill covers patterns for using the `useGenerationStream` hook.
 | Handle step items | `StepItem` |
 
 ## Critical Patterns (Summary)
-- **Get Stream Status**: Retrieve the current status of the generation stream.
-- **Handle Step Items**: Manage individual steps in the generation process.
+- **StreamStatus**: Use to manage and display the current status of the generation stream.
+- **StepItem**: Utilize to represent individual steps in the generation process.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Get Stream Status
+### StreamStatus
 
-Retrieve the current status of the generation stream using `StreamStatus`.
+Use `StreamStatus` to manage and display the current status of the generation stream.
 
 ```typescript
-import { StreamStatus, useGenerationStream } from '@/hooks/useGenerationStream';
+import { StreamStatus } from '@/hooks/useGenerationStream';
 
-const { status } = useGenerationStream();
-console.log(status); // Outputs the current stream status
+const status: StreamStatus = { isLoading: true, error: null };
 ```
 
-### Handle Step Items
+### StepItem
 
-Manage individual steps in the generation process with `StepItem`.
+Utilize `StepItem` to represent individual steps in the generation process.
 
 ```typescript
-import { StepItem, useGenerationStream } from '@/hooks/useGenerationStream';
+import { StepItem } from '@/hooks/useGenerationStream';
 
-const { steps } = useGenerationStream();
-steps.forEach((step: StepItem) => {
-  console.log(step); // Outputs each step item
-});
+const step: StepItem = { id: 1, description: 'Generating data...' };
 ```
 
 ## When to Use
 
 - When you need to track the status of a generation process in your UI.
-- When handling multiple steps in a streaming generation task.
+- When displaying individual steps of a generation task to the user.
 
 ## Commands
 
@@ -76,13 +72,12 @@ python repoforge/cli.py
 
 ## Anti-Patterns
 
-### Don't: Ignore Stream State
+### Don't: Ignore stream state management
 
-Ignoring the stream state can lead to unhandled errors and poor user experience.
+Ignoring the management of stream states can lead to unresponsive UI and poor user experience.
 
 ```typescript
 // BAD
-const { status } = useGenerationStream();
-// Not checking status before proceeding
+const status = { isLoading: false, error: null }; // No state management
 ```
 <!-- L3:END -->

@@ -1,8 +1,8 @@
 ---
 name: frontend-agent
 description: >
-  Specialized agent for frontend development. Handles UI components, API interactions, authentication, and streaming data.
-  Trigger: When the orchestrator needs to implement or modify frontend features.
+  Specialized agent for frontend. Handles UI components, API interactions, and authentication.
+  Trigger: When the orchestrator needs to manage frontend tasks in the web layer.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,13 +11,13 @@ metadata:
 
 ## Role
 
-This agent owns the frontend layer, focusing on UI components and interactions. It never touches backend logic or data management.
+This agent owns the frontend layer, focusing on UI components and API calls. It never interacts with the backend layer.
 
 ## Capabilities
 
-- UI component management
-- API integration
-- Authentication handling
+- Manage UI components like ErrorBoundary, Layout, and LoadingSpinner
+- Handle API interactions through the api module
+- Implement authentication logic using the auth module
 
 ## Workflow
 
@@ -28,17 +28,17 @@ Before starting ANY task:
 
 Task execution:
 1. Modify or create components in `apps/web/src/components/`
-2. Implement API calls in `apps/web/src/lib/api.ts`
-3. Verify functionality through testing
+2. Interact with the API using `apps/web/src/lib/api.ts`
+3. Verify changes through testing
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load
 
-- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/SKILL.md` — load when working with frontend
-- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/api/SKILL.md` — load when working with api
-- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/types/SKILL.md` — load when working with types
-- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/auth/SKILL.md` — load when working with auth
-- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/useGenerationStream/SKILL.md` — load when working with useGenerationStream
+- /home/runner/work/repoforge/repoforge/.claude/skills/frontend/SKILL.md — load when working with frontend
+- /home/runner/work/repoforge/repoforge/.claude/skills/frontend/api/SKILL.md — load when working with api
+- /home/runner/work/repoforge/repoforge/.claude/skills/frontend/types/SKILL.md — load when working with types
+- /home/runner/work/repoforge/repoforge/.claude/skills/frontend/auth/SKILL.md — load when working with auth
+- /home/runner/work/repoforge/repoforge/.claude/skills/frontend/useGenerationStream/SKILL.md — load when working with useGenerationStream
 
 ## Constraints
 

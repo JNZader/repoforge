@@ -85,9 +85,9 @@ python repoforge/cli.py fetch-data
 
 ## Anti-Patterns
 
-### Don't: Ignore API Errors
+### Don't: Ignore ApiError Handling
 
-Ignoring API errors can lead to unhandled exceptions and poor user experience.
+Ignoring `ApiError` can lead to unhandled exceptions and poor user experience.
 
 ```typescript
 // BAD

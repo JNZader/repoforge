@@ -45,9 +45,9 @@ Defines the structure for a generation request, including necessary parameters.
 ```typescript
 // Example of a GenerateRequest
 const request: GenerateRequest = {
-  userId: "12345",
-  providerKey: ProviderKey.SomeKey,
+  providerKey: ProviderKey.SomeProvider,
   mode: GenerationMode.Standard,
+  // additional properties
 };
 ```
 
@@ -60,36 +60,34 @@ Defines the structure for a generation response, including status and data.
 const response: GenerateResponse = {
   status: GenerationStatus.Success,
   data: {
-    generationId: "abcde",
-    events: [GenerationEvent.Started, GenerationEvent.Completed],
+    // response data
   },
 };
 ```
 
 ## When to Use
 
-- When creating a new generation request for a user.
-- When processing the response from a generation service.
+- When creating a new generation request in the frontend.
+- When processing the response from a generation event.
 
 ## Commands
 
 ```bash
-python repoforge/cli.py generate
 docker-compose up
+python repoforge/cli.py generate
 ```
 
 ## Anti-Patterns
 
-### Don't: Use raw types
+### Don't: Use incorrect types
 
-Using raw types instead of defined types can lead to inconsistencies and errors.
+Using incorrect types can lead to runtime errors and unexpected behavior.
 
 ```typescript
 // BAD
-const request = {
-  userId: "12345",
-  providerKey: "SomeKey",
-  mode: "Standard",
+const badRequest: GenerateRequest = {
+  providerKey: "invalidKey", // should be of type ProviderKey
+  mode: "invalidMode", // should be of type GenerationMode
 };
 ```
 <!-- L3:END -->

@@ -44,13 +44,12 @@ Implements a basic health check endpoint to verify the service is running.
 
 ```python
 from fastapi import FastAPI
-from apps.server.app.main import health
 
 app = FastAPI()
 
 @app.get("/health")
-async def health_check():
-    return health()
+async def health():
+    return {"status": "healthy"}
 ```
 
 ### health_detailed
@@ -59,36 +58,44 @@ Implements a detailed health check endpoint providing more information about the
 
 ```python
 from fastapi import FastAPI
-from apps.server.app.main import health_detailed
 
 app = FastAPI()
 
 @app.get("/health/detailed")
-async def detailed_health_check():
-    return health_detailed()
+async def health_detailed():
+    return {
+        "status": "healthy",
+        "details": {
+            "database": "connected",
+            "cache": "operational"
+        }
+    }
 ```
 
 ## When to Use
 
 - When you need to expose a health check endpoint for monitoring.
-- When you want to provide detailed service status for diagnostics.
+- When detailed service status information is required for diagnostics.
 
 ## Commands
 
 ```bash
-docker-compose up
+docker run -d -p 8000:8000 your-image-name
 ```
 
 ## Anti-Patterns
 
-### Don't: Expose sensitive data in health checks
+### Don't: Expose sensitive information
 
-Exposing sensitive information can lead to security vulnerabilities.
+Exposing sensitive information in health checks can lead to security vulnerabilities.
 
 ```python
 # BAD
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "db_password": "secret"}
+@app.get("/health/detailed")
+async def health_detailed():
+    return {
+        "status": "healthy",
+        "db_password": "secret"
+    }
 ```
 <!-- L3:END -->

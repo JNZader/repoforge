@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 450
+  token_estimate: 800
   dependencies: []
   related_skills: []
   load_priority: high
@@ -32,7 +32,7 @@ This skill covers the backend services for the RepoForge project.
 
 ## Critical Patterns (Summary)
 - **Middleware Configuration**: Set up custom middleware for logging, authentication, and rate limiting.
-- **Migration Management**: Handle database migrations using Alembic.
+- **Migration Management**: Use Alembic for managing database migrations effectively.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers the backend services for the RepoForge project.
 
 ### Middleware Configuration
 
-Set up custom middleware for logging, authentication, and rate limiting to enhance request handling.
+Set up custom middleware for logging, authentication, and rate limiting to enhance the FastAPI application.
 
 ```python
 # apps/server/app/main.py
@@ -51,7 +51,7 @@ app.add_middleware(security_headers_middleware)
 
 ### Migration Management
 
-Handle database migrations using Alembic to ensure the database schema is up to date.
+Use Alembic to manage database migrations effectively, ensuring the database schema is up to date.
 
 ```python
 # apps/server/alembic/env.py
@@ -60,16 +60,16 @@ run_migrations_online()
 
 ## When to Use
 
-- When implementing new API endpoints that require authentication.
-- When configuring logging for better observability of backend processes.
+- When implementing new features that require backend services.
+- When debugging issues related to API endpoints or middleware.
 
 ## Commands
 
 ```bash
-# To run the FastAPI application
+# Run the FastAPI application
 uvicorn apps.server.app.main:app --reload
 
-# To apply database migrations
+# Run database migrations
 alembic upgrade head
 ```
 
@@ -77,7 +77,7 @@ alembic upgrade head
 
 ### Don't: Change middleware without testing
 
-Changing middleware can break the request handling flow and lead to security vulnerabilities.
+Changing middleware can break the authentication or logging flow, leading to security vulnerabilities or loss of important logs.
 
 ```python
 # BAD

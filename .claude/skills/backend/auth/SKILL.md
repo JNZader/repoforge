@@ -26,23 +26,23 @@ This skill covers the implementation of authentication routes for login, token v
 ## Quick Reference
 
 | Task               | Pattern                  |
-|--------------------|-------------------------|
-| Implement login    | `login`                 |
-| Handle callback    | `callback`              |
-| Validate JWT token | `validate_token`        |
-| Logout user        | `logout`                |
+|--------------------|--------------------------|
+| User login         | `login`                  |
+| OAuth callback     | `callback`               |
+| Validate JWT token | `validate_token`         |
+| User logout        | `logout`                 |
 
 ## Critical Patterns (Summary)
-- **Implement login**: Use the `login` function to authenticate users via GitHub OAuth.
-- **Handle callback**: Utilize the `callback` function to process the OAuth response.
+- **User Login**: Implements the login functionality using GitHub OAuth.
+- **Token Validation**: Validates JWT tokens for authenticated requests.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Implement login
+### User Login
 
-Use the `login` function to authenticate users via GitHub OAuth.
+Implements the login functionality using GitHub OAuth.
 
 ```python
 from fastapi import APIRouter
@@ -50,29 +50,26 @@ from apps.server.app.routes.auth import login
 
 router = APIRouter()
 
-@router.get("/login")
-async def github_login():
+@router.post("/login")
+async def user_login():
     return await login()
 ```
 
-### Handle callback
+### Token Validation
 
-Utilize the `callback` function to process the OAuth response.
+Validates JWT tokens for authenticated requests.
 
 ```python
-from fastapi import APIRouter
-from apps.server.app.routes.auth import callback
+from fastapi import Depends
+from apps.server.app.routes.auth import validate_token
 
-router = APIRouter()
-
-@router.get("/callback")
-async def github_callback():
-    return await callback()
+async def get_current_user(token: str = Depends(validate_token)):
+    return token
 ```
 
 ## When to Use
 
-- When implementing user authentication via GitHub OAuth.
+- When implementing user authentication via OAuth.
 - When validating JWT tokens for secure API access.
 
 ## Commands
@@ -84,12 +81,12 @@ python apps/server/app/main.py
 
 ## Anti-Patterns
 
-### Don't: Hardcode secrets
+### Don't: Hardcode Secrets
 
-Hardcoding secrets can lead to security vulnerabilities.
+Hardcoding secrets like client IDs or tokens is insecure and should be avoided.
 
 ```python
 # BAD
-SECRET_KEY = "mysecretkey"
+client_id = "your_client_id_here"
 ```
 <!-- L3:END -->
