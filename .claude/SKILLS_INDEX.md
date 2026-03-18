@@ -6,9 +6,9 @@
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/schemas/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/main/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/auth/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/github_oauth/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/database/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/generation/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/env/SKILL.md`
 
 ## Agents
 - `/home/runner/work/repoforge/repoforge/.claude/agents/backend-agent/AGENT.md`

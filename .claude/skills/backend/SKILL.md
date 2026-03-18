@@ -1,14 +1,14 @@
 ---
 name: backend-layer
 description: >
-  This layer encompasses the backend services for the RepoForge project, primarily built with FastAPI and async database interactions.
+  This layer encompasses the backend services for the RepoForge project, primarily built with FastAPI.
   Trigger: When working in backend/ — adding, modifying, or debugging backend services.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 450
+  token_estimate: 750
   dependencies: []
   related_skills: []
   load_priority: high
@@ -19,15 +19,15 @@ metadata:
 
 This skill covers the backend services for the RepoForge project.
 
-**Trigger**: When working in backend/ directory and its main responsibility is to manage server-side logic and database interactions.
+**Trigger**: When working in backend/ directory and its main responsibility is to manage backend services.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
-| Run database migrations | `run_migrations_online()` |
+| Task               | Pattern                          |
+|--------------------|----------------------------------|
+| Run migrations      | `run_migrations_online()`        |
 
 ## Critical Patterns (Summary)
 - **Migration Management**: Use Alembic for handling database migrations.
@@ -42,30 +42,31 @@ This skill covers the backend services for the RepoForge project.
 Use Alembic to manage database migrations effectively, ensuring the database schema is up-to-date.
 
 ```python
-# apps/server/alembic/env.py
-from alembic import context
-from your_project import run_migrations_online
+# Example using real exported names
+from apps.server.alembic.env import run_migrations_online
 
 run_migrations_online()
 ```
 
 ### Middleware Setup
 
-Implement custom middleware to handle cross-cutting concerns like logging and security.
+Implement custom middleware to handle authentication and logging for incoming requests.
 
 ```python
-# apps/server/app/main.py
-from fastapi import FastAPI
-from .middleware import correlation_id_middleware
+# Example
+from apps.server.app.middleware.auth import get_current_user
 
-app = FastAPI()
-app.middleware('http')(correlation_id_middleware)
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    user = await get_current_user(request)
+    response = await call_next(request)
+    return response
 ```
 
 ## When to Use
 
-- When adding new database models or modifying existing ones.
-- When implementing new API endpoints that require middleware.
+- When adding new database migrations.
+- When implementing authentication for API endpoints.
 
 ## Commands
 
@@ -81,10 +82,10 @@ uvicorn apps.server.app.main:app --reload
 
 ### Don't: Modify database models without migration
 
-Failing to run migrations after changing models can lead to inconsistencies in the database.
+Changing database models directly can lead to inconsistencies and data loss.
 
 ```python
 # BAD
-# Directly changing models without running migrations
+# Directly modifying the database schema without running migrations
 ```
 <!-- L3:END -->
