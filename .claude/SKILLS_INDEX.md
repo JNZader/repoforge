@@ -1,17 +1,17 @@
 # RepoForge — Generated artifacts index
 **Tech stack:** Python
-**Layers:** main
+**Layers:** backend
 
 ## Skills
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/harness/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_compressor/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_graph/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_plugins/SKILL.md`
-- `/home/runner/work/repoforge/repoforge/.claude/skills/main/test_scorer/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/schemas/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/main/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/database/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/generation/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/backend/env/SKILL.md`
 
 ## Agents
-- `/home/runner/work/repoforge/repoforge/.claude/agents/main-agent/AGENT.md`
+- `/home/runner/work/repoforge/repoforge/.claude/agents/backend-agent/AGENT.md`
 - `/home/runner/work/repoforge/repoforge/.claude/agents/orchestrator/AGENT.md`
 
 ## Skill Registry
