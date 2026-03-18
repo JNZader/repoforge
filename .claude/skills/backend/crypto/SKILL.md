@@ -2,7 +2,7 @@
 name: encrypt-api-keys
 description: >
   This skill covers AES-256-GCM encryption for provider API keys.
-  Trigger: Load this skill when handling sensitive API key encryption.
+  Trigger: When handling sensitive crypto operations.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers AES-256-GCM encryption for provider API keys.
 
-**Trigger**: Load this skill when handling sensitive API key encryption.
+**Trigger**: When handling sensitive crypto operations.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -60,7 +60,7 @@ encrypted_key = encrypt_key(api_key, user_key)
 
 ## When to Use
 
-- When you need to securely store API keys for third-party services.
+- When you need to securely store API keys for different providers.
 - When transmitting sensitive information that requires encryption.
 
 ## Commands

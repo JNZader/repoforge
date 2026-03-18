@@ -1,13 +1,13 @@
 ---
 name: usegenerationstream-hook
 description: >
-  This skill covers patterns for using the `useGenerationStream` hook.
-  Trigger: When implementing streaming generation in the frontend.
+  This skill covers patterns for managing generation streams in a React application.
+  Trigger: Load when using `useGenerationStream` for stream management.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
+  complexity: medium
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # usegenerationstream-hook
 
-This skill covers patterns for using the `useGenerationStream` hook.
+This skill covers patterns for managing generation streams in a React application.
 
-**Trigger**: When implementing streaming generation in the frontend.
+**Trigger**: Load when using `useGenerationStream` for stream management.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -45,7 +45,7 @@ Utilize `StreamStatus` to track the state of the generation stream, allowing for
 ```typescript
 import { StreamStatus } from '@/hooks/useGenerationStream';
 
-const status: StreamStatus = StreamStatus.STARTING;
+const status: StreamStatus = StreamStatus.RUNNING; // Example usage
 ```
 
 ### Handle step items
@@ -55,13 +55,13 @@ Use `StepItem` to represent individual steps in the generation process, enabling
 ```typescript
 import { StepItem } from '@/hooks/useGenerationStream';
 
-const step: StepItem = { id: 1, description: 'Generating data...' };
+const step: StepItem = { id: 1, description: 'Step 1 description' }; // Example usage
 ```
 
 ## When to Use
 
-- When implementing a user interface that requires real-time updates from a generation process.
-- When managing multiple steps in a generation workflow.
+- When implementing a generation stream in a React component.
+- When needing to track the progress of a multi-step generation process.
 
 ## Commands
 
@@ -74,10 +74,10 @@ python repoforge/cli.py
 
 ### Don't: Ignore stream state management
 
-Ignoring the management of stream states can lead to unresponsive UIs and poor user experience.
+Neglecting to manage stream states can lead to unresponsive UI and poor user experience.
 
 ```typescript
 // BAD
-const status = StreamStatus.RUNNING; // No state management
+const status = StreamStatus.IDLE; // Not updating based on actual stream state
 ```
 <!-- L3:END -->

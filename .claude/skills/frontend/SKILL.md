@@ -30,8 +30,8 @@ This layer manages the user interface and user experience of the application.
 | Create a new component | `export const NewComponent = () => { ... }` |
 
 ## Critical Patterns (Summary)
-- **Component Structure**: Each component should be a functional component.
-- **Error Handling**: Use ErrorBoundary for catching errors in the UI.
+- **Component Structure**: Each component should be a functional component returning JSX.
+- **Error Handling**: Use ErrorBoundary to catch and display errors gracefully.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -39,23 +39,23 @@ This layer manages the user interface and user experience of the application.
 
 ### Component Structure
 
-Each component should be a functional component that returns JSX.
+Each component should be a functional component returning JSX.
 
 ```typescript
 // Example of a functional component
-export const NewComponent = () => {
-  return <div>Hello World</div>;
+export const Layout = () => {
+  return <div className="layout">Content goes here</div>;
 };
 ```
 
 ### Error Handling
 
-Use ErrorBoundary to catch errors in the UI and display a fallback UI.
+Use ErrorBoundary to catch and display errors gracefully.
 
 ```typescript
-// Example of using ErrorBoundary
+// Example of ErrorBoundary usage
 <ErrorBoundary>
-  <Layout />
+  <ProtectedRoute />
 </ErrorBoundary>
 ```
 
@@ -64,23 +64,31 @@ Use ErrorBoundary to catch errors in the UI and display a fallback UI.
 - When creating reusable UI components.
 - When implementing error boundaries for better user experience.
 
+## Adding a New Component
+
+1. Create a new file in `apps/web/src/components/` (e.g., `NewComponent.tsx`).
+2. Define the component structure using a functional component.
+3. Export the component.
+4. Verify by importing and using it in `App.tsx`.
+
 ## Commands
 
 ```bash
-npm run start
+# Start the development server
+npm start
+
+# Build the project
 npm run build
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify shared components without coordination
+### Don't: Modify shared state directly
 
-Changing shared components can lead to inconsistencies across the application.
+Directly modifying shared state can lead to unpredictable UI behavior.
 
 ```typescript
-// BAD: Directly modifying a shared component
-const Layout = () => {
-  return <div>Modified Layout</div>; // This can break other parts of the app
-};
+// BAD
+state.value = newValue; // This is incorrect
 ```
 <!-- L3:END -->

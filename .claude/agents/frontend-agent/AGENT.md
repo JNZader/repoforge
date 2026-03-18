@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the frontend layer, focusing on UI components and API integration. It never interacts with backend logic or data processing.
+This agent owns the frontend layer, focusing on UI components and API integration. It never interacts with the backend layer.
 
 ## Capabilities
 

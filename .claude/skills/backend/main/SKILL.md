@@ -7,7 +7,7 @@ license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
+  complexity: low
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -28,19 +28,19 @@ This skill covers adding main endpoints to the FastAPI application.
 | Task | Pattern |
 |------|---------|
 | Add health check endpoint | `health` |
-| Implement global error handling | `global_error_handler` |
+| Add detailed health check endpoint | `health_detailed` |
 
 ## Critical Patterns (Summary)
-- **Health Check Endpoint**: Defines a simple health check for the application.
-- **Global Error Handler**: Centralizes error handling for the FastAPI application.
+- **health**: Implements a basic health check endpoint.
+- **health_detailed**: Implements a detailed health check endpoint.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Health Check Endpoint
+### health
 
-Defines a simple health check for the application to ensure it's running.
+Implements a basic health check endpoint to verify the service is running.
 
 ```python
 from fastapi import FastAPI
@@ -53,43 +53,42 @@ async def health_check():
     return health()
 ```
 
-### Global Error Handler
+### health_detailed
 
-Centralizes error handling for the FastAPI application to manage exceptions globally.
+Implements a detailed health check endpoint providing more insights into the service status.
 
 ```python
 from fastapi import FastAPI
-from apps.server.app.main import global_error_handler
+from apps.server.app.main import health_detailed
 
 app = FastAPI()
 
-@app.exception_handler(Exception)
-async def custom_exception_handler(request, exc):
-    return await global_error_handler(request, exc)
+@app.get("/health/detailed")
+async def detailed_health_check():
+    return health_detailed()
 ```
 
 ## When to Use
 
-- When you need to implement a health check for your FastAPI application.
-- When you want to handle errors globally across your application.
+- When you need to expose a health check for monitoring.
+- When you want to provide detailed service status for diagnostics.
 
 ## Commands
 
 ```bash
 docker-compose up
-python apps/server/app/main.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Ignore Error Handling
+### Don't: Expose sensitive data in health checks
 
-Ignoring error handling can lead to unhandled exceptions and poor user experience.
+Exposing sensitive information can lead to security vulnerabilities.
 
 ```python
 # BAD
-@app.get("/example")
-async def example():
-    raise Exception("This will crash the app")
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "db": db_status, "secret": secret_key}
 ```
 <!-- L3:END -->

@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 450
+  token_estimate: 350
   dependencies: []
   related_skills: []
   load_priority: high
@@ -65,7 +65,7 @@ Utilize `startGeneration` to initiate a data generation process, allowing for re
 import { startGeneration } from './lib/api';
 
 function initiateGeneration() {
-  startGeneration({ type: 'example' })
+  startGeneration({ type: 'report' })
     .then(response => console.log('Generation started:', response))
     .catch(error => console.error('Error starting generation:', error));
 }
@@ -74,7 +74,7 @@ function initiateGeneration() {
 ## When to Use
 
 - When you need to fetch data from an external API.
-- When starting a data generation process that requires real-time updates.
+- When initiating a data generation process that requires real-time updates.
 
 ## Commands
 

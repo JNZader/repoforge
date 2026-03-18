@@ -1,8 +1,8 @@
 ---
-name: manage-auth-routes
+name: add-auth-endpoint
 description: >
-  This skill covers patterns for managing authentication routes in a FastAPI application.
-  Trigger: When implementing authentication features in the backend.
+  This skill covers the implementation of authentication routes.
+  Trigger: When setting up auth functionality in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# manage-auth-routes
+# add-auth-endpoint
 
-This skill covers patterns for managing authentication routes in a FastAPI application.
+This skill covers the implementation of authentication routes.
 
-**Trigger**: When implementing authentication features in the backend.
+**Trigger**: When setting up auth functionality in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,12 +29,12 @@ This skill covers patterns for managing authentication routes in a FastAPI appli
 |--------------------|-----------------------------|
 | Login user         | `login`                     |
 | Handle callback    | `callback`                  |
-| Validate JWT       | `validate_token`            |
+| Validate token     | `validate_token`            |
 | Logout user        | `logout`                    |
 
 ## Critical Patterns (Summary)
 - **Login User**: Handles user login via GitHub OAuth.
-- **Validate JWT**: Validates the JWT token for authenticated requests.
+- **Handle Callback**: Manages the callback from GitHub after authentication.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -47,27 +47,27 @@ Handles user login via GitHub OAuth, initiating the authentication process.
 ```python
 from apps.server.app.routes.auth import login
 
-@app.get("/login")
-async def login_user():
-    return await login()
+@app.post("/login")
+async def login_user(credentials: OAuth2PasswordRequestForm = Depends()):
+    return await login(credentials)
 ```
 
-### Validate JWT
+### Handle Callback
 
-Validates the JWT token for authenticated requests, ensuring secure access.
+Manages the callback from GitHub after authentication, processing the received data.
 
 ```python
-from apps.server.app.routes.auth import validate_token
+from apps.server.app.routes.auth import callback
 
-@app.get("/protected")
-async def protected_route(token: str):
-    return await validate_token(token)
+@app.get("/callback")
+async def github_callback(code: str):
+    return await callback(code)
 ```
 
 ## When to Use
 
-- When implementing user authentication via OAuth in a FastAPI application.
-- When securing routes that require user validation through JWT.
+- When implementing user authentication via GitHub OAuth.
+- When validating JWT tokens for secure API access.
 
 ## Commands
 
@@ -80,10 +80,11 @@ python apps/server/app/main.py
 
 ### Don't: Hardcode Secrets
 
-Hardcoding secrets like client IDs or tokens is insecure and should be avoided.
+Hardcoding secrets is insecure and exposes sensitive information.
 
 ```python
 # BAD
-client_id = "your_client_id_here"
+client_id = "your_client_id"
+client_secret = "your_client_secret"
 ```
 <!-- L3:END -->

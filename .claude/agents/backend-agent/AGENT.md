@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Configure middleware as needed
-2. Manage FastAPI routes and endpoints
-3. Execute database migrations if applicable
+1. Manage FastAPI application configurations
+2. Implement middleware functionalities
+3. Execute database migrations
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load
