@@ -2,7 +2,7 @@
 name: add-auth-endpoint
 description: >
   This skill covers the implementation of authentication routes.
-  Trigger: When setting up auth functionality in the backend.
+  Trigger: When setting up auth-related endpoints in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,18 +19,18 @@ metadata:
 
 This skill covers the implementation of authentication routes.
 
-**Trigger**: When setting up auth functionality in the backend.
+**Trigger**: When setting up auth-related endpoints in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task               | Pattern                     |
-|--------------------|-----------------------------|
-| User login         | `login`                     |
+| Task                | Pattern                     |
+|---------------------|-----------------------------|
+| User login          | `login`                     |
 | GitHub callback     | `callback`                  |
-| Validate JWT token | `validate_token`            |
-| User logout        | `logout`                    |
+| Validate JWT token  | `validate_token`            |
+| User logout         | `logout`                    |
 
 ## Critical Patterns (Summary)
 - **User login**: Handles user authentication via GitHub OAuth.
@@ -45,14 +45,11 @@ This skill covers the implementation of authentication routes.
 Handles user authentication via GitHub OAuth.
 
 ```python
-from fastapi import APIRouter
 from apps.server.app.routes.auth import login
 
-router = APIRouter()
-
-@router.post("/login")
-async def user_login():
-    return await login()
+@app.post("/login")
+async def login_user(credentials: OAuth2PasswordRequestForm = Depends()):
+    return await login(credentials)
 ```
 
 ### JWT validation
@@ -60,11 +57,11 @@ async def user_login():
 Validates the JWT token for secure access.
 
 ```python
-from fastapi import Depends
 from apps.server.app.routes.auth import validate_token
 
-async def get_current_user(token: str = Depends(validate_token)):
-    return token
+@app.get("/validate")
+async def validate_user(token: str):
+    return await validate_token(token)
 ```
 
 ## When to Use
@@ -75,8 +72,7 @@ async def get_current_user(token: str = Depends(validate_token)):
 ## Commands
 
 ```bash
-pip install fastapi
-pip install sqlalchemy
+python -m uvicorn apps.server.app.main:app --reload
 ```
 
 ## Anti-Patterns

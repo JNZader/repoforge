@@ -1,8 +1,8 @@
 ---
 name: generate-github-oauth-state
 description: >
-  This skill covers generating and validating GitHub OAuth states.
-  Trigger: When implementing GitHub OAuth in your application.
+  This skill covers generating and validating OAuth states for GitHub authentication.
+  Trigger: Load this skill when implementing GitHub OAuth flows.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# Generate GitHub OAuth State
+# generate-github-oauth-state
 
-This skill covers generating and validating GitHub OAuth states.
+This skill covers generating and validating OAuth states for GitHub authentication.
 
-**Trigger**: When implementing GitHub OAuth in your application.
+**Trigger**: Load this skill when implementing GitHub OAuth flows.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -31,7 +31,7 @@ This skill covers generating and validating GitHub OAuth states.
 | Validate OAuth state | `validate_state()` |
 
 ## Critical Patterns (Summary)
-- **Generate OAuth state**: Use `generate_state()` to create a unique state for OAuth.
+- **Generate OAuth state**: Use `generate_state()` to create a unique state parameter.
 - **Validate OAuth state**: Use `validate_state()` to ensure the state matches during the callback.
 <!-- L2:END -->
 
@@ -40,7 +40,7 @@ This skill covers generating and validating GitHub OAuth states.
 
 ### Generate OAuth state
 
-This pattern uses `generate_state()` to create a unique state string for OAuth requests.
+This pattern generates a unique state parameter for OAuth requests to prevent CSRF attacks.
 
 ```python
 from apps.server.app.services.github_oauth import generate_state
@@ -50,33 +50,36 @@ state = generate_state()
 
 ### Validate OAuth state
 
-This pattern uses `validate_state()` to check if the provided state matches the expected value.
+This pattern validates the state parameter received in the callback to ensure it matches the original.
 
 ```python
 from apps.server.app.services.github_oauth import validate_state
 
-is_valid = validate_state(received_state, expected_state)
+is_valid = validate_state(received_state, original_state)
 ```
 
 ## When to Use
 
 - When initiating a GitHub OAuth flow to ensure security.
-- When handling the callback to verify the state parameter.
+- When handling the callback from GitHub to verify the state.
 
 ## Commands
 
 ```bash
-python -m apps.server.app.main
+python -m apps.server.app.services.github_oauth
 ```
 
 ## Anti-Patterns
 
-### Don't: Use static state values
+### Don't: Ignore state validation
 
-Using static values for the state parameter can lead to security vulnerabilities.
+Ignoring state validation can lead to security vulnerabilities such as CSRF attacks.
 
 ```python
 # BAD
-state = "static_value"
+# Not validating the state parameter
+if received_state != original_state:
+    # Proceed without validation
+    pass
 ```
 <!-- L3:END -->

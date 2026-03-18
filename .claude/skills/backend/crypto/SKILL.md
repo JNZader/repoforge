@@ -50,7 +50,7 @@ user_key = derive_user_key(user_id, password)
 
 ### Encrypt API Key
 
-Encrypt sensitive API keys using AES-256-GCM with the `encrypt_key` function.
+Encrypt sensitive API keys using the `encrypt_key` function with AES-256-GCM.
 
 ```python
 from apps.server.app.services.crypto import encrypt_key
@@ -60,7 +60,7 @@ encrypted_key = encrypt_key(api_key, user_key)
 
 ## When to Use
 
-- When you need to securely store API keys for third-party services.
+- When you need to securely store API keys for different providers.
 - When transmitting sensitive information that requires encryption.
 
 ## Commands
@@ -73,7 +73,7 @@ python -m apps.server.app.services.crypto
 
 ### Don't: Hardcode API Keys
 
-Hardcoding API keys in your source code exposes them to security risks.
+Hardcoding API keys in the source code exposes them to security risks.
 
 ```python
 # BAD

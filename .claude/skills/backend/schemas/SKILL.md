@@ -27,41 +27,41 @@ This skill covers the creation of Pydantic schemas for the RepoForge Web API.
 
 | Task | Pattern |
 |------|---------|
-| Create User Info Schema | `UserInfo` |
-| Create User Response Schema | `UserResponse` |
+| Define user information schema | `UserInfo` |
+| Create authentication validation response | `AuthValidateResponse` |
 
 ## Critical Patterns (Summary)
-- **Create User Info Schema**: Defines the structure for user information.
-- **Create User Response Schema**: Specifies the response format for user-related requests.
+- **UserInfo**: Defines the structure for user information in requests.
+- **AuthValidateResponse**: Specifies the response format for authentication validation.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Create User Info Schema
+### UserInfo
 
-Defines the structure for user information using Pydantic.
+Defines the structure for user information in requests, ensuring data validation and type safety.
 
 ```python
 from apps.server.app.models.schemas import UserInfo
 
-user_info = UserInfo(username="john_doe", email="john@example.com", full_name="John Doe")
+user_info = UserInfo(username="john_doe", email="john@example.com")
 ```
 
-### Create User Response Schema
+### AuthValidateResponse
 
-Specifies the response format for user-related requests.
+Specifies the response format for authentication validation, including user details and status.
 
 ```python
-from apps.server.app.models.schemas import UserResponse
+from apps.server.app.models.schemas import AuthValidateResponse
 
-user_response = UserResponse(user_id="12345", username="john_doe", email="john@example.com")
+response = AuthValidateResponse(user=UserInfo(username="john_doe", email="john@example.com"), valid=True)
 ```
 
 ## When to Use
 
-- When creating API endpoints that require user information validation.
-- When defining response formats for user-related API calls.
+- When creating API endpoints that require user data validation.
+- When handling authentication responses in the web API.
 
 ## Commands
 
@@ -71,14 +71,14 @@ python -m apps.server.app.main
 
 ## Anti-Patterns
 
-### Don't: Use Inconsistent Schema Fields
+### Don't: Use unvalidated data models
 
-Using inconsistent field names across schemas can lead to confusion and errors.
+Using unvalidated data models can lead to runtime errors and security vulnerabilities.
 
 ```python
 # BAD
 from apps.server.app.models.schemas import UserInfo
 
-user_info = UserInfo(user_name="john_doe", email_address="john@example.com")  # Inconsistent field names
+user_info = UserInfo(username="john_doe", email="not-an-email")
 ```
 <!-- L3:END -->

@@ -2,7 +2,7 @@
 name: add-main-endpoint
 description: >
   This skill covers adding main endpoints to the FastAPI application.
-  Trigger: When setting up the main application entry point.
+  Trigger: When setting up the main entry point for the FastAPI application.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers adding main endpoints to the FastAPI application.
 
-**Trigger**: When setting up the main application entry point.
+**Trigger**: When setting up the main entry point for the FastAPI application.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -28,11 +28,11 @@ This skill covers adding main endpoints to the FastAPI application.
 | Task | Pattern |
 |------|---------|
 | Add health check endpoint | `health` |
-| Implement global error handling | `global_error_handler` |
+| Add detailed health check endpoint | `health_detailed` |
 
 ## Critical Patterns (Summary)
-- **health**: Defines a health check endpoint for the application.
-- **global_error_handler**: Implements a centralized error handling mechanism.
+- **health**: Implements a basic health check endpoint.
+- **health_detailed**: Implements a detailed health check endpoint.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers adding main endpoints to the FastAPI application.
 
 ### health
 
-Defines a health check endpoint for the application to monitor its status.
+Implements a basic health check endpoint to verify the service is running.
 
 ```python
 from fastapi import FastAPI
@@ -52,25 +52,30 @@ async def health():
     return {"status": "healthy"}
 ```
 
-### global_error_handler
+### health_detailed
 
-Implements a centralized error handling mechanism to manage exceptions globally.
+Implements a detailed health check endpoint providing more information about the service status.
 
 ```python
 from fastapi import FastAPI
-from starlette.middleware.errors import ServerErrorMiddleware
 
 app = FastAPI()
 
-@app.exception_handler(Exception)
-async def global_error_handler(request, exc):
-    return JSONResponse(status_code=500, content={"message": "Internal Server Error"})
+@app.get("/health/detailed")
+async def health_detailed():
+    return {
+        "status": "healthy",
+        "details": {
+            "database": "connected",
+            "cache": "operational"
+        }
+    }
 ```
 
 ## When to Use
 
-- When you need to provide a health check for your FastAPI application.
-- When you want to handle errors globally to avoid repetitive error handling code.
+- When you need to expose a health check for monitoring.
+- When you want to provide detailed service status for diagnostics.
 
 ## Commands
 
@@ -80,14 +85,17 @@ uvicorn apps.server.app.main:app --reload
 
 ## Anti-Patterns
 
-### Don't: Ignore error handling
+### Don't: Expose sensitive information
 
-Ignoring error handling can lead to unhandled exceptions and poor user experience.
+Exposing sensitive information in health checks can lead to security vulnerabilities.
 
 ```python
 # BAD
-@app.get("/example")
-async def example():
-    return 1 / 0  # This will raise an unhandled exception
+@app.get("/health/detailed")
+async def health_detailed():
+    return {
+        "status": "healthy",
+        "db_password": "secret"
+    }
 ```
 <!-- L3:END -->

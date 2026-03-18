@@ -25,67 +25,55 @@ This skill covers the backend services for the RepoForge project.
 <!-- L2:START -->
 ## Quick Reference
 
-| Task               | Pattern                          |
-|--------------------|----------------------------------|
-| Run migrations      | `run_migrations_online()`        |
+| Task | Pattern |
+|------|---------|
+| Initialize FastAPI app | `from apps.server.app.main import lifespan` |
 
 ## Critical Patterns (Summary)
-- **Migration Management**: Use Alembic for handling database migrations.
-- **Middleware Setup**: Implement custom middleware for request handling.
+- **Middleware Usage**: Apply custom middleware for request handling.
+- **Database Session Management**: Use async database sessions for operations.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Migration Management
+### Middleware Usage
 
-Use Alembic to manage database migrations effectively, ensuring schema changes are applied consistently.
+Apply custom middleware for request handling to enhance security and logging.
 
 ```python
 # Example using real exported names
-from apps.server.alembic.env import run_migrations_online
-
-run_migrations_online()
+from apps.server.app.main import correlation_id_middleware
 ```
 
-### Middleware Setup
+### Database Session Management
 
-Implement custom middleware to handle authentication and logging for incoming requests.
+Use async database sessions for operations to ensure non-blocking I/O.
 
 ```python
-# Example
-from apps.server.app.middleware.auth import get_current_user
-
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-    user = await get_current_user(request)
-    response = await call_next(request)
-    return response
+# Example using real exported names
+from apps.server.app.models.database import get_db
 ```
 
 ## When to Use
 
-- When setting up database migrations for schema changes.
-- When implementing authentication for API endpoints.
+- When implementing authentication and authorization features.
+- When setting up database interactions for models.
 
 ## Commands
 
 ```bash
-# Run the FastAPI application
 uvicorn apps.server.app.main:app --reload
-
-# Run migrations
-alembic upgrade head
 ```
 
 ## Anti-Patterns
 
-### Don't: Change database models without migration
+### Don't: Modify database models without migration
 
-Not running migrations after changing models can lead to database inconsistencies.
+This can lead to inconsistencies and application crashes.
 
 ```python
 # BAD
-# Directly modifying models without running migrations
+# Directly changing models without running migrations
 ```
 <!-- L3:END -->
