@@ -40,7 +40,7 @@ This skill covers adding the parent directory to the path when running the harne
 
 ### Create FastAPI CRUD module
 
-This pattern generates a CRUD module for FastAPI, allowing for quick API development.
+Generates a CRUD module for FastAPI, allowing for quick API development.
 
 ```python
 from eval.harness import make_fastapi_crud_module
@@ -50,7 +50,7 @@ module = make_fastapi_crud_module("User")
 
 ### Create Next.js page module
 
-This pattern generates a page module for Next.js, facilitating frontend development.
+Generates a page module for Next.js, facilitating frontend development.
 
 ```python
 from eval.harness import make_nextjs_page_module
@@ -60,7 +60,7 @@ module = make_nextjs_page_module("HomePage")
 
 ## When to Use
 
-- When developing a new API using FastAPI.
+- When developing a new FastAPI service and needing CRUD operations.
 - When creating a new page in a Next.js application.
 
 ## Commands

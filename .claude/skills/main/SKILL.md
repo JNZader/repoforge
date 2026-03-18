@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # main-layer
 
-This skill covers the core functionalities and modules of the project.
+This skill covers the core functionality and structure of the main layer.
 
 **Trigger**: When working in main/ directory and its main responsibility.
 <!-- L1:END -->
@@ -51,7 +51,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 ### Data Adaptation
 
-Use adapters for valid target identifiers to maintain consistent data handling across modules.
+Utilize adapters to manage valid target identifiers, ensuring consistent data handling across modules.
 
 ```python
 # repoforge/adapters.py
@@ -63,7 +63,7 @@ def adapt_for_cursor(data):
 ## When to Use
 
 - When creating or modifying core modules that interact with the main functionality.
-- When integrating new features that require adjustments in the existing module structure.
+- When integrating new features that require adjustments to existing data handling.
 
 ## Commands
 
@@ -73,12 +73,13 @@ python -m eval.harness
 
 ## Anti-Patterns
 
-### Don't: Change core module structure without testing
+### Don't: Modify core modules without testing
 
-Changing the core module structure can lead to broken imports and functionality across the project.
+Changing core modules can lead to unexpected behavior across the project.
 
 ```python
 # BAD
-# Directly modifying eval/__init__.py without ensuring all dependencies are updated
+def broken_function():
+    return undefined_variable
 ```
 <!-- L3:END -->

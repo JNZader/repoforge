@@ -73,7 +73,7 @@ pytest tests/test_scorer.py
 
 ### Don't: Hardcode User Data
 
-Hardcoding user data can lead to maintenance issues and reduced test reliability.
+Hardcoding user data can lead to brittle tests that fail with changes in requirements.
 
 ```python
 # BAD

@@ -1,7 +1,7 @@
 ---
 name: test-plugins-build-commands
 description: >
-  This skill covers testing various repository mappings for plugins.
+  This skill covers testing plugins for various repository types.
   Trigger: Load this skill when working with test_plugins.
 license: Apache-2.0
 metadata:
@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # test-plugins-build-commands
 
-This skill covers testing various repository mappings for plugins.
+This skill covers testing plugins for various repository types.
 
 **Trigger**: Load this skill when working with test_plugins.
 <!-- L1:END -->
@@ -27,41 +27,39 @@ This skill covers testing various repository mappings for plugins.
 
 | Task | Pattern |
 |------|---------|
-| Validate Python repository mapping | `python_repo_map` |
-| Validate Node repository mapping | `node_repo_map` |
+| Map Python repositories | `python_repo_map` |
+| Map Node repositories | `node_repo_map` |
 
 ## Critical Patterns (Summary)
-- **Validate Python repository mapping**: Ensures the correctness of the Python repository mapping.
-- **Validate Node repository mapping**: Confirms the integrity of the Node repository mapping.
+- **Python Repository Mapping**: Use `python_repo_map` to map Python repositories.
+- **Node Repository Mapping**: Use `node_repo_map` to map Node.js repositories.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Validate Python repository mapping
+### Python Repository Mapping
 
-This pattern validates the structure and content of the Python repository mapping.
+Utilize `python_repo_map` to effectively map Python repositories for testing.
 
 ```python
-# Example usage of python_repo_map
-def test_python_repo_mapping():
-    assert python_repo_map() is not None
+# Example of using python_repo_map
+repo_mapping = python_repo_map()
 ```
 
-### Validate Node repository mapping
+### Node Repository Mapping
 
-This pattern checks the Node repository mapping for expected values.
+Leverage `node_repo_map` to map Node.js repositories for your testing needs.
 
 ```python
-# Example usage of node_repo_map
-def test_node_repo_mapping():
-    assert node_repo_map() is not None
+# Example of using node_repo_map
+node_mapping = node_repo_map()
 ```
 
 ## When to Use
 
-- When validating the structure of Python and Node repository mappings.
-- During the development of new plugins to ensure mappings are correct.
+- When you need to test Python plugins in a repository.
+- When you are validating Node.js plugins in your project.
 
 ## Commands
 
@@ -71,13 +69,12 @@ pytest tests/test_plugins.py
 
 ## Anti-Patterns
 
-### Don't: Ignore repository mapping tests
+### Don't: Hardcode Repository Paths
 
-Ignoring tests can lead to undetected issues in repository mappings.
+Hardcoding paths can lead to maintenance issues and reduce flexibility.
 
 ```python
 # BAD
-def test_no_mapping():
-    pass  # No validation performed
+repo_path = "/path/to/repo"
 ```
 <!-- L3:END -->

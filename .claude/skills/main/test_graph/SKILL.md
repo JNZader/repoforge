@@ -65,8 +65,8 @@ def test_add_node():
 
 ## When to Use
 
-- When creating unit tests for graph-related functionalities.
-- When validating the behavior of graph modifications.
+- When you need to create a small graph for unit tests.
+- When testing the addition of nodes to a graph structure.
 
 ## Commands
 
@@ -84,8 +84,8 @@ Using real RepoMaps can lead to flaky tests and inconsistent results.
 # BAD
 from repo.maps import RepoMap
 
-def test_with_real_repo_map():
-    repo_map = RepoMap()
-    # Test logic here
+def test_with_real_repos():
+    repo = RepoMap()
+    assert repo is not None
 ```
 <!-- L3:END -->
