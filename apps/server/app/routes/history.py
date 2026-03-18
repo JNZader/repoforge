@@ -10,13 +10,14 @@ import math
 from pathlib import Path
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.middleware.auth import CurrentUser
-from app.models import Generation, GenerationEvent, get_db
+from app.middleware.rate_limit import API_LIMIT, get_user_id_key, limiter
+from app.models import Generation, get_db
 from app.models.schemas import (
     GenerationDetail,
     GenerationDetailWithEvents,
@@ -32,7 +33,9 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 
 
 @router.get("", response_model=GenerationListResponse)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def list_generations(
+    request: Request,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -98,7 +101,9 @@ async def list_generations(
 
 
 @router.get("/{generation_id}")
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def get_generation_detail(
+    request: Request,
     generation_id: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
@@ -138,7 +143,9 @@ async def get_generation_detail(
 
 
 @router.delete("/{generation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def delete_generation(
+    request: Request,
     generation_id: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),

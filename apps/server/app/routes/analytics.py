@@ -10,11 +10,12 @@ Endpoints:
 from datetime import date, timedelta
 
 import structlog
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import case, desc, func, select
+from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.middleware.auth import CurrentUser
+from app.middleware.rate_limit import API_LIMIT, get_user_id_key, limiter
 from app.models import Generation, UsageStat, get_db
 from app.models.schemas import (
     AnalyticsSummaryResponse,
@@ -38,7 +39,9 @@ _PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90}
 
 
 @router.get("/summary", response_model=AnalyticsSummaryResponse)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def get_summary(
+    request: Request,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> AnalyticsSummaryResponse:
@@ -121,7 +124,9 @@ async def get_summary(
 
 
 @router.get("/usage", response_model=UsageResponse)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def get_usage(
+    request: Request,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
     period: str = Query(
@@ -169,7 +174,9 @@ async def get_usage(
 
 
 @router.get("/models", response_model=ModelUsageResponse)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def get_model_usage(
+    request: Request,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> ModelUsageResponse:
@@ -216,7 +223,9 @@ async def get_model_usage(
 
 
 @router.get("/repos", response_model=RepoUsageResponse)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def get_repo_usage(
+    request: Request,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> RepoUsageResponse:

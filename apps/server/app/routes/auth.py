@@ -5,12 +5,13 @@ import time
 from urllib.parse import urlencode
 
 import jwt
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
 from app.config import settings
 from app.middleware.auth import CurrentUser
+from app.middleware.rate_limit import AUTH_LIMIT, API_LIMIT, limiter
 from app.models import User, async_session_factory
 from app.models.schemas import AuthValidateResponse, UserInfo
 
@@ -43,7 +44,8 @@ def _build_jwt(user: User) -> str:
 
 
 @router.get("/login")
-async def login() -> RedirectResponse:
+@limiter.limit(AUTH_LIMIT)
+async def login(request: Request) -> RedirectResponse:
     """Redirect user to GitHub OAuth authorize page."""
     state = generate_state()
     params = urlencode({
@@ -61,7 +63,9 @@ async def login() -> RedirectResponse:
 
 
 @router.get("/callback")
+@limiter.limit(AUTH_LIMIT)
 async def callback(
+    request: Request,
     code: str | None = Query(default=None),
     state: str | None = Query(default=None),
     error: str | None = Query(default=None),
@@ -149,7 +153,8 @@ async def callback(
 
 
 @router.post("/validate")
-async def validate_token(current_user: CurrentUser) -> AuthValidateResponse:
+@limiter.limit(API_LIMIT)
+async def validate_token(request: Request, current_user: CurrentUser) -> AuthValidateResponse:
     """Validate the current JWT and return user info."""
     return AuthValidateResponse(
         user=UserInfo(
@@ -162,7 +167,8 @@ async def validate_token(current_user: CurrentUser) -> AuthValidateResponse:
 
 
 @router.post("/logout")
-async def logout(current_user: CurrentUser) -> dict:
+@limiter.limit(API_LIMIT)
+async def logout(request: Request, current_user: CurrentUser) -> dict:
     """Logout endpoint (stateless — client clears token).
 
     Exists for logging/audit purposes.

@@ -15,13 +15,14 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
 from app.middleware.auth import CurrentUser
+from app.middleware.rate_limit import API_LIMIT, GENERATE_LIMIT, get_user_id_key, limiter
 from app.models import Generation, get_db
 from app.models.schemas import GenerateRequest, GenerateResponse, GenerationDetail
 from app.services.generation_service import generation_service
@@ -35,7 +36,9 @@ router = APIRouter(prefix="/api/generate", tags=["generate"])
 
 
 @router.post("", response_model=GenerateResponse, status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(GENERATE_LIMIT, key_func=get_user_id_key)
 async def start_generation(
+    request: Request,
     body: GenerateRequest,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
@@ -98,7 +101,9 @@ async def start_generation(
 
 
 @router.get("/{generation_id}/stream")
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def stream_generation(
+    request: Request,
     generation_id: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
@@ -197,7 +202,9 @@ async def stream_generation(
 
 
 @router.get("/{generation_id}", response_model=GenerationDetail)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def get_generation(
+    request: Request,
     generation_id: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
@@ -224,7 +231,9 @@ async def get_generation(
 
 
 @router.post("/{generation_id}/cancel")
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def cancel_generation(
+    request: Request,
     generation_id: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
@@ -272,7 +281,9 @@ async def cancel_generation(
 
 
 @router.get("/{generation_id}/download")
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def download_generation(
+    request: Request,
     generation_id: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),

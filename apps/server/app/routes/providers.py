@@ -4,12 +4,13 @@ import logging
 import time as _time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.middleware.auth import CurrentUser
+from app.middleware.rate_limit import API_LIMIT, get_user_id_key, limiter
 from app.models import ProviderKey, get_db
 from app.models.schemas import (
     ProviderKeyCreate,
@@ -41,7 +42,9 @@ def _get_master_key() -> bytes:
 
 
 @router.post("/validate", response_model=ProviderKeyValidateResponse)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def validate_key(
+    request: Request,
     body: ProviderKeyValidateRequest,
     current_user: CurrentUser,
 ) -> ProviderKeyValidateResponse:
@@ -62,7 +65,9 @@ async def validate_key(
 
 
 @router.get("", response_model=list[ProviderKeyResponse])
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def list_keys(
+    request: Request,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> list[ProviderKeyResponse]:
@@ -125,7 +130,9 @@ async def list_keys(
 
 
 @router.post("", response_model=ProviderKeyResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def create_or_update_key(
+    request: Request,
     body: ProviderKeyCreate,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
@@ -226,7 +233,9 @@ async def create_or_update_key(
 
 
 @router.delete("/session/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def delete_session_key(
+    request: Request,
     provider: str,
     current_user: CurrentUser,
 ) -> None:
@@ -248,7 +257,9 @@ async def delete_session_key(
 
 
 @router.delete("/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(API_LIMIT, key_func=get_user_id_key)
 async def delete_key(
+    request: Request,
     provider: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),

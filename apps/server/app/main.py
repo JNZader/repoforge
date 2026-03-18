@@ -14,9 +14,13 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 from app.config import settings
+from app.middleware.logging_config import configure_logging
+from app.middleware.rate_limit import limiter
 from app.models.database import Base, async_session_factory, engine
 from app.routes.auth import router as auth_router
 from app.routes.generate import router as generate_router
@@ -26,25 +30,10 @@ from app.routes.providers import router as providers_router
 from app.services.generation_service import generation_service
 from app.services.session_keys import session_key_cleanup_loop
 
-logger = structlog.get_logger(__name__)
+# Configure structured logging before anything else
+configure_logging()
 
-# --- Structlog configuration ---
-structlog.configure(
-    processors=[
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.JSONRenderer()
-        if settings.LOG_FORMAT == "json"
-        else structlog.dev.ConsoleRenderer(),
-    ],
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-)
+logger = structlog.get_logger(__name__)
 
 # Track server start time for uptime calculation
 _start_time: float = 0.0
@@ -95,6 +84,10 @@ app = FastAPI(
     description="Web API for RepoForge doc/skills generation",
     lifespan=lifespan,
 )
+
+# --- Rate limiter setup ---
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # --- Correlation ID middleware ---
@@ -153,7 +146,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID"],
+    expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
 )
 
 
