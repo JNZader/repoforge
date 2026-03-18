@@ -82,7 +82,7 @@ uvicorn apps.server.app.main:app --reload
 
 ### Don't: Ignore error handling
 
-Ignoring error handling can lead to unhandled exceptions and poor user experience.
+Ignoring error handling can lead to uninformative responses and application crashes.
 
 ```python
 # BAD

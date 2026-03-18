@@ -2,13 +2,13 @@
 name: add-auth-endpoint
 description: >
   This skill covers the implementation of authentication routes.
-  Trigger: When setting up auth functionality in the backend.
+  Trigger: When setting up auth-related endpoints in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
-  token_estimate: 450
+  complexity: low
+  token_estimate: 350
   dependencies: []
   related_skills: []
   load_priority: high
@@ -19,18 +19,18 @@ metadata:
 
 This skill covers the implementation of authentication routes.
 
-**Trigger**: When setting up auth functionality in the backend.
+**Trigger**: When setting up auth-related endpoints in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task                | Pattern                  |
-|---------------------|--------------------------|
-| User login          | `login`                  |
-| GitHub callback     | `callback`               |
-| Validate JWT token  | `validate_token`         |
-| User logout         | `logout`                 |
+| Task               | Pattern                     |
+|--------------------|-----------------------------|
+| User login         | `login`                     |
+| GitHub callback     | `callback`                  |
+| Validate JWT token | `validate_token`            |
+| User logout        | `logout`                    |
 
 ## Critical Patterns (Summary)
 - **User login**: Handles user authentication via GitHub OAuth.
@@ -69,14 +69,13 @@ async def get_current_user(token: str = Depends(validate_token)):
 
 ## When to Use
 
-- When implementing user authentication in a FastAPI application.
-- When needing to validate JWT tokens for protected routes.
+- When implementing user authentication for a web application.
+- When validating user sessions with JWT tokens.
 
 ## Commands
 
 ```bash
-pip install fastapi
-pip install sqlalchemy
+python -m apps.server.app.main
 ```
 
 ## Anti-Patterns

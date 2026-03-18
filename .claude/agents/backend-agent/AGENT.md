@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the backend functionalities, including API management, database operations, and authentication processes. It never interacts with frontend or other layers.
+This agent owns the backend functionalities, including API management, database setup, and authentication processes. It never interacts with frontend or other layers.
 
 ## Capabilities
 
@@ -28,7 +28,7 @@ Before starting ANY task:
 
 Task execution:
 1. Manage FastAPI routes and middleware
-2. Interact with the async database engine
+2. Handle database migrations and ORM models
 3. Verify authentication processes
 4. Report back to orchestrator with: files changed, tests status, blockers
 
@@ -38,8 +38,8 @@ Task execution:
 - /home/runner/work/repoforge/repoforge/.claude/skills/backend/schemas/SKILL.md — load when working with schemas
 - /home/runner/work/repoforge/repoforge/.claude/skills/backend/main/SKILL.md — load when working with main
 - /home/runner/work/repoforge/repoforge/.claude/skills/backend/auth/SKILL.md — load when working with auth
+- /home/runner/work/repoforge/repoforge/.claude/skills/backend/crypto/SKILL.md — load when working with crypto
 - /home/runner/work/repoforge/repoforge/.claude/skills/backend/github_oauth/SKILL.md — load when working with github_oauth
-- /home/runner/work/repoforge/repoforge/.claude/skills/backend/database/SKILL.md — load when working with database
 
 ## Constraints
 
