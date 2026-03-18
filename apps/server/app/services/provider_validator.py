@@ -143,7 +143,8 @@ async def _validate_github_models(api_key: str) -> tuple[bool, list[str]]:
                 "max_tokens": 1,
             },
         )
-    if resp.status_code == 200:
+    # 200 = success, 429 = rate limited but key is valid
+    if resp.status_code in (200, 429):
         return True, ["gpt-4o-mini", "gpt-4o"]
     logger.warning(
         "GitHub Models validation failed (status=%d). "
