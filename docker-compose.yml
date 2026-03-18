@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: repoforge
+      POSTGRES_PASSWORD: repoforge
+      POSTGRES_DB: repoforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repoforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - repoforge-net
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://repoforge:repoforge@db:5432/repoforge
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+      STATE_SECRET: ${STATE_SECRET:-dev-state-secret-change-me}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      ALLOWED_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
+      DEBUG: "true"
+    env_file:
+      - path: .env
+        required: false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    networks:
+      - repoforge-net
+
+volumes:
+  pgdata:
+
+networks:
+  repoforge-net:
+    driver: bridge

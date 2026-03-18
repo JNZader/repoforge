@@ -1,0 +1,78 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: repoforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: repoforge
+    volumes:
+      - repoforge-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repoforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - repoforge-net
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://repoforge:${POSTGRES_PASSWORD}@db:5432/repoforge
+      JWT_SECRET: ${JWT_SECRET}
+      STATE_SECRET: ${STATE_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      FRONTEND_URL: https://jnzader.github.io/repoforge/app
+      BACKEND_URL: https://repoforge-api.javierzader.com
+      ALLOWED_ORIGINS: '["https://jnzader.github.io","https://repoforge-api.javierzader.com"]'
+      DEBUG: "false"
+    labels:
+      - "traefik.enable=true"
+      # HTTP → HTTPS redirect
+      - "traefik.http.routers.repoforge-http.entryPoints=http"
+      - "traefik.http.routers.repoforge-http.rule=Host(`repoforge-api.javierzader.com`)"
+      - "traefik.http.routers.repoforge-http.middlewares=repoforge-redirect"
+      # HTTPS with Let's Encrypt
+      - "traefik.http.routers.repoforge-https.entryPoints=https"
+      - "traefik.http.routers.repoforge-https.rule=Host(`repoforge-api.javierzader.com`)"
+      - "traefik.http.routers.repoforge-https.tls=true"
+      - "traefik.http.routers.repoforge-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.repoforge-https.middlewares=repoforge-gzip,repoforge-cors"
+      # Service port
+      - "traefik.http.services.repoforge-svc.loadbalancer.server.port=8000"
+      # Middlewares (unique names to avoid conflicts with other apps)
+      - "traefik.http.middlewares.repoforge-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.repoforge-gzip.compress=true"
+      # CORS middleware for cross-origin requests from GH Pages
+      - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowOriginList=https://jnzader.github.io"
+      - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowMethods=GET,POST,PUT,DELETE,OPTIONS"
+      - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowHeaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowCredentials=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    networks:
+      - repoforge-net
+      - coolify
+    restart: unless-stopped
+
+volumes:
+  repoforge-pgdata:
+
+networks:
+  repoforge-net:
+    driver: bridge
+  coolify:
+    external: true
+    name: coolify
