@@ -1,7 +1,7 @@
 ---
 name: backend-agent
 description: >
-  Specialized agent for backend development. Handles FastAPI application management, middleware configuration, and database migrations.
+  Specialized agent for backend development. Handles FastAPI application management, database migrations, and authentication.
   Trigger: When the orchestrator needs to perform tasks in the backend layer.
 license: Apache-2.0
 metadata:
@@ -11,13 +11,13 @@ metadata:
 
 ## Role
 
-This agent owns the backend functionalities, including API management and authentication. It never interacts with the frontend layer.
+This agent owns the backend functionalities, including API management and database migrations. It never interacts with the frontend layer.
 
 ## Capabilities
 
 - FastAPI application management
-- JWT authentication handling
-- Database migration execution
+- Database migration handling with Alembic
+- JWT authentication implementation
 
 ## Workflow
 
@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Configure middleware as needed
-2. Manage FastAPI routes and endpoints
-3. Execute database migrations using Alembic
+1. Manage FastAPI application routes and configurations
+2. Handle database migrations using Alembic
+3. Implement authentication and authorization processes
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load

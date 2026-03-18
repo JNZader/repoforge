@@ -40,47 +40,45 @@ This skill covers the generation routes for starting, streaming, canceling, down
 
 ### Start Generation
 
-Initiates the generation process and returns a response indicating the status.
+Initiates the generation process by calling the `start_generation` function.
 
 ```python
 from apps.server.app.routes.generate import start_generation
 
-response = start_generation(data)
+result = start_generation(data)
 ```
 
 ### Stream Generation
 
-Streams the ongoing generation process, allowing real-time updates.
+Streams the ongoing generation process using the `stream_generation` function.
 
 ```python
 from apps.server.app.routes.generate import stream_generation
 
-for update in stream_generation(job_id):
-    print(update)
+for chunk in stream_generation(generation_id):
+    process_chunk(chunk)
 ```
 
 ## When to Use
 
 - When a user requests to start a new generation task.
-- When streaming updates for an ongoing generation process.
+- When streaming updates for a long-running generation process.
 
 ## Commands
 
 ```bash
 docker-compose up
-python repoforge/cli.py start
+python apps/server/app/main.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Block the main thread
+### Don't: Start without validation
 
-Blocking the main thread during generation can lead to unresponsive applications.
+Starting a generation without validating input can lead to errors and unexpected behavior.
 
 ```python
 # BAD
-result = start_generation(data)
-while not result.is_complete():
-    pass  # This blocks the main thread
+start_generation(None)
 ```
 <!-- L3:END -->

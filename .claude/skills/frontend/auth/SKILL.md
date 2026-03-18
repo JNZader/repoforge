@@ -1,8 +1,8 @@
 ---
 name: use-auth-provider
 description: >
-  This skill covers patterns for managing authentication in a frontend application.
-  Trigger: Load this skill when implementing auth features in the frontend.
+  This skill covers patterns for implementing authentication in a frontend application.
+  Trigger: Load this skill when managing user authentication.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # use-auth-provider
 
-This skill covers patterns for managing authentication in a frontend application.
+This skill covers patterns for implementing authentication in a frontend application.
 
-**Trigger**: Load this skill when implementing auth features in the frontend.
+**Trigger**: Load this skill when managing user authentication.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -62,14 +62,14 @@ const App = () => (
 
 ## When to Use
 
-- When setting up authentication for a new frontend application.
-- When needing to manage user sessions and authentication state across components.
+- When setting up the authentication context for your application.
+- When configuring API endpoints for authentication requests.
 
 ## Commands
 
 ```bash
 docker-compose up
-python repoforge/cli.py run
+python repoforge/cli.py
 ```
 
 ## Anti-Patterns
@@ -79,7 +79,6 @@ python repoforge/cli.py run
 Hardcoding API URLs can lead to maintenance issues and inconsistencies.
 
 ```typescript
-// BAD
-const apiUrl = 'http://localhost:3000/api'; // Avoid this practice
+const apiUrl = 'http://localhost:3000/api'; // BAD
 ```
 <!-- L3:END -->

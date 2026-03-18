@@ -27,41 +27,41 @@ This skill covers the creation of Pydantic v2 request and response schemas.
 
 | Task | Pattern |
 |------|---------|
-| Define user information schema | `UserInfo` |
-| Create authentication validation response | `AuthValidateResponse` |
+| Define user info schema | `UserInfo` |
+| Create token response schema | `TokenResponse` |
 
 ## Critical Patterns (Summary)
-- **UserInfo**: Defines the schema for user information.
-- **AuthValidateResponse**: Creates a response schema for authentication validation.
+- **User Info Schema**: Defines the structure for user information.
+- **Token Response Schema**: Specifies the format for token responses.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### UserInfo
+### User Info Schema
 
-Defines the schema for user information, ensuring all required fields are validated.
+Defines the structure for user information using Pydantic.
 
 ```python
 from apps.server.app.models.schemas import UserInfo
 
-user_info = UserInfo(username="john_doe", email="john@example.com", full_name="John Doe")
+user_info = UserInfo(username="john_doe", email="john@example.com")
 ```
 
-### AuthValidateResponse
+### Token Response Schema
 
-Creates a response schema for authentication validation, encapsulating necessary response fields.
+Specifies the format for token responses, ensuring proper validation.
 
 ```python
-from apps.server.app.models.schemas import AuthValidateResponse
+from apps.server.app.models.schemas import TokenResponse
 
-auth_response = AuthValidateResponse(is_valid=True, user_id="12345")
+token_response = TokenResponse(access_token="abc123", token_type="bearer")
 ```
 
 ## When to Use
 
-- When defining schemas for user-related data in the API.
-- When creating responses for authentication processes.
+- When creating API endpoints that require user information validation.
+- When handling authentication responses in the RepoForge Web API.
 
 ## Commands
 
@@ -72,14 +72,12 @@ python repoforge/cli.py run
 
 ## Anti-Patterns
 
-### Don't: Use unvalidated data types
+### Don't: Use Unvalidated Data
 
-Using unvalidated data types can lead to runtime errors and security vulnerabilities.
+Using unvalidated data can lead to security vulnerabilities and data integrity issues.
 
 ```python
 # BAD
-from apps.server.app.models.schemas import UserInfo
-
-user_info = UserInfo(username="john_doe", email="invalid-email", full_name="John Doe")  # No validation
+user_info = UserInfo(username="john_doe", email="not-an-email")
 ```
 <!-- L3:END -->

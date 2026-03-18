@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # frontend-layer
 
-This skill covers the management of the user interface and user experience components.
+This skill covers the frontend layer of the application, focusing on UI components and interactions.
 
 **Trigger**: When working in frontend/ — adding, modifying, or debugging UI components and interactions.
 <!-- L1:END -->
@@ -42,9 +42,9 @@ This skill covers the management of the user interface and user experience compo
 Each component should be a functional component returning JSX.
 
 ```typescript
-// Example of a functional component
+// apps/web/src/components/NewComponent.tsx
 export const NewComponent = () => {
-  return <div>Hello, World!</div>;
+  return <div>New Component</div>;
 };
 ```
 
@@ -53,16 +53,18 @@ export const NewComponent = () => {
 Use ErrorBoundary to catch and display errors gracefully.
 
 ```typescript
-// Example of using ErrorBoundary
-<ErrorBoundary>
-  <Layout />
-</ErrorBoundary>
+// apps/web/src/components/ErrorBoundary.tsx
+import React from 'react';
+
+export class ErrorBoundary extends React.Component {
+  // Error handling logic
+}
 ```
 
 ## When to Use
 
 - When creating reusable UI components.
-- When implementing error boundaries for better user experience.
+- When implementing error handling for user interactions.
 
 ## Commands
 
@@ -73,14 +75,12 @@ npm run build
 
 ## Anti-Patterns
 
-### Don't: Modify shared components without coordination
+### Don't: Modify shared state directly
 
-Changing shared components can break the UI for other layers relying on them.
+Directly modifying shared state can lead to unpredictable UI behavior.
 
 ```typescript
-// BAD: Directly modifying a shared component
-const Layout = () => {
-  return <div>New Layout</div>; // This may affect other parts of the app
-};
+// BAD
+state.sharedValue = newValue; // This breaks the state management
 ```
 <!-- L3:END -->

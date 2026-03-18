@@ -27,47 +27,43 @@ This skill covers the creation and management of generation request types.
 
 | Task | Pattern |
 |------|---------|
-| Define a user type | `User` |
-| Create a generation request | `GenerateRequest` |
+| Create a user type | `User` |
+| Define generation mode | `GenerationMode` |
 
 ## Critical Patterns (Summary)
-- **User Type Definition**: Defines the structure of a user object.
-- **Generation Request Creation**: Handles the creation of a generation request object.
+- **User**: Defines the structure for user-related data.
+- **GenerationMode**: Specifies the mode of generation for requests.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### User Type Definition
+### User
 
-Defines the structure of a user object, which is essential for managing user data in the application.
+Defines the structure for user-related data, encapsulating user attributes.
 
 ```typescript
-// Example of User type
-export type User = {
-  id: string;
-  name: string;
-  email: string;
+// Example of User type usage
+const newUser: User = {
+  id: '123',
+  name: 'John Doe',
+  email: 'john@example.com'
 };
 ```
 
-### Generation Request Creation
+### GenerationMode
 
-Handles the creation of a generation request object, which is used to initiate a generation process.
+Specifies the mode of generation for requests, allowing for different generation strategies.
 
 ```typescript
-// Example of GenerateRequest type
-export type GenerateRequest = {
-  userId: string;
-  mode: GenerationMode;
-  parameters: Record<string, any>;
-};
+// Example of GenerationMode usage
+const mode: GenerationMode = GenerationMode.AUTOMATIC;
 ```
 
 ## When to Use
 
-- When defining user-related data structures in the frontend.
-- When creating requests for generation processes in the application.
+- When defining user data structures in your application.
+- When specifying how generation requests should be processed.
 
 ## Commands
 
@@ -78,16 +74,12 @@ python repoforge/cli.py generate
 
 ## Anti-Patterns
 
-### Don't: Use Inconsistent Type Definitions
+### Don't: Use generic types
 
-Inconsistent type definitions can lead to runtime errors and confusion in the codebase.
+Using overly generic types can lead to confusion and errors in type safety.
 
 ```typescript
 // BAD
-export type User = {
-  id: number; // Inconsistent type
-  name: string;
-  email: string;
-};
+const genericUser: any = {};
 ```
 <!-- L3:END -->

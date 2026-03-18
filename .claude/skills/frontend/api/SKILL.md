@@ -31,14 +31,14 @@ This skill covers patterns for fetching and managing API data.
 | Start a generation process | `startGeneration` |
 
 ## Critical Patterns (Summary)
-- **Fetch API data**: Use `fetchApi` to retrieve data from the API.
-- **Start a generation process**: Utilize `startGeneration` to initiate data generation.
+- **Fetch API Data**: Use `fetchApi` to retrieve data from the API.
+- **Start Generation Process**: Utilize `startGeneration` to initiate a data generation process.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Fetch API data
+### Fetch API Data
 
 Use `fetchApi` to retrieve data from the API, handling errors with `ApiError`.
 
@@ -57,9 +57,9 @@ async function getData() {
 }
 ```
 
-### Start a generation process
+### Start Generation Process
 
-Utilize `startGeneration` to initiate data generation, allowing for real-time updates.
+Utilize `startGeneration` to initiate a data generation process, allowing for real-time updates.
 
 ```typescript
 import { startGeneration } from './lib/api';
@@ -74,7 +74,7 @@ function initiateGeneration() {
 ## When to Use
 
 - When you need to fetch data from an external API.
-- When starting a data generation process that requires real-time updates.
+- When initiating a data generation process that requires real-time updates.
 
 ## Commands
 
@@ -85,7 +85,7 @@ python repoforge/cli.py fetch-data
 
 ## Anti-Patterns
 
-### Don't: Ignore ApiError
+### Don't: Ignore ApiError Handling
 
 Ignoring `ApiError` can lead to unhandled exceptions and poor user experience.
 
