@@ -1,14 +1,15 @@
 ---
 name: backend-layer
 description: >
-  This layer provides the FastAPI backend for the RepoForge Web application, handling API requests, authentication, and middleware.
+  This layer provides the backend functionality for the RepoForge application, 
+  handling API requests, authentication, and database migrations.
   Trigger: When working in backend/ — adding, modifying, or debugging server-side logic.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 450
+  token_estimate: 800
   dependencies: []
   related_skills: []
   load_priority: high
@@ -17,7 +18,7 @@ metadata:
 <!-- L1:START -->
 # backend-layer
 
-This skill covers the backend functionality of the RepoForge Web application.
+This skill covers the backend functionality of the RepoForge application.
 
 **Trigger**: When working in backend/ directory and its main responsibility is to manage server-side logic.
 <!-- L1:END -->
@@ -27,11 +28,10 @@ This skill covers the backend functionality of the RepoForge Web application.
 
 | Task | Pattern |
 |------|---------|
-| Configure logging | `configure_logging()` |
-| Run migrations | `run_migrations_online()` |
+| Configure logging | `from apps.server.app.middleware.logging_config import configure_logging` |
 
 ## Critical Patterns (Summary)
-- **Middleware Configuration**: Set up custom middleware for request handling.
+- **Middleware Configuration**: Use custom middleware for request handling and logging.
 - **Database Migration**: Manage database schema changes using Alembic.
 <!-- L2:END -->
 
@@ -40,32 +40,26 @@ This skill covers the backend functionality of the RepoForge Web application.
 
 ### Middleware Configuration
 
-Set up custom middleware for handling requests and responses in FastAPI.
+Custom middleware can be added to handle various aspects of request processing, such as authentication and logging.
 
 ```python
-# apps/server/app/main.py
-from .middleware.logging_config import configure_logging
-
-app = FastAPI()
-configure_logging()
+# Example of adding a middleware
+from apps.server.app.middleware.auth import get_current_user
 ```
 
 ### Database Migration
 
-Manage database schema changes using Alembic for version control.
+Alembic is used for managing database migrations, allowing for version control of the database schema.
 
 ```python
-# apps/server/alembic/env.py
-from alembic import context
-from . import run_migrations_online
-
-run_migrations_online()
+# Example of running migrations
+from apps.server.alembic.env import run_migrations_online
 ```
 
 ## When to Use
 
 - When implementing new API endpoints that require authentication.
-- When modifying existing database schemas and ensuring migrations are applied.
+- When modifying the database schema and needing to apply migrations.
 
 ## Commands
 
@@ -73,20 +67,18 @@ run_migrations_online()
 # Run the FastAPI server
 uvicorn apps.server.app.main:app --reload
 
-# Apply database migrations
-alembic upgrade head
+# Run migrations
+python apps/server/alembic/env.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Change API response formats without versioning
+### Don't: Change API response formats without updating the frontend
 
-This can break frontend integrations that rely on specific response structures.
+This can lead to mismatches between the backend and frontend, causing errors in data handling.
 
 ```python
 # BAD
-@app.get("/items")
-def get_items():
-    return {"items": ["item1", "item2"]}  # Changing response structure without versioning
+return {"message": "success"}  # If frontend expects a different structure
 ```
 <!-- L3:END -->

@@ -1,8 +1,8 @@
 ---
-name: generate-request-types
+name: generate-request-response
 description: >
-  This skill covers the generation of request and response types for user interactions.
-  Trigger: Load this skill when defining types for generation requests and responses.
+  This skill covers the generation of requests and responses in TypeScript.
+  Trigger: Load this skill when working with types related to generation.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# generate-request-types
+# generate-request-response
 
-This skill covers the generation of request and response types for user interactions.
+This skill covers the generation of requests and responses in TypeScript.
 
-**Trigger**: Load this skill when defining types for generation requests and responses.
+**Trigger**: Load this skill when working with types related to generation.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,12 +27,12 @@ This skill covers the generation of request and response types for user interact
 
 | Task | Pattern |
 |------|---------|
-| Define user generation request | `GenerateRequest` |
-| Define user generation response | `GenerateResponse` |
+| Create a generate request | `GenerateRequest` |
+| Handle generation response | `GenerateResponse` |
 
 ## Critical Patterns (Summary)
-- **GenerateRequest**: Defines the structure for a user generation request.
-- **GenerateResponse**: Defines the structure for a user generation response.
+- **GenerateRequest**: Defines the structure for a generation request.
+- **GenerateResponse**: Defines the structure for a generation response.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,33 +40,35 @@ This skill covers the generation of request and response types for user interact
 
 ### GenerateRequest
 
-Defines the structure for a user generation request, including necessary parameters.
+Defines the structure for a generation request, including necessary parameters.
 
 ```typescript
-// Example of a GenerateRequest type
-type UserGenerationRequest = GenerateRequest & {
-  userId: string;
-  providerKey: ProviderKey;
-  mode: GenerationMode;
+// Example of a GenerateRequest
+const request: GenerateRequest = {
+  providerKey: ProviderKey.SomeProvider,
+  mode: GenerationMode.Standard,
+  // additional properties
 };
 ```
 
 ### GenerateResponse
 
-Defines the structure for a user generation response, detailing the outcome of the request.
+Defines the structure for a generation response, including status and data.
 
 ```typescript
-// Example of a GenerateResponse type
-type UserGenerationResponse = GenerateResponse & {
-  status: GenerationStatus;
-  event: GenerationEvent;
+// Example of a GenerateResponse
+const response: GenerateResponse = {
+  status: GenerationStatus.Success,
+  data: {
+    // response data
+  },
 };
 ```
 
 ## When to Use
 
-- When creating types for user generation requests in the frontend.
-- When handling responses from user generation processes.
+- When creating a new generation request in the frontend.
+- When processing the response from a generation operation.
 
 ## Commands
 
@@ -77,14 +79,14 @@ python repoforge/cli.py generate
 
 ## Anti-Patterns
 
-### Don't: Use generic types for requests
+### Don't: Ignore Type Definitions
 
-Using generic types can lead to confusion and lack of clarity in the request structure.
+Ignoring type definitions can lead to runtime errors and unexpected behavior.
 
 ```typescript
 // BAD
-type GenericRequest = {
-  data: any;
+const request = {
+  // missing type definitions
 };
 ```
 <!-- L3:END -->

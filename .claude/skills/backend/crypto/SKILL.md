@@ -2,7 +2,7 @@
 name: encrypt-api-keys
 description: >
   This skill covers AES-256-GCM encryption for provider API keys.
-  Trigger: Load this skill when handling crypto operations for API keys.
+  Trigger: Load this skill when handling sensitive crypto operations.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers AES-256-GCM encryption for provider API keys.
 
-**Trigger**: Load this skill when handling crypto operations for API keys.
+**Trigger**: Load this skill when handling sensitive crypto operations.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -32,7 +32,7 @@ This skill covers AES-256-GCM encryption for provider API keys.
 
 ## Critical Patterns (Summary)
 - **Derive User Key**: Generate a secure key for user-specific encryption.
-- **Encrypt API Key**: Securely encrypt an API key using AES-256-GCM.
+- **Encrypt API Key**: Encrypt sensitive API keys using AES-256-GCM.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -45,12 +45,12 @@ Generate a secure key for user-specific encryption using the `derive_user_key` f
 ```python
 from apps.server.app.services.crypto import derive_user_key
 
-user_key = derive_user_key(user_id)
+user_key = derive_user_key(user_id, password)
 ```
 
 ### Encrypt API Key
 
-Securely encrypt an API key using AES-256-GCM with the `encrypt_key` function.
+Encrypt sensitive API keys using the `encrypt_key` function with AES-256-GCM.
 
 ```python
 from apps.server.app.services.crypto import encrypt_key
@@ -73,7 +73,7 @@ docker-compose run app python apps/server/app/main.py
 
 ### Don't: Hardcode API Keys
 
-Hardcoding API keys in your code is insecure and exposes sensitive information.
+Hardcoding API keys in your source code exposes them to security risks.
 
 ```python
 # BAD

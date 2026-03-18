@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 800
+  token_estimate: 450
   dependencies: []
   related_skills: []
   load_priority: high
@@ -30,8 +30,8 @@ This layer manages the user interface and user experience of the application.
 | Create a new component | `export const NewComponent = () => { ... }` |
 
 ## Critical Patterns (Summary)
-- **Component Structure**: Each component should be a functional component returning JSX.
-- **Error Handling**: Use ErrorBoundary to catch and display errors gracefully.
+- **Component Structure**: Each component should be a functional component.
+- **Error Handling**: Use ErrorBoundary for catching errors in the UI.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -39,23 +39,23 @@ This layer manages the user interface and user experience of the application.
 
 ### Component Structure
 
-Each component should be a functional component returning JSX.
+Each component should be a functional component that returns JSX.
 
 ```typescript
 // Example of a functional component
-export const Layout = () => {
-  return <div className="layout">Content goes here</div>;
+export const NewComponent = () => {
+  return <div>Hello World</div>;
 };
 ```
 
 ### Error Handling
 
-Use ErrorBoundary to catch and display errors gracefully.
+Use ErrorBoundary to catch errors in the UI and display a fallback UI.
 
 ```typescript
-// Example of using ErrorBoundary
+// Example of ErrorBoundary usage
 <ErrorBoundary>
-  <ProtectedRoute />
+  <YourComponent />
 </ErrorBoundary>
 ```
 
@@ -73,14 +73,12 @@ npm run build
 
 ## Anti-Patterns
 
-### Don't: Modify shared components without coordination
+### Don't: Modify shared state directly
 
-Changing shared components can break the UI for other layers relying on them.
+Directly modifying shared state can lead to unpredictable UI behavior.
 
 ```typescript
-// BAD: Directly modifying a shared component
-const Layout = () => {
-  return <div className="layout modified">Content goes here</div>;
-};
+// BAD
+state.value = newValue; // This is incorrect
 ```
 <!-- L3:END -->

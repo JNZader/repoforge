@@ -1,8 +1,8 @@
 ---
-name: use-auth-provider
+name: use-auth
 description: >
-  This skill covers patterns for implementing authentication in a frontend application.
-  Trigger: Load this skill when managing user authentication.
+  This skill covers authentication patterns using the AuthProvider and useAuth hooks.
+  Trigger: Load this skill when implementing authentication in the frontend.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# use-auth-provider
+# use-auth
 
-This skill covers patterns for implementing authentication in a frontend application.
+This skill covers authentication patterns using the AuthProvider and useAuth hooks.
 
-**Trigger**: Load this skill when managing user authentication.
+**Trigger**: Load this skill when implementing authentication in the frontend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -31,8 +31,8 @@ This skill covers patterns for implementing authentication in a frontend applica
 | Provide Auth Context | `provide-auth-context` |
 
 ## Critical Patterns (Summary)
-- **Set API URL**: Define the base URL for API requests.
-- **Provide Auth Context**: Wrap your application with the AuthProvider for authentication state management.
+- **Set API URL**: Define the API_URL for authentication requests.
+- **Provide Auth Context**: Use AuthProvider to wrap your application for authentication state management.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,30 +40,30 @@ This skill covers patterns for implementing authentication in a frontend applica
 
 ### Set API URL
 
-Define the base URL for API requests to ensure all authentication requests are directed correctly.
+Define the API_URL for authentication requests to ensure the application communicates with the correct backend.
 
 ```typescript
-const apiUrl = API_URL; // Use the exported API_URL for consistent API endpoint
+const apiUrl = API_URL; // Set the API URL for authentication
 ```
 
 ### Provide Auth Context
 
-Wrap your application with the AuthProvider to manage authentication state across components.
+Use AuthProvider to wrap your application, allowing access to authentication state throughout the component tree.
 
 ```typescript
 import { AuthProvider } from './lib/auth';
 
 const App = () => (
   <AuthProvider>
-    {/* Your application components */}
+    {/* Other components */}
   </AuthProvider>
 );
 ```
 
 ## When to Use
 
-- When configuring the base URL for API interactions.
-- When setting up the authentication context for your application.
+- When setting up authentication for a new frontend application.
+- When needing to manage user authentication state across multiple components.
 
 ## Commands
 
@@ -76,7 +76,7 @@ python repoforge/cli.py run
 
 ### Don't: Hardcode API URLs
 
-Hardcoding API URLs can lead to maintenance issues and inconsistencies.
+Hardcoding API URLs can lead to maintenance issues and environment-specific bugs.
 
 ```typescript
 const apiUrl = 'http://localhost:3000/api'; // BAD

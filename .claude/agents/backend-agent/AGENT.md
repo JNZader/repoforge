@@ -2,7 +2,7 @@
 name: backend-agent
 description: >
   Specialized agent for backend development. Handles FastAPI application management, middleware configuration, and database migrations.
-  Trigger: When the orchestrator needs to perform tasks in the backend layer.
+  Trigger: When the orchestrator needs to execute tasks in the backend layer.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the backend functionalities, including API management and authentication. It never interacts with the frontend layer.
+This agent owns the backend functionalities, including API management and middleware operations. It never interacts with the frontend layer.
 
 ## Capabilities
 
@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Configure middleware as needed
-2. Manage API routes and endpoints
-3. Run database migrations if applicable
+1. Manage FastAPI application routes and configurations
+2. Implement middleware functionalities as required
+3. Verify database migrations and configurations
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load

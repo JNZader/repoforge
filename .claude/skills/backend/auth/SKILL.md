@@ -1,14 +1,14 @@
 ---
 name: add-auth-endpoint
 description: >
-  This skill covers the implementation of authentication routes.
-  Trigger: When setting up auth-related endpoints in the backend.
+  This skill covers the implementation of authentication routes for user login and token validation.
+  Trigger: When working with auth-related functionalities in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 450
+  token_estimate: 350
   dependencies: []
   related_skills: []
   load_priority: high
@@ -17,32 +17,32 @@ metadata:
 <!-- L1:START -->
 # add-auth-endpoint
 
-This skill covers the implementation of authentication routes.
+This skill covers the implementation of authentication routes for user login and token validation.
 
-**Trigger**: When setting up auth-related endpoints in the backend.
+**Trigger**: When working with auth-related functionalities in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task               | Pattern                  |
-|--------------------|-------------------------|
-| Login user         | `login`                 |
-| Handle callback     | `callback`              |
-| Validate JWT token | `validate_token`        |
-| Logout user        | `logout`                |
+| Task               | Pattern                     |
+|--------------------|-----------------------------|
+| User login         | `login`                     |
+| OAuth callback     | `callback`                  |
+| Validate JWT token | `validate_token`            |
+| User logout        | `logout`                    |
 
 ## Critical Patterns (Summary)
-- **Login User**: Implements user login via GitHub OAuth.
-- **Handle Callback**: Manages the callback from GitHub after authentication.
+- **User Login**: Handles user authentication via GitHub OAuth.
+- **Token Validation**: Validates JWT tokens for secure access.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Login User
+### User Login
 
-Implements user login via GitHub OAuth, initiating the authentication process.
+Handles user authentication via GitHub OAuth, allowing users to log in securely.
 
 ```python
 from fastapi import APIRouter
@@ -55,25 +55,23 @@ async def user_login():
     return await login()
 ```
 
-### Handle Callback
+### Token Validation
 
-Manages the callback from GitHub after authentication, processing the received data.
+Validates JWT tokens to ensure that requests are authenticated and authorized.
 
 ```python
-from fastapi import APIRouter
-from apps.server.app.routes.auth import callback
+from fastapi import Depends
+from apps.server.app.routes.auth import validate_token
 
-router = APIRouter()
-
-@router.get("/callback")
-async def github_callback():
-    return await callback()
+@router.get("/validate")
+async def validate_user_token(token: str = Depends(validate_token)):
+    return {"valid": True}
 ```
 
 ## When to Use
 
-- When integrating GitHub OAuth for user authentication.
-- When implementing JWT validation for secure API access.
+- When implementing user authentication in a FastAPI application.
+- When validating JWT tokens for protected routes.
 
 ## Commands
 
@@ -90,7 +88,6 @@ Hardcoding secrets like client IDs or tokens is insecure and should be avoided.
 
 ```python
 # BAD
-client_id = "your_client_id"
-client_secret = "your_client_secret"
+client_id = "your_client_id_here"
 ```
 <!-- L3:END -->

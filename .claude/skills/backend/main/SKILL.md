@@ -7,7 +7,7 @@ license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
+  complexity: medium
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -25,10 +25,10 @@ This skill covers adding main endpoints to the FastAPI application.
 <!-- L2:START -->
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
-| Add health check endpoint | `health` |
-| Add detailed health check endpoint | `health_detailed` |
+| Task               | Pattern                     |
+|--------------------|-----------------------------|
+| Add health check   | `health`                    |
+| Add detailed health | `health_detailed`           |
 
 ## Critical Patterns (Summary)
 - **health**: Implements a basic health check endpoint.
@@ -44,12 +44,13 @@ Implements a basic health check endpoint to verify the service is running.
 
 ```python
 from fastapi import FastAPI
+from apps.server.app.main import health
 
 app = FastAPI()
 
 @app.get("/health")
-async def health():
-    return {"status": "healthy"}
+async def health_check():
+    return health()
 ```
 
 ### health_detailed
@@ -58,41 +59,36 @@ Implements a detailed health check endpoint providing more information about the
 
 ```python
 from fastapi import FastAPI
+from apps.server.app.main import health_detailed
 
 app = FastAPI()
 
 @app.get("/health/detailed")
-async def health_detailed():
-    return {
-        "status": "healthy",
-        "details": {
-            "database": "connected",
-            "cache": "operational"
-        }
-    }
+async def detailed_health_check():
+    return health_detailed()
 ```
 
 ## When to Use
 
-- When creating a new FastAPI application.
-- When adding health check functionality to an existing service.
+- When you need to expose a health check endpoint for monitoring.
+- When integrating with external services that require health status.
 
 ## Commands
 
 ```bash
-docker run -d -p 8000:8000 my-fastapi-app
+docker-compose up
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode health check responses
+### Don't: Expose sensitive data in health checks
 
-Hardcoding responses can lead to outdated information being served.
+Exposing sensitive information can lead to security vulnerabilities.
 
 ```python
 # BAD
 @app.get("/health")
-async def health():
-    return {"status": "not healthy"}  # This may not reflect the actual state
+async def health_check():
+    return {"status": "ok", "db": db_status, "secret": secret_key}
 ```
 <!-- L3:END -->
