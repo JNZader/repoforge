@@ -22,6 +22,8 @@ on:
     branches: [main]
     paths-ignore:
       - 'docs/**'
+      - 'apps/**'
+      - 'landing/**'
   workflow_dispatch:
     inputs:
       deploy_mode:

@@ -1,0 +1,115 @@
+# ============================================================
+# RepoForge — Deploy to GitHub Pages
+# ============================================================
+# Assembles landing page + React dashboard into a single
+# GitHub Pages deployment.
+#
+# Final URL structure:
+#   /repoforge/          → Landing page (static HTML)
+#   /repoforge/app/      → Dashboard (React SPA)
+#   /repoforge/docs/     → Documentation (if docs/ exists)
+
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "landing/**"
+      - "docs/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Assemble
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/web
+
+      - name: Build React app
+        run: npm run build
+        working-directory: apps/web
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
+
+      - name: Check no secrets leaked into bundle
+        run: |
+          if grep -r "client_secret" apps/web/dist/ 2>/dev/null; then
+            echo "::error::Found client_secret in frontend bundle!"
+            exit 1
+          fi
+          if grep -r "MASTER_KEY" apps/web/dist/ 2>/dev/null; then
+            echo "::error::Found MASTER_KEY in frontend bundle!"
+            exit 1
+          fi
+          if grep -r "ENCRYPTION_KEY" apps/web/dist/ 2>/dev/null; then
+            echo "::error::Found ENCRYPTION_KEY in frontend bundle!"
+            exit 1
+          fi
+          echo "No secrets found in bundle — OK"
+
+      - name: Assemble _site directory
+        run: |
+          mkdir -p _site/app
+
+          # 1. Landing page → _site/ root
+          if [ -f landing/index.html ]; then
+            cp landing/index.html _site/
+          fi
+          if [ -f landing/favicon.svg ]; then
+            cp landing/favicon.svg _site/
+          fi
+
+          # 2. React dashboard → _site/app/
+          cp -r apps/web/dist/* _site/app/
+
+          # 3. Docs → _site/docs/ (if docs/ has content)
+          if [ -d docs ] && [ "$(ls -A docs/)" ]; then
+            mkdir -p _site/docs
+            cp -r docs/* _site/docs/
+          fi
+
+          # 4. Prevent Jekyll processing
+          touch _site/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
