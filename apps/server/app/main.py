@@ -1,0 +1,206 @@
+"""FastAPI application entry point for RepoForge Web.
+
+Configures the application with lifespan hooks, middleware stack,
+health endpoints, error handling, and router registration.
+"""
+
+import time
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
+from uuid import uuid4
+
+import structlog
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+
+from app.config import settings
+from app.models.database import Base, async_session_factory, engine
+from app.routes.auth import router as auth_router
+from app.routes.generate import router as generate_router
+from app.routes.history import router as history_router
+from app.routes.analytics import router as analytics_router
+from app.routes.providers import router as providers_router
+
+logger = structlog.get_logger(__name__)
+
+# --- Structlog configuration ---
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer()
+        if settings.LOG_FORMAT == "json"
+        else structlog.dev.ConsoleRenderer(),
+    ],
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+)
+
+# Track server start time for uptime calculation
+_start_time: float = 0.0
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan: startup and shutdown hooks."""
+    global _start_time
+    _start_time = time.monotonic()
+
+    # Fail-fast: settings are validated on import (pydantic-settings)
+    if settings.DEBUG:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("dev_mode_db_created")
+
+    logger.info(
+        "server_started",
+        debug=settings.DEBUG,
+        host=settings.SERVER_HOST,
+        port=settings.SERVER_PORT,
+    )
+
+    yield
+
+    # Graceful shutdown
+    await engine.dispose()
+    logger.info("database_engine_disposed")
+
+
+app = FastAPI(
+    title="RepoForge Web API",
+    version="0.1.0",
+    description="Web API for RepoForge doc/skills generation",
+    lifespan=lifespan,
+)
+
+
+# --- Correlation ID middleware ---
+@app.middleware("http")
+async def correlation_id_middleware(request: Request, call_next):  # noqa: ANN001
+    """Assign a correlation ID to every request for log tracing."""
+    request_id = request.headers.get("X-Request-ID", str(uuid4())[:8])
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    response: Response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    structlog.contextvars.unbind_contextvars("request_id")
+    return response
+
+
+# --- Request logging middleware ---
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):  # noqa: ANN001
+    """Log every HTTP request with method, path, status, and duration."""
+    start = time.monotonic()
+    response = await call_next(request)
+    duration_ms = int((time.monotonic() - start) * 1000)
+    path = request.url.path
+
+    # Skip noisy health check logs
+    if path != "/health":
+        log = logger.info if response.status_code < 400 else logger.warning
+        if response.status_code >= 500:
+            log = logger.error
+        log(
+            "http_request",
+            method=request.method,
+            path=path,
+            status=response.status_code,
+            duration_ms=duration_ms,
+        )
+    return response
+
+
+# --- Security headers middleware ---
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):  # noqa: ANN001
+    """Add standard security headers to every response."""
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
+
+
+# --- CORS ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
+)
+
+
+# --- Routers ---
+app.include_router(auth_router)
+app.include_router(generate_router)
+app.include_router(history_router)
+app.include_router(analytics_router)
+app.include_router(providers_router)
+
+
+# --- Health ---
+@app.get("/health")
+async def health() -> dict:
+    """Simple health check — always returns 200 if the server is running."""
+    return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/health/detailed")
+async def health_detailed() -> dict:
+    """Detailed health check — includes DB connectivity and uptime."""
+    start = time.monotonic()
+    checks: dict = {}
+
+    # Database check
+    try:
+        async with async_session_factory() as session:
+            db_start = time.monotonic()
+            await session.execute(text("SELECT 1"))
+            checks["database"] = {
+                "ok": True,
+                "latency_ms": int((time.monotonic() - db_start) * 1000),
+            }
+    except Exception as e:
+        checks["database"] = {"ok": False, "error": str(e)}
+
+    healthy = all(c.get("ok", False) for c in checks.values())
+    return {
+        "status": "healthy" if healthy else "degraded",
+        "uptime_seconds": int(time.monotonic() - _start_time),
+        "checks": checks,
+        "active_generations": 0,  # Placeholder — wired up in Phase 4
+        "response_ms": int((time.monotonic() - start) * 1000),
+    }
+
+
+# --- Global error handler ---
+@app.exception_handler(Exception)
+async def global_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch all unhandled exceptions and return a structured error with correlation ID."""
+    error_id = str(uuid4())[:8]
+    logger.error(
+        "unhandled_error",
+        error_id=error_id,
+        exc_info=exc,
+        method=request.method,
+        path=request.url.path,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "INTERNAL_ERROR",
+            "message": "Internal server error",
+            "error_id": error_id,
+        },
+    )
