@@ -28,7 +28,7 @@ const PROVIDERS = [
   { id: 'google', name: 'Google', prefix: 'AI' },
   { id: 'groq', name: 'Groq', prefix: 'gsk_' },
   { id: 'mistral', name: 'Mistral', prefix: '' },
-  { id: 'github-models', name: 'GitHub Models', prefix: '', oauth: true },
+  { id: 'github-models', name: 'GitHub Models', prefix: 'ghp_' },
 ] as const;
 
 export function Settings() {
@@ -268,7 +268,7 @@ export function Settings() {
                   onChange={(e) => setNewProvider(e.target.value)}
                   className="select-field"
                 >
-                  {PROVIDERS.filter((p) => !('oauth' in p && p.oauth)).map((p) => (
+                  {PROVIDERS.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
