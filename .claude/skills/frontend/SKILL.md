@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 450
+  token_estimate: 800
   dependencies: []
   related_skills: []
   load_priority: high
@@ -53,7 +53,7 @@ export const Layout = () => {
 Use ErrorBoundary to catch and display errors gracefully.
 
 ```typescript
-// Example of ErrorBoundary usage
+// Example of using ErrorBoundary
 <ErrorBoundary>
   <ProtectedRoute />
 </ErrorBoundary>
@@ -64,31 +64,23 @@ Use ErrorBoundary to catch and display errors gracefully.
 - When creating reusable UI components.
 - When implementing error boundaries for better user experience.
 
-## Adding a New Component
-
-1. Create a new file in `apps/web/src/components/` (e.g., `NewComponent.tsx`).
-2. Define the component structure using a functional component.
-3. Export the component.
-4. Verify by importing and using it in `App.tsx`.
-
 ## Commands
 
 ```bash
-# Start the development server
-npm start
-
-# Build the project
+npm run start
 npm run build
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify shared state directly
+### Don't: Modify shared components without coordination
 
-Directly modifying shared state can lead to unpredictable UI behavior.
+Changing shared components can break the UI for other layers relying on them.
 
 ```typescript
-// BAD
-state.value = newValue; // This is incorrect
+// BAD: Directly modifying a shared component
+const Layout = () => {
+  return <div className="layout modified">Content goes here</div>;
+};
 ```
 <!-- L3:END -->

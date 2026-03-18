@@ -1,13 +1,13 @@
 ---
 name: usegenerationstream-hook
 description: >
-  This skill covers patterns for managing generation streams in a React application.
-  Trigger: Load when using `useGenerationStream` for stream management.
+  This skill covers the usage of the `useGenerationStream` hook for managing streaming states.
+  Trigger: Load this skill when implementing streaming functionality in the frontend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
+  complexity: low
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # usegenerationstream-hook
 
-This skill covers patterns for managing generation streams in a React application.
+This skill covers the usage of the `useGenerationStream` hook for managing streaming states.
 
-**Trigger**: Load when using `useGenerationStream` for stream management.
+**Trigger**: Load this skill when implementing streaming functionality in the frontend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,12 +27,12 @@ This skill covers patterns for managing generation streams in a React applicatio
 
 | Task | Pattern |
 |------|---------|
-| Manage stream status | `StreamStatus` |
-| Handle step items | `StepItem` |
+| Manage stream status | `useGenerationStream` |
+| Define step items | `StepItem` |
 
 ## Critical Patterns (Summary)
-- **Manage stream status**: Utilize `StreamStatus` to track the state of the generation stream.
-- **Handle step items**: Use `StepItem` to represent individual steps in the generation process.
+- **Manage stream status**: Utilize `useGenerationStream` to handle the streaming state.
+- **Define step items**: Create and manage individual steps using `StepItem`.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,44 +40,55 @@ This skill covers patterns for managing generation streams in a React applicatio
 
 ### Manage stream status
 
-Utilize `StreamStatus` to track the state of the generation stream, allowing for responsive UI updates.
+Utilize `useGenerationStream` to handle the streaming state effectively, allowing for real-time updates.
 
 ```typescript
-import { StreamStatus } from '@/hooks/useGenerationStream';
+import { useGenerationStream, StreamStatus } from '@/hooks/useGenerationStream';
 
-const status: StreamStatus = StreamStatus.RUNNING; // Example usage
+const MyComponent = () => {
+  const { status } = useGenerationStream();
+
+  if (status === StreamStatus.Loading) {
+    return <LoadingSpinner />;
+  }
+  return <div>Stream is ready!</div>;
+};
 ```
 
-### Handle step items
+### Define step items
 
-Use `StepItem` to represent individual steps in the generation process, enabling detailed tracking of progress.
+Create and manage individual steps using `StepItem`, which helps in organizing the streaming process.
 
 ```typescript
 import { StepItem } from '@/hooks/useGenerationStream';
 
-const step: StepItem = { id: 1, description: 'Step 1 description' }; // Example usage
+const steps: StepItem[] = [
+  { id: 1, title: 'Step 1', completed: false },
+  { id: 2, title: 'Step 2', completed: true },
+];
 ```
 
 ## When to Use
 
-- When implementing a generation stream in a React component.
-- When needing to track the progress of a multi-step generation process.
+- When implementing a real-time data streaming feature in your application.
+- When you need to manage multiple steps in a streaming process.
 
 ## Commands
 
 ```bash
 docker-compose up
-python repoforge/cli.py
+python repoforge/cli.py run
 ```
 
 ## Anti-Patterns
 
-### Don't: Ignore stream state management
+### Don't: Ignore stream status
 
-Neglecting to manage stream states can lead to unresponsive UI and poor user experience.
+Ignoring the stream status can lead to a poor user experience and unhandled states.
 
 ```typescript
 // BAD
-const status = StreamStatus.IDLE; // Not updating based on actual stream state
+const { status } = useGenerationStream();
+// No handling of status
 ```
 <!-- L3:END -->

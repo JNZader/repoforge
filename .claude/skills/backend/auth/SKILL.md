@@ -2,7 +2,7 @@
 name: add-auth-endpoint
 description: >
   This skill covers the implementation of authentication routes.
-  Trigger: When setting up auth functionality in the backend.
+  Trigger: When setting up auth-related endpoints in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,21 +19,21 @@ metadata:
 
 This skill covers the implementation of authentication routes.
 
-**Trigger**: When setting up auth functionality in the backend.
+**Trigger**: When setting up auth-related endpoints in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task               | Pattern                     |
-|--------------------|-----------------------------|
-| Login user         | `login`                     |
-| Handle callback    | `callback`                  |
-| Validate token     | `validate_token`            |
-| Logout user        | `logout`                    |
+| Task               | Pattern                  |
+|--------------------|-------------------------|
+| Login user         | `login`                 |
+| Handle callback     | `callback`              |
+| Validate JWT token | `validate_token`        |
+| Logout user        | `logout`                |
 
 ## Critical Patterns (Summary)
-- **Login User**: Handles user login via GitHub OAuth.
+- **Login User**: Implements user login via GitHub OAuth.
 - **Handle Callback**: Manages the callback from GitHub after authentication.
 <!-- L2:END -->
 
@@ -42,14 +42,17 @@ This skill covers the implementation of authentication routes.
 
 ### Login User
 
-Handles user login via GitHub OAuth, initiating the authentication process.
+Implements user login via GitHub OAuth, initiating the authentication process.
 
 ```python
+from fastapi import APIRouter
 from apps.server.app.routes.auth import login
 
-@app.post("/login")
-async def login_user(credentials: OAuth2PasswordRequestForm = Depends()):
-    return await login(credentials)
+router = APIRouter()
+
+@router.post("/login")
+async def user_login():
+    return await login()
 ```
 
 ### Handle Callback
@@ -57,17 +60,20 @@ async def login_user(credentials: OAuth2PasswordRequestForm = Depends()):
 Manages the callback from GitHub after authentication, processing the received data.
 
 ```python
+from fastapi import APIRouter
 from apps.server.app.routes.auth import callback
 
-@app.get("/callback")
-async def github_callback(code: str):
-    return await callback(code)
+router = APIRouter()
+
+@router.get("/callback")
+async def github_callback():
+    return await callback()
 ```
 
 ## When to Use
 
-- When implementing user authentication via GitHub OAuth.
-- When validating JWT tokens for secure API access.
+- When integrating GitHub OAuth for user authentication.
+- When implementing JWT validation for secure API access.
 
 ## Commands
 
@@ -80,7 +86,7 @@ python apps/server/app/main.py
 
 ### Don't: Hardcode Secrets
 
-Hardcoding secrets is insecure and exposes sensitive information.
+Hardcoding secrets like client IDs or tokens is insecure and should be avoided.
 
 ```python
 # BAD

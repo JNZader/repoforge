@@ -27,7 +27,7 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Modify or create UI components in `apps/web/src/components/`
+1. Modify or create components in `apps/web/src/components/`
 2. Handle API requests in `apps/web/src/lib/api.ts`
 3. Verify changes through testing
 4. Report back to orchestrator with: files changed, tests status, blockers

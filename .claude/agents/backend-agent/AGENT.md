@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the backend functionalities, including API management and middleware operations. It never interacts with the frontend layer.
+This agent owns the backend functionalities, including API management and authentication. It never interacts with the frontend layer.
 
 ## Capabilities
 
@@ -27,9 +27,9 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Manage FastAPI application configurations
-2. Implement middleware functionalities
-3. Execute database migrations
+1. Configure middleware as needed
+2. Manage API routes and endpoints
+3. Run database migrations if applicable
 4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load

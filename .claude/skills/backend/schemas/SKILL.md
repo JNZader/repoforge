@@ -15,7 +15,7 @@ metadata:
 ---
 
 <!-- L1:START -->
-# Define Request and Response Schemas
+# Define Request/Response Schemas
 
 This skill covers the creation of Pydantic v2 request and response schemas.
 
@@ -27,20 +27,20 @@ This skill covers the creation of Pydantic v2 request and response schemas.
 
 | Task | Pattern |
 |------|---------|
-| Define User Info Schema | `UserInfo` |
-| Create Token Response Schema | `TokenResponse` |
+| Define user information schema | `UserInfo` |
+| Create authentication validation response | `AuthValidateResponse` |
 
 ## Critical Patterns (Summary)
-- **Define User Info Schema**: Create a schema for user information using `UserInfo`.
-- **Create Token Response Schema**: Define a schema for token responses with `TokenResponse`.
+- **UserInfo**: Defines the schema for user information.
+- **AuthValidateResponse**: Creates a response schema for authentication validation.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Define User Info Schema
+### UserInfo
 
-This pattern defines a schema for user information using the `UserInfo` model.
+Defines the schema for user information, ensuring all required fields are validated.
 
 ```python
 from apps.server.app.models.schemas import UserInfo
@@ -48,37 +48,38 @@ from apps.server.app.models.schemas import UserInfo
 user_info = UserInfo(username="john_doe", email="john@example.com", full_name="John Doe")
 ```
 
-### Create Token Response Schema
+### AuthValidateResponse
 
-This pattern creates a schema for token responses using the `TokenResponse` model.
+Creates a response schema for authentication validation, encapsulating necessary response fields.
 
 ```python
-from apps.server.app.models.schemas import TokenResponse
+from apps.server.app.models.schemas import AuthValidateResponse
 
-token_response = TokenResponse(access_token="abc123", token_type="bearer")
+auth_response = AuthValidateResponse(is_valid=True, user_id="12345")
 ```
 
 ## When to Use
 
-- When creating user-related API endpoints that require user information.
-- When implementing authentication mechanisms that return tokens.
+- When creating schemas for user-related data in the API.
+- When defining responses for authentication processes.
 
 ## Commands
 
 ```bash
-docker-compose run app python repoforge/cli.py
+docker-compose up
+python repoforge/cli.py run
 ```
 
 ## Anti-Patterns
 
-### Don't: Use Inconsistent Schema Fields
+### Don't: Use unvalidated data in schemas
 
-Using inconsistent field names across schemas can lead to confusion and errors.
+Using unvalidated data can lead to runtime errors and security vulnerabilities.
 
 ```python
 # BAD
 from apps.server.app.models.schemas import UserInfo
 
-user_info = UserInfo(user_name="john_doe", email="john@example.com")  # Inconsistent field name
+user_info = UserInfo(username="john_doe", email="invalid-email", full_name="John Doe")  # This will fail validation
 ```
 <!-- L3:END -->

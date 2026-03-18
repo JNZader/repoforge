@@ -1,7 +1,7 @@
 ---
 name: generate-github-oauth-state
 description: >
-  This skill covers generating and validating GitHub OAuth states.
+  This skill covers generating and validating OAuth states for GitHub authentication.
   Trigger: Load this skill when implementing GitHub OAuth functionality.
 license: Apache-2.0
 metadata:
@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # generate-github-oauth-state
 
-This skill covers generating and validating GitHub OAuth states.
+This skill covers generating and validating OAuth states for GitHub authentication.
 
 **Trigger**: Load this skill when implementing GitHub OAuth functionality.
 <!-- L1:END -->
@@ -40,7 +40,7 @@ This skill covers generating and validating GitHub OAuth states.
 
 ### Generate OAuth state
 
-This pattern uses `generate_state()` to create a unique state string for OAuth requests.
+Use `generate_state()` to create a unique state for OAuth, which helps prevent CSRF attacks.
 
 ```python
 from apps.server.app.services.github_oauth import generate_state
@@ -50,7 +50,7 @@ state = generate_state()
 
 ### Validate OAuth state
 
-This pattern uses `validate_state()` to check if the received state matches the expected state.
+Use `validate_state()` to ensure the state matches during the callback, confirming the request's authenticity.
 
 ```python
 from apps.server.app.services.github_oauth import validate_state
@@ -60,24 +60,25 @@ is_valid = validate_state(received_state, expected_state)
 
 ## When to Use
 
-- When initiating a GitHub OAuth flow to ensure security.
-- When handling the callback to verify the state parameter.
+- When initiating the OAuth flow with GitHub.
+- When handling the callback from GitHub to verify the state.
 
 ## Commands
 
 ```bash
-docker-compose up
-python -m apps.server.app.main
+docker-compose run app python apps/server/app/main.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Use static state values
+### Don't: Ignore state validation
 
-Using static values for the state parameter can lead to security vulnerabilities.
+Ignoring state validation can lead to security vulnerabilities such as CSRF attacks.
 
 ```python
 # BAD
-state = "static_value"
+# Not validating the state received from GitHub
+if received_state != expected_state:
+    # Handle error
 ```
 <!-- L3:END -->
