@@ -26,7 +26,7 @@ export interface StreamState {
   } | null;
 }
 
-const TERMINAL_STATUSES = new Set(['completed', 'error', 'cancelled']);
+const TERMINAL_STATUSES = new Set<StreamStatus>(['completed', 'error', 'cancelled']);
 
 export function useGenerationStream(generationId: string | null): StreamState {
   const [events, setEvents] = useState<GenerationSSEEvent[]>([]);
@@ -38,6 +38,8 @@ export function useGenerationStream(generationId: string | null): StreamState {
   const [result, setResult] = useState<StreamState['result']>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const stepTimers = useRef<Map<string, number>>(new Map());
+  /** Ref to track terminal state — avoids stale closure in onerror callback */
+  const terminalRef = useRef(false);
 
   const addEvent = useCallback((event: GenerationSSEEvent) => {
     setEvents((prev) => [...prev, event]);
@@ -46,6 +48,7 @@ export function useGenerationStream(generationId: string | null): StreamState {
   useEffect(() => {
     if (!generationId) return;
 
+    terminalRef.current = false;
     setStatus('connecting');
     setEvents([]);
     setSteps([]);
@@ -214,6 +217,7 @@ export function useGenerationStream(generationId: string | null): StreamState {
           }
 
           case 'generation_completed': {
+            terminalRef.current = true;
             setStatus('completed');
             setResult({
               durationMs: event.duration_ms as number,
@@ -223,6 +227,7 @@ export function useGenerationStream(generationId: string | null): StreamState {
           }
 
           case 'generation_error': {
+            terminalRef.current = true;
             setStatus('error');
             setError(event.error as string);
             setErrorId(event.error_id as string);
@@ -230,13 +235,16 @@ export function useGenerationStream(generationId: string | null): StreamState {
           }
 
           case 'generation_cancelled': {
+            terminalRef.current = true;
             setStatus('cancelled');
             break;
           }
         }
       },
       () => {
-        if (!TERMINAL_STATUSES.has(status)) {
+        // Use ref instead of state to avoid stale closure — status state
+        // captured at effect init would always be 'idle'.
+        if (!terminalRef.current) {
           setStatus('error');
           setError('Lost connection to event stream');
         }

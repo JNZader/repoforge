@@ -218,7 +218,16 @@ class GenerationService:
                 from repoforge.llm import build_llm
 
                 model = config.get("model", "claude-haiku-3-5")
-                llm = build_llm(model=model, api_key=api_key)
+
+                # For GitHub Models, the model name must be prefixed with
+                # "github/" so build_llm can detect the provider and set the
+                # correct api_base (models.inference.ai.azure.com).
+                # Without the prefix, a model like "claude-3-5-haiku-20241022"
+                # would match the "claude" (Anthropic) preset and miss the
+                # GitHub Models api_base entirely, causing all LLM calls to fail.
+                litellm_model = self._to_litellm_model(provider, model)
+
+                llm = build_llm(model=litellm_model, api_key=api_key)
 
                 # --- Phase 4: Generate ---
                 await self._emit(generation_id, "phase_changed", phase="generating")
@@ -251,7 +260,7 @@ class GenerationService:
                         generate_docs,
                         working_dir=str(clone_dir),
                         output_dir=str(docs_output),
-                        model=model,
+                        model=litellm_model,
                         api_key=api_key,
                         language=language,
                         verbose=False,
@@ -262,10 +271,22 @@ class GenerationService:
                     docsify_files = docs_result.get("docsify_files", [])
                     errors = docs_result.get("errors", [])
                     files_generated += len(chapters_generated) + len(docsify_files)
+
+                    if errors:
+                        logger.warning(
+                            "docs_chapter_errors",
+                            generation_id=generation_id,
+                            error_count=len(errors),
+                            errors=errors,
+                            model=litellm_model,
+                            provider=provider,
+                        )
+
                     result_metadata["docs"] = {
                         "chapters": len(chapters_generated),
                         "docsify_files": len(docsify_files),
                         "errors": len(errors),
+                        "error_details": errors[:5] if errors else [],  # store first 5 error details
                         "project_name": docs_result.get("project_name", ""),
                         "language": docs_result.get("language", language),
                     }
@@ -294,7 +315,7 @@ class GenerationService:
                         generate_artifacts,
                         working_dir=str(clone_dir),
                         output_dir=str(skills_output),
-                        model=model,
+                        model=litellm_model,
                         api_key=api_key,
                         verbose=False,
                         complexity=complexity_override,
@@ -566,6 +587,39 @@ class GenerationService:
         except Exception:
             logger.debug("github_token_resolve_failed", user_id=user_id)
         return None
+
+    @staticmethod
+    def _to_litellm_model(provider: str, model: str) -> str:
+        """Prefix the model name with the LiteLLM provider prefix when needed.
+
+        The repoforge ``build_llm`` function uses the model string prefix to
+        detect the provider and configure api_base / api_key_env accordingly.
+        When the web frontend sends ``provider="github-models"`` with
+        ``model="claude-3-5-haiku-20241022"``, build_llm would match the
+        ``claude`` (Anthropic) preset and miss the GitHub Models api_base.
+
+        This method ensures the model name carries the correct LiteLLM
+        prefix so routing works correctly.
+        """
+        # Mapping from our provider id → litellm prefix
+        prefix_map: dict[str, str] = {
+            "github-models": "github",
+            "groq": "groq",
+            "google": "gemini",
+            "mistral": "mistral",
+        }
+
+        prefix = prefix_map.get(provider)
+
+        # No prefix needed for anthropic/openai — LiteLLM auto-detects them
+        if not prefix:
+            return model
+
+        # Don't double-prefix
+        if model.startswith(f"{prefix}/"):
+            return model
+
+        return f"{prefix}/{model}"
 
     @staticmethod
     def _set_provider_env(provider: str, api_key: str) -> str | None:

@@ -5,6 +5,7 @@ health endpoints, error handling, and router registration.
 """
 
 import asyncio
+import re
 import time
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
@@ -127,15 +128,35 @@ async def request_logging_middleware(request: Request, call_next):  # noqa: ANN0
 
 
 # --- Security headers middleware ---
+_PREVIEW_PATH_RE = re.compile(r"^/api/generate/[^/]+/(preview|files/)")
+
+
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):  # noqa: ANN001
-    """Add standard security headers to every response."""
+    """Add standard security headers to every response.
+
+    Preview/files endpoints get relaxed headers so they can be embedded
+    in iframes and load Docsify assets from CDNs.
+    """
     response = await call_next(request)
-    response.headers["X-Frame-Options"] = "DENY"
+
+    is_preview = _PREVIEW_PATH_RE.match(request.url.path) is not None
+
+    if is_preview:
+        # Allow embedding in iframes from any origin (preview pages)
+        response.headers["X-Frame-Options"] = "ALLOWALL"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval' "
+            "https://cdn.jsdelivr.net https://unpkg.com "
+            "data: blob:;"
+        )
+    else:
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = "default-src 'self'"
     return response
 
 
