@@ -45,8 +45,7 @@ Generate a secure key for user-specific encryption using the `derive_user_key` f
 ```python
 from apps.server.app.services.crypto import derive_user_key
 
-user_id = "user123"
-user_key = derive_user_key(user_id)
+user_key = derive_user_key(user_id="example_user")
 ```
 
 ### Encrypt API Key
@@ -56,14 +55,13 @@ Securely encrypt an API key using AES-256-GCM with the `encrypt_key` function.
 ```python
 from apps.server.app.services.crypto import encrypt_key
 
-api_key = "my_secret_api_key"
-encrypted_key = encrypt_key(api_key, user_key)
+encrypted_key = encrypt_key(api_key="my_secret_api_key", user_key=user_key)
 ```
 
 ## When to Use
 
 - When you need to securely store API keys for different providers.
-- When transmitting sensitive information that requires encryption.
+- When encrypting sensitive user data before transmission.
 
 ## Commands
 
@@ -75,10 +73,10 @@ docker-compose run app python apps/server/app/main.py
 
 ### Don't: Hardcode API Keys
 
-Hardcoding API keys in your source code exposes them to security risks.
+Hardcoding API keys in the source code exposes them to security risks.
 
 ```python
 # BAD
-api_key = "my_secret_api_key"  # This should not be done
+api_key = "my_secret_api_key"
 ```
 <!-- L3:END -->

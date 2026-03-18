@@ -32,7 +32,7 @@ This skill covers the creation of Pydantic schemas for API request and response 
 
 ## Critical Patterns (Summary)
 - **User Info Schema**: Defines the structure for user information in requests.
-- **Token Response Schema**: Specifies the format of the token response from authentication.
+- **Token Response Schema**: Specifies the format for token responses from the API.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -50,7 +50,7 @@ user_info = UserInfo(username="john_doe", email="john@example.com")
 
 ### Token Response Schema
 
-Specifies the format of the token response from authentication, including necessary fields.
+Specifies the format for token responses from the API, including necessary fields for authentication.
 
 ```python
 from apps.server.app.models.schemas import TokenResponse
@@ -60,23 +60,26 @@ token_response = TokenResponse(access_token="abc123", token_type="bearer")
 
 ## When to Use
 
-- When creating request validation for user-related endpoints.
-- When defining responses for authentication processes.
+- When creating API endpoints that require user data validation.
+- When handling authentication responses in the web API.
 
 ## Commands
 
 ```bash
-docker-compose run app python repoforge/cli.py
+docker-compose up
+python repoforge/cli.py run
 ```
 
 ## Anti-Patterns
 
-### Don't: Use Unvalidated Data
+### Don't: Use Inconsistent Schema Definitions
 
-Using unvalidated data can lead to security vulnerabilities and application errors.
+Using inconsistent schema definitions can lead to validation errors and unexpected behavior.
 
 ```python
 # BAD
-user_info = UserInfo(username="john_doe", email="not-an-email")
+from apps.server.app.models.schemas import UserInfo
+
+user_info = UserInfo(username="john_doe", email=123)  # email should be a string
 ```
 <!-- L3:END -->

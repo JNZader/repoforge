@@ -71,7 +71,7 @@ async def detailed_health_check():
 ## When to Use
 
 - When you need to expose a health check endpoint for monitoring.
-- When integrating with external services that require health status.
+- When you want to provide detailed service status for diagnostics.
 
 ## Commands
 
@@ -89,6 +89,6 @@ Exposing sensitive information can lead to security vulnerabilities.
 # BAD
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "db": db_status, "secret": secret_key}
+    return {"status": "healthy", "db": db_status, "secret": secret_key}
 ```
 <!-- L3:END -->

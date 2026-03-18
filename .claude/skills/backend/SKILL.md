@@ -1,7 +1,7 @@
 ---
 name: backend-layer
 description: >
-  This layer encompasses the backend services for the RepoForge project, primarily built with FastAPI.
+  This layer provides the backend services for the RepoForge application, utilizing FastAPI for web services and Alembic for database migrations.
   Trigger: When working in backend/ — adding, modifying, or debugging backend services.
 license: Apache-2.0
 metadata:
@@ -17,7 +17,7 @@ metadata:
 <!-- L1:START -->
 # backend-layer
 
-This skill covers the backend services for the RepoForge project.
+This skill covers the backend services of the RepoForge application.
 
 **Trigger**: When working in backend/ directory and its main responsibility is to manage backend services.
 <!-- L1:END -->
@@ -27,11 +27,11 @@ This skill covers the backend services for the RepoForge project.
 
 | Task | Pattern |
 |------|---------|
-| Configure logging | `from apps.server.app.middleware.logging_config import configure_logging` |
+| Configure application settings | `from apps.server.app.config import Settings` |
 
 ## Critical Patterns (Summary)
-- **Middleware Configuration**: Use custom middleware for logging, authentication, and rate limiting.
-- **Migration Management**: Handle database migrations using Alembic for schema changes.
+- **Middleware Configuration**: Use custom middleware for logging and authentication.
+- **Database Migration**: Utilize Alembic for managing database schema changes.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -39,16 +39,17 @@ This skill covers the backend services for the RepoForge project.
 
 ### Middleware Configuration
 
-Utilize middleware to manage cross-cutting concerns like logging and authentication.
+Use custom middleware to handle cross-cutting concerns like logging and authentication.
 
 ```python
-# Example of logging middleware
+# Example of middleware usage
 from apps.server.app.middleware.logging_config import configure_logging
+from apps.server.app.middleware.auth import get_current_user
 ```
 
-### Migration Management
+### Database Migration Management
 
-Use Alembic for managing database migrations, ensuring schema consistency across environments.
+Utilize Alembic for managing database migrations, ensuring schema changes are applied consistently.
 
 ```python
 # Example of running migrations
@@ -58,26 +59,26 @@ from apps.server.alembic.env import run_migrations_online
 ## When to Use
 
 - When implementing new API endpoints that require authentication.
-- When configuring logging for better observability in the backend.
+- When modifying the database schema and needing to apply migrations.
 
 ## Commands
 
 ```bash
-# Run the FastAPI server
+# To run the FastAPI application
 uvicorn apps.server.app.main:app --reload
 
-# Run migrations
+# To run database migrations
 alembic upgrade head
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify middleware without testing
+### Don't: Change middleware without testing
 
-Changing middleware can lead to unexpected behavior in authentication or logging.
+Changing middleware can break authentication or logging, leading to security issues or loss of important logs.
 
 ```python
 # BAD
-# Removing essential logging middleware without testing
+# Removing authentication middleware without proper testing
 ```
 <!-- L3:END -->

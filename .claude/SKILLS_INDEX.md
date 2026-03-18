@@ -1,9 +1,14 @@
 # RepoForge — Generated artifacts index
 **Tech stack:** Python, Docker
-**Layers:** backend
+**Layers:** frontend, backend
 
 ## Skills
+- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/api/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/types/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/auth/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/frontend/useGenerationStream/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/schemas/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/main/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/auth/SKILL.md`
@@ -11,6 +16,7 @@
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/github_oauth/SKILL.md`
 
 ## Agents
+- `/home/runner/work/repoforge/repoforge/.claude/agents/frontend-agent/AGENT.md`
 - `/home/runner/work/repoforge/repoforge/.claude/agents/backend-agent/AGENT.md`
 - `/home/runner/work/repoforge/repoforge/.claude/agents/orchestrator/AGENT.md`
 
