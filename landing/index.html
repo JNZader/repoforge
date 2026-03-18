@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RepoForge — Documentation that actually understands your code</title>
+  <meta name="description" content="RepoForge analyzes your codebase, understands the architecture, and generates production-ready documentation — Docsify-ready, multi-language, with AI agent skills for Claude Code, Cursor, Copilot, and more.">
+  <meta name="theme-color" content="#0a0015">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Reset & Base ──────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --purple-400: #c084fc;
+      --purple-500: #a855f7;
+      --purple-600: #9333ea;
+      --purple-700: #7e22ce;
+      --purple-900: #3b0764;
+      --gray-50: #fafafa;
+      --gray-100: #f4f4f5;
+      --gray-300: #d4d4d8;
+      --gray-400: #a1a1aa;
+      --gray-500: #71717a;
+      --gray-800: #27272a;
+      --gray-900: #18181b;
+      --gray-950: #09090b;
+      --bg: #0a0015;
+      --surface: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(168, 85, 247, 0.3);
+    }
+
+    html {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--gray-300);
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ─── Ambient Background ────────────────────────────────────── */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .ambient::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      left: -20%;
+      width: 80%;
+      height: 80%;
+      background: radial-gradient(ellipse, rgba(147, 51, 234, 0.08) 0%, transparent 70%);
+      animation: drift 20s ease-in-out infinite alternate;
+    }
+
+    .ambient::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      right: -20%;
+      width: 70%;
+      height: 70%;
+      background: radial-gradient(ellipse, rgba(168, 85, 247, 0.05) 0%, transparent 70%);
+      animation: drift 25s ease-in-out infinite alternate-reverse;
+    }
+
+    @keyframes drift {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      100% { transform: translate(5%, 3%) rotate(3deg); }
+    }
+
+    /* ─── Grid Pattern ──────────────────────────────────────────── */
+    .grid-pattern {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 100%);
+      pointer-events: none;
+    }
+
+    /* ─── Content Container ─────────────────────────────────────── */
+    .content {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── Nav ───────────────────────────────────────────────────── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2rem;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--gray-50);
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .nav-link {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gray-400);
+      border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--gray-50);
+      background: var(--surface);
+    }
+
+    .nav-link.github {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-link.github svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ─── Hero ──────────────────────────────────────────────────── */
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4rem 2rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      background: rgba(168, 85, 247, 0.08);
+      border: 1px solid rgba(168, 85, 247, 0.15);
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--purple-400);
+      margin-bottom: 2rem;
+      animation: fadeUp 0.6s ease-out both;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--purple-500);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    h1 {
+      font-size: clamp(2.75rem, 6.5vw, 4.5rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      color: var(--gray-50);
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s ease-out 0.1s both;
+    }
+
+    h1 .gradient {
+      background: linear-gradient(135deg, var(--purple-400), var(--purple-600), #e879f9);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      line-height: 1.7;
+      color: var(--gray-400);
+      max-width: 640px;
+      margin-bottom: 3rem;
+      animation: fadeUp 0.6s ease-out 0.2s both;
+    }
+
+    /* ─── CTA Buttons ───────────────────────────────────────────── */
+    .ctas {
+      display: flex;
+      gap: 1rem;
+      animation: fadeUp 0.6s ease-out 0.3s both;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.85rem 2rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.25s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple-600), var(--purple-700));
+      color: white;
+      box-shadow:
+        0 0 0 1px rgba(147, 51, 234, 0.3),
+        0 1px 2px rgba(0, 0, 0, 0.3),
+        0 0 40px -10px rgba(147, 51, 234, 0.3);
+    }
+
+    .btn-primary:hover {
+      box-shadow:
+        0 0 0 1px rgba(147, 51, 234, 0.5),
+        0 4px 16px rgba(0, 0, 0, 0.3),
+        0 0 60px -10px rgba(147, 51, 234, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:hover svg {
+      transform: translateX(3px);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--gray-300);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-hover);
+      color: var(--gray-50);
+    }
+
+    .btn-secondary:hover svg {
+      transform: translateX(3px);
+    }
+
+    /* ─── Features ──────────────────────────────────────────────── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      max-width: 1000px;
+      width: 100%;
+      margin: 4rem auto 0;
+      padding: 0 2rem;
+      animation: fadeUp 0.6s ease-out 0.45s both;
+    }
+
+    .feature {
+      padding: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature:first-child { border-radius: 16px 0 0 0; }
+    .feature:nth-child(2) { border-radius: 0 16px 0 0; }
+    .feature:nth-child(3) { border-radius: 0 0 0 16px; }
+    .feature:last-child { border-radius: 0 0 16px 0; }
+
+    .feature::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top, rgba(168, 85, 247, 0.06), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .feature:hover::before {
+      opacity: 1;
+    }
+
+    .feature:hover {
+      border-color: var(--border-hover);
+    }
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(168, 85, 247, 0.08);
+      border: 1px solid rgba(168, 85, 247, 0.12);
+      margin-bottom: 1rem;
+      color: var(--purple-400);
+    }
+
+    .feature-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .feature h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--gray-50);
+      margin-bottom: 0.5rem;
+      position: relative;
+    }
+
+    .feature p {
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--gray-500);
+      position: relative;
+    }
+
+    /* ─── Pipeline Visual ───────────────────────────────────────── */
+    .pipeline-section {
+      max-width: 1000px;
+      width: 100%;
+      margin: 5rem auto 0;
+      padding: 0 2rem;
+      animation: fadeUp 0.6s ease-out 0.55s both;
+    }
+
+    .pipeline-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--purple-400);
+      margin-bottom: 1rem;
+    }
+
+    .pipeline-title {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gray-50);
+      letter-spacing: -0.02em;
+      margin-bottom: 3rem;
+    }
+
+    .pipeline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: nowrap;
+    }
+
+    .pipe-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1.25rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-width: 120px;
+      transition: all 0.3s ease;
+    }
+
+    .pipe-step:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .pipe-step-num {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--purple-400);
+    }
+
+    .pipe-step-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--gray-100);
+      text-align: center;
+    }
+
+    .pipe-step-desc {
+      font-size: 0.7rem;
+      color: var(--gray-500);
+      text-align: center;
+    }
+
+    .pipe-arrow {
+      color: var(--gray-800);
+      flex-shrink: 0;
+      padding: 0 0.25rem;
+    }
+
+    .pipe-arrow svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ─── Stats Strip ───────────────────────────────────────────── */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 4rem;
+      margin: 5rem auto 0;
+      padding: 0 2rem;
+      animation: fadeUp 0.6s ease-out 0.6s both;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--gray-50), var(--gray-400));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--gray-500);
+      margin-top: 0.25rem;
+    }
+
+    /* ─── How to Get Started ─────────────────────────────────────── */
+    .getting-started-section {
+      max-width: 1000px;
+      width: 100%;
+      margin: 5rem auto 0;
+      padding: 0 2rem;
+      animation: fadeUp 0.6s ease-out 0.5s both;
+    }
+
+    .getting-started-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--purple-400);
+      margin-bottom: 1rem;
+    }
+
+    .getting-started-title {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gray-50);
+      letter-spacing: -0.02em;
+      margin-bottom: 3rem;
+    }
+
+    .getting-started-steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    .gs-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1.5rem 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-width: 180px;
+      transition: all 0.3s ease;
+    }
+
+    .gs-step:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .gs-step-num {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(168, 85, 247, 0.1);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--purple-400);
+    }
+
+    .gs-step-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--gray-100);
+    }
+
+    .gs-step-desc {
+      font-size: 0.8rem;
+      color: var(--gray-500);
+      text-align: center;
+      max-width: 160px;
+    }
+
+    .gs-arrow {
+      color: var(--gray-800);
+      flex-shrink: 0;
+      padding: 0 0.5rem;
+    }
+
+    .gs-arrow svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ─── Free & Open Source / Pricing ──────────────────────────── */
+    .pricing-section {
+      max-width: 1000px;
+      width: 100%;
+      margin: 5rem auto 0;
+      padding: 0 2rem;
+      animation: fadeUp 0.6s ease-out 0.65s both;
+    }
+
+    .pricing-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--purple-400);
+      margin-bottom: 1rem;
+    }
+
+    .pricing-title {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gray-50);
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+    }
+
+    .pricing-subtitle {
+      text-align: center;
+      font-size: 0.95rem;
+      color: var(--gray-400);
+      margin-bottom: 3rem;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+    }
+
+    .pricing-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .pricing-item:hover {
+      border-color: var(--border-hover);
+    }
+
+    .pricing-icon {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: rgba(168, 85, 247, 0.08);
+      border: 1px solid rgba(168, 85, 247, 0.12);
+      color: var(--purple-400);
+    }
+
+    .pricing-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .pricing-text {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--gray-300);
+      padding-top: 0.25rem;
+    }
+
+    .pricing-cta {
+      text-align: center;
+      margin-top: 2.5rem;
+    }
+
+    /* ─── Footer ────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 4rem 2rem 2rem;
+      margin-top: auto;
+    }
+
+    .footer-text {
+      font-size: 0.8rem;
+      color: var(--gray-500);
+    }
+
+    .footer-text a {
+      color: var(--purple-400);
+      transition: color 0.2s;
+    }
+
+    .footer-text a:hover {
+      color: var(--purple-500);
+    }
+
+    /* ─── Animations ────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ─── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .features {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+
+      .feature { border-radius: 12px; }
+
+      .ctas {
+        flex-direction: column;
+        width: 100%;
+        max-width: 320px;
+      }
+
+      .btn { justify-content: center; width: 100%; }
+
+      .pipeline {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .pipe-arrow { display: none; }
+
+      .pipe-step { min-width: 140px; }
+
+      .stats {
+        gap: 2rem;
+        flex-wrap: wrap;
+      }
+
+      nav {
+        padding: 1rem 1.25rem;
+      }
+
+      .nav-links { gap: 0; }
+      .nav-link { padding: 0.5rem 0.6rem; font-size: 0.8rem; }
+
+      .getting-started-steps {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .gs-arrow { display: none; }
+      .gs-step { min-width: 100%; }
+
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="ambient"></div>
+<div class="grid-pattern"></div>
+
+<div class="content">
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-brand">
+      <svg viewBox="0 0 32 32" fill="none">
+        <defs><linearGradient id="nav-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="#c084fc"/><stop offset="1" stop-color="#7e22ce"/></linearGradient></defs>
+        <circle cx="16" cy="16" r="14" stroke="url(#nav-grad)" stroke-width="2" fill="none"/>
+        <text x="16" y="21" text-anchor="middle" font-size="13" font-family="Inter, sans-serif" font-weight="800" fill="url(#nav-grad)">RF</text>
+      </svg>
+      RepoForge
+    </div>
+    <div class="nav-links">
+      <a href="/repoforge/docs/" class="nav-link">Docs</a>
+      <a href="/repoforge/app/" class="nav-link">Dashboard</a>
+      <a href="https://github.com/JNZader/repoforge" class="nav-link github" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      v0.3 &mdash; Open Source
+    </div>
+
+    <h1>
+      Documentation that<br>
+      <span class="gradient">actually understands your code</span>
+    </h1>
+
+    <p class="subtitle">
+      RepoForge analyzes your codebase, understands the architecture, and generates
+      production-ready documentation &mdash; Docsify-ready, multi-language, with AI
+      agent skills for Claude Code, Cursor, Copilot, and more.
+    </p>
+
+    <div class="ctas">
+      <a href="/repoforge/app/" class="btn btn-primary">
+        Try it now
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+      <a href="https://github.com/JNZader/repoforge" class="btn btn-secondary" target="_blank" rel="noopener">
+        View on GitHub
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+      </div>
+      <h3>10 Generation Modes</h3>
+      <p>From documentation to AI skills, code graphs, security scans, and token-optimized exports. One tool, every output format.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0022 16z"/><path d="M7.5 4.21l4.5 2.6 4.5-2.6"/><path d="M7.5 19.79V14.6L3 12"/><path d="M21 12l-4.5 2.6v5.19"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+      </div>
+      <h3>Any LLM Provider</h3>
+      <p>Anthropic, OpenAI, Google, Groq, Ollama, GitHub Models, Mistral &mdash; bring your own API key, use any model.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/></svg>
+      </div>
+      <h3>Smart Docs</h3>
+      <p>Docsify-ready docs in 11 languages. Auto-detects project type, adapts chapters, supports monorepos with per-layer subdocs.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5" opacity="0.5"/><path d="M2 12l10 5 10-5" opacity="0.75"/></svg>
+      </div>
+      <h3>AI Agent Skills</h3>
+      <p>Generate SKILL.md and AGENT.md for 6 tools: Claude Code, OpenCode, Cursor, Codex, Gemini CLI, and GitHub Copilot.</p>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <section class="pipeline-section">
+    <p class="pipeline-label">How it works</p>
+    <h2 class="pipeline-title">From URL to docs in minutes</h2>
+    <div class="pipeline">
+      <div class="pipe-step">
+        <span class="pipe-step-num">Step 1</span>
+        <span class="pipe-step-name">Paste URL</span>
+        <span class="pipe-step-desc">GitHub repo link</span>
+      </div>
+      <div class="pipe-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+      <div class="pipe-step">
+        <span class="pipe-step-num">Step 2</span>
+        <span class="pipe-step-name">Clone &amp; Scan</span>
+        <span class="pipe-step-desc">Auto-detect &middot; Analyze</span>
+      </div>
+      <div class="pipe-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+      <div class="pipe-step">
+        <span class="pipe-step-num">Step 3</span>
+        <span class="pipe-step-name">AI Generation</span>
+        <span class="pipe-step-desc">LLM &middot; Chapter by chapter</span>
+      </div>
+      <div class="pipe-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+      <div class="pipe-step">
+        <span class="pipe-step-num">Step 4</span>
+        <span class="pipe-step-name">Preview &amp; Download</span>
+        <span class="pipe-step-desc">Docsify &middot; ZIP &middot; Publish</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">6+</div>
+      <div class="stat-label">Providers</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">11</div>
+      <div class="stat-label">Languages</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">7</div>
+      <div class="stat-label">Output Targets</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">766</div>
+      <div class="stat-label">Tests</div>
+    </div>
+  </div>
+
+  <!-- How to Get Started -->
+  <section class="getting-started-section">
+    <p class="getting-started-label">Get started in minutes</p>
+    <h2 class="getting-started-title">Three steps to production docs</h2>
+    <div class="getting-started-steps">
+      <div class="gs-step">
+        <span class="gs-step-num">1</span>
+        <span class="gs-step-name">Connect</span>
+        <span class="gs-step-desc">Sign in with GitHub and configure your LLM provider</span>
+      </div>
+      <div class="gs-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+      <div class="gs-step">
+        <span class="gs-step-num">2</span>
+        <span class="gs-step-name">Generate</span>
+        <span class="gs-step-desc">Paste your repo URL. RepoForge clones, scans, and generates in real-time</span>
+      </div>
+      <div class="gs-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+      <div class="gs-step">
+        <span class="gs-step-num">3</span>
+        <span class="gs-step-name">Use</span>
+        <span class="gs-step-desc">Preview your docs, download as ZIP, or publish to GitHub Pages</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Free & Open Source -->
+  <section class="pricing-section">
+    <p class="pricing-label">Open Source</p>
+    <h2 class="pricing-title">Free &amp; Open Source</h2>
+    <p class="pricing-subtitle">MIT License &middot; Bring your own API keys</p>
+    <div class="pricing-grid">
+      <div class="pricing-item">
+        <span class="pricing-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        <span class="pricing-text">RepoForge is free and open source under the MIT License</span>
+      </div>
+      <div class="pricing-item">
+        <span class="pricing-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </span>
+        <span class="pricing-text">GitHub Models provides free generation with your GitHub token</span>
+      </div>
+      <div class="pricing-item">
+        <span class="pricing-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+        </span>
+        <span class="pricing-text">Bring your own key for Anthropic, OpenAI, Google, Groq, Mistral, or Ollama</span>
+      </div>
+      <div class="pricing-item">
+        <span class="pricing-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </span>
+        <span class="pricing-text">Generate docs, skills, exports, graphs, and security scans from any repo</span>
+      </div>
+    </div>
+    <div class="pricing-cta">
+      <a href="/repoforge/app/" class="btn btn-primary">
+        Get Started
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p class="footer-text">
+      Built with &#9874; by <a href="https://github.com/JNZader" target="_blank" rel="noopener">JNZader</a>
+      &nbsp;&middot;&nbsp;
+      <a href="https://github.com/JNZader/repoforge" target="_blank" rel="noopener">Source on GitHub</a>
+      &nbsp;&middot;&nbsp;
+      MIT License
+    </p>
+  </footer>
+
+</div>
+
+</body>
+</html>
