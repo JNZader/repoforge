@@ -155,6 +155,7 @@ class ProviderKeyResponse(BaseModel):
     model_id: str | None = None
     is_validated: bool = False
     validated_at: datetime | None = None
+    created_at: datetime | None = None
     storage: Literal["persistent", "session"] = "persistent"
 
 
