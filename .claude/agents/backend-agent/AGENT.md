@@ -11,7 +11,7 @@ metadata:
 
 ## Role
 
-This agent owns the backend functionalities, including API management, database setup, and authentication processes. It never interacts with frontend or other layers.
+This agent owns the backend functionalities, including API management, database operations, and authentication processes. It never interacts with frontend or other layers.
 
 ## Capabilities
 

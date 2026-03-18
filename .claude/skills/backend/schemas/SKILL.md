@@ -27,12 +27,12 @@ This skill covers the creation of Pydantic schemas for the RepoForge Web API.
 
 | Task | Pattern |
 |------|---------|
-| Define user information schema | `UserInfo` |
-| Create authentication validation response | `AuthValidateResponse` |
+| Create User Info Schema | `UserInfo` |
+| Create User Response Schema | `UserResponse` |
 
 ## Critical Patterns (Summary)
 - **UserInfo**: Defines the structure for user information in requests.
-- **AuthValidateResponse**: Specifies the response format for authentication validation.
+- **UserResponse**: Specifies the response format for user-related API calls.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -48,20 +48,20 @@ from apps.server.app.models.schemas import UserInfo
 user_info = UserInfo(username="john_doe", email="john@example.com")
 ```
 
-### AuthValidateResponse
+### UserResponse
 
-Specifies the response format for authentication validation, including user details and status.
+Specifies the response format for user-related API calls, encapsulating user data and metadata.
 
 ```python
-from apps.server.app.models.schemas import AuthValidateResponse
+from apps.server.app.models.schemas import UserResponse
 
-response = AuthValidateResponse(user=UserInfo(username="john_doe", email="john@example.com"), valid=True)
+user_response = UserResponse(user_id=1, username="john_doe", email="john@example.com")
 ```
 
 ## When to Use
 
-- When creating API endpoints that require user data validation.
-- When handling authentication responses in the web API.
+- When creating request schemas for user data in the API.
+- When defining response formats for user-related endpoints.
 
 ## Commands
 
@@ -71,14 +71,12 @@ python -m apps.server.app.main
 
 ## Anti-Patterns
 
-### Don't: Use unvalidated data models
+### Don't: Use Unvalidated Data
 
-Using unvalidated data models can lead to runtime errors and security vulnerabilities.
+Using unvalidated data can lead to runtime errors and security vulnerabilities.
 
 ```python
 # BAD
-from apps.server.app.models.schemas import UserInfo
-
 user_info = UserInfo(username="john_doe", email="not-an-email")
 ```
 <!-- L3:END -->
