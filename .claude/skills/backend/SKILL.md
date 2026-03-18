@@ -1,7 +1,7 @@
 ---
 name: backend-layer
 description: >
-  This layer encompasses the backend services for the RepoForge project, primarily built with FastAPI and async database interactions.
+  This layer owns the backend services for the RepoForge project, providing a FastAPI application and database management.
   Trigger: When working in backend/ — adding, modifying, or debugging backend services.
 license: Apache-2.0
 metadata:
@@ -25,76 +25,67 @@ This skill covers the backend services for the RepoForge project.
 <!-- L2:START -->
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
-| Create a new database model | `apps/server/app/models/__init__.py` |
-| Configure application settings | `apps/server/app/config.py` |
+| Task               | Pattern                          |
+|--------------------|----------------------------------|
+| Run migrations      | `run_migrations_online()`        |
 
 ## Critical Patterns (Summary)
-- **Database Model Definition**: Define ORM models in `models/__init__.py`.
-- **Middleware Setup**: Implement custom middleware in `middleware/__init__.py`.
+- **Migration Management**: Use Alembic for handling database migrations.
+- **Middleware Setup**: Implement custom middleware for request handling.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Database Model Definition
+### Migration Management
 
-Define ORM models in `models/__init__.py` to represent database tables and relationships.
+Use Alembic to manage database migrations effectively, ensuring schema changes are applied consistently.
 
 ```python
-# apps/server/app/models/__init__.py
-from sqlalchemy import Column, Integer, String
-from .database import Base
+# Example using real exported names
+from apps.server.alembic.env import run_migrations_online
 
-class User(Base):
-    __tablename__ = 'users'
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
+run_migrations_online()
 ```
 
 ### Middleware Setup
 
-Implement custom middleware in `middleware/__init__.py` to handle requests and responses.
+Implement custom middleware to handle authentication and logging for incoming requests.
 
 ```python
-# apps/server/app/middleware/__init__.py
-from starlette.middleware.base import BaseHTTPMiddleware
+# Example
+from apps.server.app.middleware.auth import get_current_user
 
-class CustomMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        return response
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    user = await get_current_user(request)
+    response = await call_next(request)
+    return response
 ```
 
 ## When to Use
 
-- When creating new database models for the application.
-- When implementing custom middleware for request handling.
+- When setting up database migrations for schema changes.
+- When implementing authentication for API endpoints.
 
 ## Commands
 
 ```bash
-# Run migrations
-python -m alembic upgrade head
-
-# Start the FastAPI server
+# Run the FastAPI application
 uvicorn apps.server.app.main:app --reload
+
+# Run migrations
+alembic upgrade head
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify database models without migrations
+### Don't: Change database models without migration
 
-Changing database models directly can lead to inconsistencies and data loss.
+Not running migrations after changing models can lead to database inconsistencies.
 
 ```python
 # BAD
-# Directly altering the User model without running migrations
-class User(Base):
-    __tablename__ = 'users'
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String)  # Adding a new field without migration
+# Directly modifying models without running migrations
 ```
 <!-- L3:END -->

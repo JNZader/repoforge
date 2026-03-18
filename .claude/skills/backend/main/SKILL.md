@@ -2,7 +2,7 @@
 name: add-main-endpoint
 description: >
   This skill covers adding main endpoints to the FastAPI application.
-  Trigger: When setting up the main entry point for the FastAPI application.
+  Trigger: When setting up the main application entry point.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers adding main endpoints to the FastAPI application.
 
-**Trigger**: When setting up the main entry point for the FastAPI application.
+**Trigger**: When setting up the main application entry point.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -32,7 +32,7 @@ This skill covers adding main endpoints to the FastAPI application.
 
 ## Critical Patterns (Summary)
 - **health**: Defines a health check endpoint for the application.
-- **global_error_handler**: Implements a global error handler for unhandled exceptions.
+- **global_error_handler**: Implements a centralized error handling mechanism.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers adding main endpoints to the FastAPI application.
 
 ### health
 
-Defines a health check endpoint for the application, allowing clients to verify the service's status.
+Defines a health check endpoint for the application to monitor its status.
 
 ```python
 from fastapi import FastAPI
@@ -54,7 +54,7 @@ async def health():
 
 ### global_error_handler
 
-Implements a global error handler for unhandled exceptions, ensuring consistent error responses.
+Implements a centralized error handling mechanism to manage exceptions globally.
 
 ```python
 from fastapi import FastAPI
@@ -69,8 +69,8 @@ async def global_error_handler(request, exc):
 
 ## When to Use
 
-- When creating a health check endpoint for monitoring.
-- When implementing error handling across the FastAPI application.
+- When you need to provide a health check for your FastAPI application.
+- When you want to handle errors globally to avoid repetitive error handling code.
 
 ## Commands
 
@@ -82,12 +82,12 @@ uvicorn apps.server.app.main:app --reload
 
 ### Don't: Ignore error handling
 
-Ignoring error handling can lead to uninformative responses and application crashes.
+Ignoring error handling can lead to unhandled exceptions and poor user experience.
 
 ```python
 # BAD
 @app.get("/example")
 async def example():
-    raise Exception("This will crash the app")
+    return 1 / 0  # This will raise an unhandled exception
 ```
 <!-- L3:END -->

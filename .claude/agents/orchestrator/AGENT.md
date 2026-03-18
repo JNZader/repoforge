@@ -24,9 +24,9 @@ Before handling any task:
 
 ## Routing Table
 
-| Task type               | Delegate to    |
-|------------------------|----------------|
-| Work in `apps/server/` | `backend-agent`|
+| Task type | Delegate to      |
+|-----------|------------------|
+| Work in `apps/server/` | `backend-agent` |
 
 ## Delegation Protocol
 
@@ -43,7 +43,7 @@ Before handling any task:
 
 ## Sub-agents
 
-- `backend-agent` — handles `apps/server/` (24 modules, Python)
+- `backend-agent` — handles `apps/server/` (26 modules, Python)
 
 ## For Complex Features (SDD mode)
 
