@@ -57,8 +57,8 @@ from apps.server.app.models.database import get_db
 
 ## When to Use
 
-- When setting up middleware for authentication or logging.
-- When managing database interactions in an async context.
+- When implementing new API endpoints that require authentication.
+- When setting up database interactions for new models.
 
 ## Commands
 
@@ -71,12 +71,12 @@ uvicorn apps.server.app.main:app --reload
 
 ## Anti-Patterns
 
-### Don't: Ignore async patterns
+### Don't: Modify database models without migration
 
-Not using async patterns can lead to blocking operations, degrading performance.
+Changing database models directly can lead to inconsistencies and data loss.
 
 ```python
 # BAD
-db_session = get_db()  # This should be awaited
+# Directly modifying models without running migrations
 ```
 <!-- L3:END -->

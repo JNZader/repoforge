@@ -2,7 +2,7 @@
 name: add-main-endpoint
 description: >
   This skill covers adding main endpoints to the FastAPI application.
-  Trigger: When setting up the main entry point for the application.
+  Trigger: Load this skill when setting up the main entry point for the application.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers adding main endpoints to the FastAPI application.
 
-**Trigger**: When setting up the main entry point for the application.
+**Trigger**: Load this skill when setting up the main entry point for the application.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -31,46 +31,47 @@ This skill covers adding main endpoints to the FastAPI application.
 | Implement global error handling | `global_error_handler` |
 
 ## Critical Patterns (Summary)
-- **health**: Defines a health check endpoint for the application.
-- **global_error_handler**: Implements a global error handler for unhandled exceptions.
+- **Health Check Endpoint**: Defines a simple health check for the application.
+- **Global Error Handling**: Centralizes error handling for the FastAPI application.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### health
+### Health Check Endpoint
 
-Defines a health check endpoint for the application, allowing clients to verify the service's status.
+Defines a simple health check for the application to ensure it's running.
 
 ```python
 from fastapi import FastAPI
+from apps.server.app.main import health
 
 app = FastAPI()
 
 @app.get("/health")
-async def health():
-    return {"status": "healthy"}
+async def health_check():
+    return health()
 ```
 
-### global_error_handler
+### Global Error Handling
 
-Implements a global error handler to catch unhandled exceptions and return a standardized error response.
+Centralizes error handling for the FastAPI application to manage exceptions globally.
 
 ```python
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
+from apps.server.app.main import global_error_handler
 
 app = FastAPI()
 
 @app.exception_handler(Exception)
-async def global_error_handler(request: Request, exc: Exception):
-    return JSONResponse(status_code=500, content={"detail": str(exc)})
+async def custom_exception_handler(request, exc):
+    return await global_error_handler(request, exc)
 ```
 
 ## When to Use
 
 - When creating a health check endpoint for monitoring.
-- When implementing error handling across the FastAPI application.
+- When implementing centralized error handling in the FastAPI application.
 
 ## Commands
 
@@ -80,9 +81,9 @@ uvicorn apps.server.app.main:app --reload
 
 ## Anti-Patterns
 
-### Don't: Ignore error handling
+### Don't: Ignore Error Handling
 
-Ignoring error handling can lead to unhandled exceptions crashing the application.
+Ignoring error handling can lead to unhandled exceptions and poor user experience.
 
 ```python
 # BAD

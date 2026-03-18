@@ -2,24 +2,24 @@
 name: add-auth-endpoint
 description: >
   This skill covers the implementation of authentication routes.
-  Trigger: When setting up auth-related endpoints in the backend.
+  Trigger: When setting up user authentication in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
-  token_estimate: 350
+  complexity: medium
+  token_estimate: 450
   dependencies: []
   related_skills: []
   load_priority: high
 ---
 
 <!-- L1:START -->
-# add-auth-endpoint
+# Add Auth Endpoint
 
 This skill covers the implementation of authentication routes.
 
-**Trigger**: When setting up auth-related endpoints in the backend.
+**Trigger**: When setting up user authentication in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -33,8 +33,8 @@ This skill covers the implementation of authentication routes.
 | User logout        | `logout`                |
 
 ## Critical Patterns (Summary)
-- **User Login**: Handles user authentication via GitHub OAuth.
-- **JWT Validation**: Validates the JWT token for secure access.
+- **User Login**: Handles user login via GitHub OAuth.
+- **Token Validation**: Validates JWT tokens for secure access.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -42,7 +42,7 @@ This skill covers the implementation of authentication routes.
 
 ### User Login
 
-Handles user authentication via GitHub OAuth, redirecting users to the GitHub login page.
+Handles user login via GitHub OAuth, redirecting users to the GitHub login page.
 
 ```python
 from fastapi import APIRouter
@@ -55,9 +55,9 @@ async def github_login():
     return await login()
 ```
 
-### JWT Validation
+### Token Validation
 
-Validates the JWT token to ensure the user is authenticated for protected routes.
+Validates JWT tokens to ensure secure access to protected routes.
 
 ```python
 from fastapi import Depends
@@ -65,13 +65,13 @@ from apps.server.app.routes.auth import validate_token
 
 @router.get("/protected")
 async def protected_route(token: str = Depends(validate_token)):
-    return {"message": "You are authenticated!"}
+    return {"message": "Access granted"}
 ```
 
 ## When to Use
 
-- When implementing user authentication for your application.
-- When securing routes that require user validation.
+- When implementing user authentication for a web application.
+- When securing API endpoints with JWT tokens.
 
 ## Commands
 
@@ -83,10 +83,11 @@ python -m fastapi run apps/server/app/main.py
 
 ### Don't: Hardcode Secrets
 
-Hardcoding secrets like client IDs or tokens is insecure and should be avoided.
+Hardcoding secrets like client IDs or secrets is insecure and should be avoided.
 
 ```python
 # BAD
-GITHUB_CLIENT_ID = "your_client_id_here"
+client_id = "your_client_id"
+client_secret = "your_client_secret"
 ```
 <!-- L3:END -->

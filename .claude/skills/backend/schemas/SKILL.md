@@ -1,13 +1,13 @@
 ---
-name: add-schemas-endpoint
+name: define-request-response-schemas
 description: >
-  This skill covers the creation of Pydantic schemas for the RepoForge Web API.
-  Trigger: Load this skill when defining schemas for API requests and responses.
+  This skill covers the creation of Pydantic v2 request and response schemas.
+  Trigger: Load when defining schemas for the RepoForge Web API.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
+  complexity: medium
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# add-schemas-endpoint
+# define-request-response-schemas
 
-This skill covers the creation of Pydantic schemas for the RepoForge Web API.
+This skill covers the creation of Pydantic v2 request and response schemas.
 
-**Trigger**: Load this skill when defining schemas for API requests and responses.
+**Trigger**: Load when defining schemas for the RepoForge Web API.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,12 +27,12 @@ This skill covers the creation of Pydantic schemas for the RepoForge Web API.
 
 | Task | Pattern |
 |------|---------|
-| Create User Info Schema | `UserInfo` |
-| Create User Response Schema | `UserResponse` |
+| Define user info schema | `UserInfo` |
+| Create token response schema | `TokenResponse` |
 
 ## Critical Patterns (Summary)
-- **UserInfo**: Defines the structure for user information in requests.
-- **UserResponse**: Specifies the response format for user-related API calls.
+- **UserInfo**: Defines the schema for user information.
+- **TokenResponse**: Creates a schema for token responses.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,7 +40,7 @@ This skill covers the creation of Pydantic schemas for the RepoForge Web API.
 
 ### UserInfo
 
-Defines the structure for user information in requests, ensuring data validation and type safety.
+Defines the schema for user information, ensuring all required fields are validated.
 
 ```python
 from apps.server.app.models.schemas import UserInfo
@@ -48,20 +48,20 @@ from apps.server.app.models.schemas import UserInfo
 user_info = UserInfo(username="john_doe", email="john@example.com")
 ```
 
-### UserResponse
+### TokenResponse
 
-Specifies the response format for user-related API calls, encapsulating user data and metadata.
+Creates a schema for token responses, encapsulating the token and its expiration.
 
 ```python
-from apps.server.app.models.schemas import UserResponse
+from apps.server.app.models.schemas import TokenResponse
 
-user_response = UserResponse(user_id=1, username="john_doe", email="john@example.com")
+token_response = TokenResponse(access_token="abc123", token_type="bearer")
 ```
 
 ## When to Use
 
-- When creating request schemas for user data in the API.
-- When defining response formats for user-related endpoints.
+- When creating user-related API endpoints that require validation.
+- When handling authentication responses in the API.
 
 ## Commands
 
@@ -71,9 +71,9 @@ python -m apps.server.app.main
 
 ## Anti-Patterns
 
-### Don't: Use Unvalidated Data
+### Don't: Use unvalidated data
 
-Using unvalidated data can lead to runtime errors and security vulnerabilities.
+Using unvalidated data can lead to security vulnerabilities and application errors.
 
 ```python
 # BAD
