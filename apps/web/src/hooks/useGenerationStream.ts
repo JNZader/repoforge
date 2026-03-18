@@ -26,8 +26,6 @@ export interface StreamState {
   } | null;
 }
 
-const TERMINAL_STATUSES = new Set<StreamStatus>(['completed', 'error', 'cancelled']);
-
 export function useGenerationStream(generationId: string | null): StreamState {
   const [events, setEvents] = useState<GenerationSSEEvent[]>([]);
   const [status, setStatus] = useState<StreamStatus>('idle');
