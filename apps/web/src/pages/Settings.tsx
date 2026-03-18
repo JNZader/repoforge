@@ -141,7 +141,7 @@ export function Settings() {
           <div className="space-y-2">
             {PROVIDERS.map((p) => {
               const saved = providers?.find((pk) => pk.provider === p.id);
-              const isOAuth = 'oauth' in p && p.oauth;
+              const isOAuth = false;
               const isSession = saved?.storage === 'session';
               const isDeleting = deleteMutation.isPending || deleteSessionMutation.isPending;
 
