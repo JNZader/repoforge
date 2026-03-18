@@ -2,7 +2,7 @@
 name: encrypt-api-keys
 description: >
   This skill covers AES-256-GCM encryption for provider API keys.
-  Trigger: Load this skill when handling sensitive crypto operations.
+  Trigger: Load this skill when handling crypto operations for API keys.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# encrypt-api-keys
+# Encrypt API Keys
 
 This skill covers AES-256-GCM encryption for provider API keys.
 
-**Trigger**: Load this skill when handling sensitive crypto operations.
+**Trigger**: Load this skill when handling crypto operations for API keys.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -45,7 +45,7 @@ Generate a secure key for user-specific encryption using the `derive_user_key` f
 ```python
 from apps.server.app.services.crypto import derive_user_key
 
-user_key = derive_user_key(user_id, password)
+user_key = derive_user_key(user_id="example_user")
 ```
 
 ### Encrypt API Key
@@ -55,7 +55,7 @@ Encrypt sensitive API keys using the `encrypt_key` function with AES-256-GCM.
 ```python
 from apps.server.app.services.crypto import encrypt_key
 
-encrypted_key = encrypt_key(api_key, user_key)
+encrypted_key = encrypt_key(api_key="my_secret_api_key", user_key=user_key)
 ```
 
 ## When to Use
@@ -73,7 +73,7 @@ docker-compose run app python apps/server/app/main.py
 
 ### Don't: Hardcode API Keys
 
-Hardcoding API keys in your source code exposes them to security risks.
+Hardcoding API keys in the source code exposes them to security risks.
 
 ```python
 # BAD

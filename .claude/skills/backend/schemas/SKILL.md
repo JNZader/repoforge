@@ -15,7 +15,7 @@ metadata:
 ---
 
 <!-- L1:START -->
-# Define Request/Response Schemas
+# Define Request and Response Schemas
 
 This skill covers the creation of Pydantic v2 request and response schemas.
 
@@ -27,56 +27,59 @@ This skill covers the creation of Pydantic v2 request and response schemas.
 
 | Task | Pattern |
 |------|---------|
-| Define user info schema | `UserInfo` |
-| Create token response schema | `TokenResponse` |
+| Define user information schema | `UserInfo` |
+| Create authentication validation response | `AuthValidateResponse` |
 
 ## Critical Patterns (Summary)
-- **User Info Schema**: Defines the structure for user information.
-- **Token Response Schema**: Specifies the format for token responses.
+- **UserInfo**: Defines the schema for user information.
+- **AuthValidateResponse**: Creates a response schema for authentication validation.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### User Info Schema
+### UserInfo
 
-Defines the structure for user information using Pydantic.
+Defines the schema for user information, ensuring all required fields are validated.
 
 ```python
 from apps.server.app.models.schemas import UserInfo
 
-user_info = UserInfo(username="john_doe", email="john@example.com")
+user_info = UserInfo(username="john_doe", email="john@example.com", full_name="John Doe")
 ```
 
-### Token Response Schema
+### AuthValidateResponse
 
-Specifies the format for token responses, ensuring proper validation.
+Creates a response schema for authentication validation, encapsulating necessary response fields.
 
 ```python
-from apps.server.app.models.schemas import TokenResponse
+from apps.server.app.models.schemas import AuthValidateResponse
 
-token_response = TokenResponse(access_token="abc123", token_type="bearer")
+auth_response = AuthValidateResponse(is_valid=True, user_id="12345")
 ```
 
 ## When to Use
 
-- When creating user-related endpoints that require validation of user data.
-- When implementing authentication mechanisms that return tokens.
+- When defining schemas for user-related data in the API.
+- When creating responses for authentication processes.
 
 ## Commands
 
 ```bash
-docker-compose run app python apps/server/app/main.py
+docker-compose up
+python repoforge/cli.py run
 ```
 
 ## Anti-Patterns
 
-### Don't: Use Unvalidated Data
+### Don't: Use unvalidated data types
 
-Using unvalidated data can lead to security vulnerabilities and data integrity issues.
+Using unvalidated data types can lead to runtime errors and security vulnerabilities.
 
 ```python
 # BAD
-user_info = UserInfo(username="john_doe", email="invalid-email")
+from apps.server.app.models.schemas import UserInfo
+
+user_info = UserInfo(username="john_doe", email="invalid-email", full_name="John Doe")  # No validation
 ```
 <!-- L3:END -->

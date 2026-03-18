@@ -25,22 +25,22 @@ This skill covers adding main endpoints to the FastAPI application.
 <!-- L2:START -->
 ## Quick Reference
 
-| Task               | Pattern                     |
-|--------------------|-----------------------------|
-| Add health check   | `health`                    |
-| Add detailed health | `health_detailed`           |
+| Task | Pattern |
+|------|---------|
+| Add health check endpoint | `health` |
+| Implement global error handling | `global_error_handler` |
 
 ## Critical Patterns (Summary)
-- **health**: Implements a basic health check endpoint.
-- **health_detailed**: Implements a detailed health check endpoint.
+- **Health Check Endpoint**: Define a health check endpoint for application status.
+- **Global Error Handling**: Set up a global error handler for consistent error responses.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### health
+### Health Check Endpoint
 
-Implements a basic health check endpoint to verify the service is running.
+Define a health check endpoint for application status using FastAPI.
 
 ```python
 from fastapi import FastAPI
@@ -53,42 +53,43 @@ async def health_check():
     return health()
 ```
 
-### health_detailed
+### Global Error Handling
 
-Implements a detailed health check endpoint providing more information about the service status.
+Set up a global error handler for consistent error responses across the application.
 
 ```python
 from fastapi import FastAPI
-from apps.server.app.main import health_detailed
+from apps.server.app.main import global_error_handler
 
 app = FastAPI()
 
-@app.get("/health/detailed")
-async def detailed_health_check():
-    return health_detailed()
+@app.exception_handler(Exception)
+async def custom_exception_handler(request, exc):
+    return await global_error_handler(request, exc)
 ```
 
 ## When to Use
 
 - When you need to expose a health check endpoint for monitoring.
-- When integrating with external services that require health status.
+- When implementing a consistent error handling strategy across your FastAPI application.
 
 ## Commands
 
 ```bash
 docker-compose up
+python apps/server/app/main.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Expose sensitive data in health checks
+### Don't: Ignore Error Handling
 
-Exposing sensitive information can lead to security vulnerabilities.
+Ignoring error handling can lead to uninformative responses and poor user experience.
 
 ```python
 # BAD
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "db": db_status, "secret": secret_key}
+@app.get("/example")
+async def example():
+    raise Exception("An error occurred")
 ```
 <!-- L3:END -->

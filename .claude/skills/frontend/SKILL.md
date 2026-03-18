@@ -2,7 +2,7 @@
 name: frontend-layer
 description: >
   This layer manages the user interface and user experience of the application.
-  Trigger: When working in frontend/ — adding, modifying, or debugging UI components.
+  Trigger: When working in frontend/ — adding, modifying, or debugging UI components and interactions.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # frontend-layer
 
-This layer manages the user interface and user experience of the application.
+This skill covers the management of the user interface and user experience components.
 
-**Trigger**: When working in frontend/ — adding, modifying, or debugging UI components.
+**Trigger**: When working in frontend/ — adding, modifying, or debugging UI components and interactions.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -30,8 +30,8 @@ This layer manages the user interface and user experience of the application.
 | Create a new component | `export const NewComponent = () => { ... }` |
 
 ## Critical Patterns (Summary)
-- **Component Structure**: Each component should be a functional component.
-- **Error Handling**: Use ErrorBoundary for catching errors in the UI.
+- **Component Structure**: Each component should be a functional component returning JSX.
+- **Error Handling**: Use ErrorBoundary to catch and display errors gracefully.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -39,23 +39,23 @@ This layer manages the user interface and user experience of the application.
 
 ### Component Structure
 
-Each component should be a functional component that returns JSX.
+Each component should be a functional component returning JSX.
 
 ```typescript
 // Example of a functional component
 export const NewComponent = () => {
-  return <div>Hello World</div>;
+  return <div>Hello, World!</div>;
 };
 ```
 
 ### Error Handling
 
-Use ErrorBoundary to catch errors in the UI and display a fallback UI.
+Use ErrorBoundary to catch and display errors gracefully.
 
 ```typescript
-// Example of ErrorBoundary usage
+// Example of using ErrorBoundary
 <ErrorBoundary>
-  <YourComponent />
+  <Layout />
 </ErrorBoundary>
 ```
 
@@ -73,12 +73,14 @@ npm run build
 
 ## Anti-Patterns
 
-### Don't: Modify shared state directly
+### Don't: Modify shared components without coordination
 
-Directly modifying shared state can lead to unpredictable UI behavior.
+Changing shared components can break the UI for other layers relying on them.
 
 ```typescript
-// BAD
-state.value = newValue; // This is incorrect
+// BAD: Directly modifying a shared component
+const Layout = () => {
+  return <div>New Layout</div>; // This may affect other parts of the app
+};
 ```
 <!-- L3:END -->

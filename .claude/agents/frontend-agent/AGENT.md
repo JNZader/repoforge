@@ -16,7 +16,7 @@ This agent owns the frontend layer, focusing on UI components and API integratio
 ## Capabilities
 
 - UI component management
-- API request handling
+- API interaction handling
 - Authentication flow implementation
 
 ## Workflow
