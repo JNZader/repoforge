@@ -11,4 +11,4 @@ exec uvicorn app.main:app \
     --host "${SERVER_HOST:-0.0.0.0}" \
     --port "${SERVER_PORT:-8000}" \
     --workers 1 \
-    --log-level "${LOG_LEVEL:-info}"
+    --log-level "$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')"
