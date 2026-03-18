@@ -1,7 +1,7 @@
 ---
 name: backend-layer
 description: >
-  This layer encompasses the backend services for the RepoForge application, primarily built with FastAPI.
+  This layer encompasses the backend services for the RepoForge project, primarily built with FastAPI.
   Trigger: When working in backend/ — adding, modifying, or debugging backend services.
 license: Apache-2.0
 metadata:
@@ -17,9 +17,9 @@ metadata:
 <!-- L1:START -->
 # backend-layer
 
-This skill covers the backend services for the RepoForge application.
+This skill covers the backend services for the RepoForge project.
 
-**Trigger**: When working in backend/ — adding, modifying, or debugging backend services.
+**Trigger**: When working in backend/ directory and its main responsibility is to manage backend services.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -30,8 +30,8 @@ This skill covers the backend services for the RepoForge application.
 | Configure logging | `from apps.server.app.middleware.logging_config import configure_logging` |
 
 ## Critical Patterns (Summary)
-- **Middleware Configuration**: Use custom middleware for request handling and logging.
-- **JWT Authentication**: Implement JWT for secure user authentication.
+- **Middleware Configuration**: Use custom middleware for logging, authentication, and rate limiting.
+- **Migration Management**: Handle database migrations using Alembic for schema changes.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -39,48 +39,45 @@ This skill covers the backend services for the RepoForge application.
 
 ### Middleware Configuration
 
-Use custom middleware to handle requests, logging, and security headers effectively.
+Utilize middleware to manage cross-cutting concerns like logging and authentication.
 
 ```python
-# Example of middleware usage
-from apps.server.app.main import request_logging_middleware
-
-app.add_middleware(request_logging_middleware)
+# Example of logging middleware
+from apps.server.app.middleware.logging_config import configure_logging
 ```
 
-### JWT Authentication
+### Migration Management
 
-Implement JWT for secure user authentication in FastAPI applications.
+Use Alembic for managing database migrations, ensuring schema consistency across environments.
 
 ```python
-# Example of JWT authentication
-from apps.server.app.middleware.auth import get_current_user
-
-@app.get("/users/me")
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    return current_user
+# Example of running migrations
+from apps.server.alembic.env import run_migrations_online
 ```
 
 ## When to Use
 
-- When implementing request logging and security features.
-- When managing user authentication and authorization.
+- When implementing new API endpoints that require authentication.
+- When configuring logging for better observability in the backend.
 
 ## Commands
 
 ```bash
-# Run the FastAPI application
+# Run the FastAPI server
 uvicorn apps.server.app.main:app --reload
+
+# Run migrations
+alembic upgrade head
 ```
 
 ## Anti-Patterns
 
-### Don't: Change middleware without testing
+### Don't: Modify middleware without testing
 
-Changing middleware can break request handling and logging, leading to security vulnerabilities.
+Changing middleware can lead to unexpected behavior in authentication or logging.
 
 ```python
 # BAD
-app.add_middleware(SomeNewMiddleware)  # Without proper testing
+# Removing essential logging middleware without testing
 ```
 <!-- L3:END -->

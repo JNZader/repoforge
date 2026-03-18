@@ -2,13 +2,13 @@
 name: add-auth-endpoint
 description: >
   This skill covers the implementation of authentication routes.
-  Trigger: When setting up auth-related endpoints in the backend.
+  Trigger: When setting up user authentication in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
-  token_estimate: 350
+  complexity: medium
+  token_estimate: 450
   dependencies: []
   related_skills: []
   load_priority: high
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers the implementation of authentication routes.
 
-**Trigger**: When setting up auth-related endpoints in the backend.
+**Trigger**: When setting up user authentication in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -28,61 +28,69 @@ This skill covers the implementation of authentication routes.
 | Task               | Pattern                     |
 |--------------------|-----------------------------|
 | User login         | `login`                     |
-| GitHub callback     | `callback`                  |
-| Validate JWT token | `validate_token`            |
+| OAuth callback     | `callback`                  |
+| Token validation    | `validate_token`            |
 | User logout        | `logout`                    |
 
 ## Critical Patterns (Summary)
-- **User login**: Handles user authentication via GitHub OAuth.
-- **JWT validation**: Validates the JWT token for secure access.
+- **User Login**: Handles user login via GitHub OAuth.
+- **OAuth Callback**: Manages the callback from GitHub after authentication.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### User login
+### User Login
 
-Handles user authentication via GitHub OAuth.
+Handles user login via GitHub OAuth, initiating the authentication process.
 
 ```python
+from fastapi import APIRouter
 from apps.server.app.routes.auth import login
 
-@app.post("/login")
-async def login_user(credentials: OAuth2PasswordRequestForm = Depends()):
-    return await login(credentials)
+router = APIRouter()
+
+@router.post("/login")
+async def user_login():
+    return await login()
 ```
 
-### JWT validation
+### OAuth Callback
 
-Validates the JWT token for secure access.
+Manages the callback from GitHub after authentication, processing the received data.
 
 ```python
-from apps.server.app.routes.auth import validate_token
+from fastapi import APIRouter
+from apps.server.app.routes.auth import callback
 
-@app.get("/validate")
-async def validate_user(token: str):
-    return await validate_token(token)
+router = APIRouter()
+
+@router.get("/callback")
+async def oauth_callback():
+    return await callback()
 ```
 
 ## When to Use
 
-- When implementing user authentication in a FastAPI application.
-- When needing to validate JWT tokens for protected routes.
+- When implementing user authentication for a web application.
+- When integrating third-party OAuth providers like GitHub.
 
 ## Commands
 
 ```bash
-python -m uvicorn apps.server.app.main:app --reload
+docker-compose up
+python apps/server/app/main.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode secrets
+### Don't: Hardcode Secrets
 
-Hardcoding secrets can lead to security vulnerabilities.
+Hardcoding secrets like client IDs and tokens is insecure and should be avoided.
 
 ```python
 # BAD
-SECRET_KEY = "mysecretkey"
+CLIENT_ID = "your_client_id"
+CLIENT_SECRET = "your_client_secret"
 ```
 <!-- L3:END -->

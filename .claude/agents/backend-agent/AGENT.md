@@ -27,8 +27,8 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Manage FastAPI routes and middleware
-2. Apply database migrations using Alembic
+1. Manage FastAPI application routes and configurations
+2. Handle database migrations using Alembic
 3. Verify authentication mechanisms
 4. Report back to orchestrator with: files changed, tests status, blockers
 

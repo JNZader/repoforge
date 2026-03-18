@@ -26,7 +26,7 @@ Before handling any task:
 
 | Task type               | Delegate to    |
 |------------------------|----------------|
-| Work in `apps/server/` | `backend-agent`|
+| Work in `apps/server/` | `backend-agent` |
 
 ## Delegation Protocol
 

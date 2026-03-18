@@ -1,5 +1,5 @@
 # RepoForge — Generated artifacts index
-**Tech stack:** Python
+**Tech stack:** Python, Docker
 **Layers:** backend
 
 ## Skills
