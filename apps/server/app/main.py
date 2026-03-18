@@ -4,6 +4,7 @@ Configures the application with lifespan hooks, middleware stack,
 health endpoints, error handling, and router registration.
 """
 
+import asyncio
 import time
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
@@ -22,6 +23,7 @@ from app.routes.generate import router as generate_router
 from app.routes.history import router as history_router
 from app.routes.analytics import router as analytics_router
 from app.routes.providers import router as providers_router
+from app.services.session_keys import session_key_cleanup_loop
 
 logger = structlog.get_logger(__name__)
 
@@ -59,6 +61,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("dev_mode_db_created")
 
+    # Start session key cleanup background task
+    cleanup_task = asyncio.create_task(session_key_cleanup_loop())
+    logger.info("session_key_cleanup_started")
+
     logger.info(
         "server_started",
         debug=settings.DEBUG,
@@ -69,6 +75,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # Graceful shutdown
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
+
     await engine.dispose()
     logger.info("database_engine_disposed")
 

@@ -15,8 +15,16 @@ from pydantic import BaseModel, Field, field_validator
 # --- Auth ---
 
 
+class UserInfo(BaseModel):
+    """Lightweight user info returned from JWT validation."""
+
+    github_id: int
+    login: str
+    avatar_url: str | None = None
+
+
 class UserResponse(BaseModel):
-    """User info returned from auth and profile endpoints."""
+    """Full user info returned from profile endpoints."""
 
     id: uuid.UUID
     github_login: str
@@ -28,7 +36,7 @@ class UserResponse(BaseModel):
 class AuthValidateResponse(BaseModel):
     """Response for POST /auth/validate."""
 
-    user: UserResponse
+    user: UserInfo
     exp: int
 
 
