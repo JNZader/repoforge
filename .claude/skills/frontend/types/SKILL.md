@@ -7,7 +7,7 @@ license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
+  complexity: low
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -47,7 +47,6 @@ Defines the structure for a generation request, including necessary parameters.
 const request: GenerateRequest = {
   providerKey: ProviderKey.SomeProvider,
   mode: GenerationMode.Standard,
-  // additional properties
 };
 ```
 
@@ -60,33 +59,35 @@ Defines the structure for a generation response, including status and data.
 const response: GenerateResponse = {
   status: GenerationStatus.Success,
   data: {
-    // response data
+    id: '12345',
+    result: 'Generated content here',
   },
 };
 ```
 
 ## When to Use
 
-- When creating a new generation request in the frontend.
+- When creating a new generation request for a user.
 - When processing the response from a generation event.
 
 ## Commands
 
 ```bash
-docker-compose up
 python repoforge/cli.py generate
+docker-compose up
 ```
 
 ## Anti-Patterns
 
-### Don't: Use raw objects for requests
+### Don't: Use raw types
 
-Using raw objects can lead to inconsistencies and errors in data handling.
+Using raw types instead of defined types can lead to inconsistencies and errors.
 
 ```typescript
 // BAD
 const request = {
-  // missing type definitions
+  key: 'SomeKey',
+  mode: 'Standard',
 };
 ```
 <!-- L3:END -->

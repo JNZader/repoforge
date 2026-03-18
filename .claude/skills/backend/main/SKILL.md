@@ -7,7 +7,7 @@ license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
+  complexity: medium
   token_estimate: 350
   dependencies: []
   related_skills: []
@@ -25,74 +25,71 @@ This skill covers adding main endpoints to the FastAPI application.
 <!-- L2:START -->
 ## Quick Reference
 
-| Task               | Pattern                     |
-|--------------------|-----------------------------|
-| Add health check   | `health`                    |
-| Add detailed health | `health_detailed`           |
+| Task | Pattern |
+|------|---------|
+| Add health check endpoint | `health` |
+| Implement global error handling | `global_error_handler` |
 
 ## Critical Patterns (Summary)
-- **health**: Implements a basic health check endpoint.
-- **health_detailed**: Implements a detailed health check endpoint.
+- **Health Check Endpoint**: Defines a simple health check for the application.
+- **Global Error Handler**: Centralizes error handling for the FastAPI application.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### health
+### Health Check Endpoint
 
-Implements a basic health check endpoint that returns the status of the application.
+Defines a simple health check for the application to ensure it's running.
 
 ```python
 from fastapi import FastAPI
+from apps.server.app.main import health
 
 app = FastAPI()
 
 @app.get("/health")
-async def health():
-    return {"status": "healthy"}
+async def health_check():
+    return health()
 ```
 
-### health_detailed
+### Global Error Handler
 
-Implements a detailed health check endpoint that provides more information about the application status.
+Centralizes error handling for the FastAPI application to manage exceptions globally.
 
 ```python
 from fastapi import FastAPI
+from apps.server.app.main import global_error_handler
 
 app = FastAPI()
 
-@app.get("/health/detailed")
-async def health_detailed():
-    return {
-        "status": "healthy",
-        "details": {
-            "database": "connected",
-            "cache": "operational"
-        }
-    }
+@app.exception_handler(Exception)
+async def custom_exception_handler(request, exc):
+    return await global_error_handler(request, exc)
 ```
 
 ## When to Use
 
-- When you need to expose a health check endpoint for monitoring.
-- When you want to provide detailed application status for diagnostics.
+- When you need to implement a health check for your FastAPI application.
+- When you want to handle errors globally across your application.
 
 ## Commands
 
 ```bash
-docker run -d -p 8000:8000 your-image-name
+docker-compose up
+python apps/server/app/main.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Hardcode health responses
+### Don't: Ignore Error Handling
 
-Hardcoding responses can lead to outdated information being served.
+Ignoring error handling can lead to unhandled exceptions and poor user experience.
 
 ```python
 # BAD
-@app.get("/health")
-async def health():
-    return {"status": "not healthy"}  # This should be dynamic
+@app.get("/example")
+async def example():
+    raise Exception("This will crash the app")
 ```
 <!-- L3:END -->

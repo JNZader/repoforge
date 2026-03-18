@@ -45,7 +45,7 @@ Before handling any task:
 ## Sub-agents
 
 - `frontend-agent` — handles `apps/web/` (22 modules, TypeScript)
-- `backend-agent` — handles `apps/server/` (29 modules, Python)
+- `backend-agent` — handles `apps/server/` (37 modules, Python)
 
 ## For Complex Features (SDD mode)
 

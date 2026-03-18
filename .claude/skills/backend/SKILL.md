@@ -19,7 +19,7 @@ metadata:
 
 This skill covers the backend services for the RepoForge project.
 
-**Trigger**: When working in backend/ directory and its main responsibility is to manage backend services.
+**Trigger**: When working in backend/ directory and its main responsibility.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,12 +27,11 @@ This skill covers the backend services for the RepoForge project.
 
 | Task | Pattern |
 |------|---------|
-| Configure logging | `configure_logging()` |
-| Run migrations | `run_migrations_online()` |
+| Configure application settings | `from apps.server.app.config import Settings` |
 
 ## Critical Patterns (Summary)
-- **Middleware Configuration**: Set up custom middleware for authentication and logging.
-- **Database Migrations**: Manage database schema changes using Alembic.
+- **Middleware Configuration**: Use custom middleware for logging, authentication, and rate limiting.
+- **Migration Management**: Handle database migrations using Alembic for version control.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,28 +39,27 @@ This skill covers the backend services for the RepoForge project.
 
 ### Middleware Configuration
 
-Set up custom middleware for authentication and logging to enhance request handling.
+Use custom middleware to manage cross-cutting concerns like logging and authentication.
 
 ```python
-# apps/server/app/main.py
-app.add_middleware(correlation_id_middleware)
-app.add_middleware(request_logging_middleware)
-app.add_middleware(security_headers_middleware)
+# Example of middleware usage
+from apps.server.app.middleware.logging_config import configure_logging
+from apps.server.app.middleware.auth import get_current_user
 ```
 
-### Database Migrations
+### Migration Management
 
-Manage database schema changes using Alembic to ensure the database is in sync with the application.
+Handle database migrations using Alembic to ensure the database schema is up-to-date.
 
 ```python
-# apps/server/alembic/env.py
-run_migrations_online()
+# Example of running migrations
+from apps.server.alembic.env import run_migrations_online
 ```
 
 ## When to Use
 
-- When implementing new API endpoints that require authentication.
-- When updating the database schema to support new features.
+- When implementing new features that require backend services.
+- When integrating with the frontend layer to ensure data flow.
 
 ## Commands
 
@@ -77,10 +75,10 @@ alembic upgrade head
 
 ### Don't: Change middleware without testing
 
-Changing middleware can break existing functionality and lead to security vulnerabilities.
+Modifying middleware can break authentication or logging, leading to security issues.
 
 ```python
 # BAD
-app.add_middleware(SomeNewMiddleware)  # Without testing
+# Removing essential middleware without understanding its impact
 ```
 <!-- L3:END -->

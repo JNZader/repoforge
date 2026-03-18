@@ -28,11 +28,11 @@ This skill covers patterns for implementing authentication in a frontend applica
 | Task | Pattern |
 |------|---------|
 | Set API URL | `set-api-url` |
-| Use Auth Provider | `use-auth-provider` |
+| Provide Auth Context | `provide-auth-context` |
 
 ## Critical Patterns (Summary)
-- **Set API URL**: Define the API endpoint for authentication.
-- **Use Auth Provider**: Wrap your application with the AuthProvider for context.
+- **Set API URL**: Define the base URL for API requests.
+- **Provide Auth Context**: Wrap your application with the AuthProvider for authentication state management.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -40,15 +40,15 @@ This skill covers patterns for implementing authentication in a frontend applica
 
 ### Set API URL
 
-Define the API endpoint for authentication using the exported `API_URL`.
+Define the base URL for API requests to ensure all authentication requests are directed correctly.
 
 ```typescript
-const apiUrl = API_URL; // Set the API URL for authentication
+const apiUrl = API_URL; // Use the exported API_URL for consistent API endpoint
 ```
 
-### Use Auth Provider
+### Provide Auth Context
 
-Wrap your application with the `AuthProvider` to provide authentication context.
+Wrap your application with the AuthProvider to manage authentication state across components.
 
 ```typescript
 import { AuthProvider } from './lib/auth';
@@ -62,8 +62,8 @@ const App = () => (
 
 ## When to Use
 
-- When configuring the API endpoint for user authentication.
-- When setting up the authentication context for your application.
+- When setting up authentication for a new frontend application.
+- When needing to manage user sessions and authentication state across multiple components.
 
 ## Commands
 
@@ -76,9 +76,9 @@ python repoforge/cli.py run
 
 ### Don't: Hardcode API URLs
 
-Hardcoding API URLs can lead to maintenance issues and environment-specific bugs.
+Hardcoding API URLs can lead to maintenance issues and inconsistencies.
 
 ```typescript
-const apiUrl = "http://localhost:3000/api"; // BAD
+const apiUrl = 'http://localhost:3000/api'; // BAD
 ```
 <!-- L3:END -->

@@ -1,8 +1,8 @@
 ---
 name: frontend-agent
 description: >
-  Specialized agent for frontend development. Handles UI components, API interactions, authentication, and streaming data.
-  Trigger: When the orchestrator needs to implement or modify frontend features in the web layer.
+  Specialized agent for frontend development. Handles UI components, API interactions, and authentication.
+  Trigger: When the orchestrator needs to implement or modify frontend features.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -11,13 +11,13 @@ metadata:
 
 ## Role
 
-This agent owns the frontend layer, focusing on UI components and interactions. It never touches backend logic or data processing.
+This agent owns the frontend layer, focusing on UI components and API integration. It never interacts with backend logic or data processing.
 
 ## Capabilities
 
-- Manage UI components like ErrorBoundary, Layout, and LoadingSpinner
-- Handle API requests and responses through the api module
-- Implement authentication flows using the auth module
+- UI component management
+- API request handling
+- Authentication flow implementation
 
 ## Workflow
 
@@ -27,8 +27,8 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Modify or create components in `apps/web/src/components/`
-2. Implement API calls in `apps/web/src/lib/api.ts`
+1. Modify or create UI components in `apps/web/src/components/`
+2. Handle API requests in `apps/web/src/lib/api.ts`
 3. Verify changes through testing
 4. Report back to orchestrator with: files changed, tests status, blockers
 

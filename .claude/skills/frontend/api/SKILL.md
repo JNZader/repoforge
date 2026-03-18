@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 350
+  token_estimate: 450
   dependencies: []
   related_skills: []
   load_priority: high
