@@ -6,7 +6,7 @@ Validators use Pydantic v2 @field_validator decorator.
 
 import re
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -124,6 +124,23 @@ class GenerationDetail(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class GenerationEventDetail(BaseModel):
+    """Single event from a generation's event log."""
+
+    id: uuid.UUID
+    event_type: str
+    payload: dict
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class GenerationDetailWithEvents(GenerationDetail):
+    """Generation detail with optional events list for ?expand=events."""
+
+    events: list[GenerationEventDetail] = []
+
+
 class GenerationListResponse(BaseModel):
     """Paginated list of generations."""
 
@@ -132,6 +149,67 @@ class GenerationListResponse(BaseModel):
     page: int
     per_page: int
     pages: int
+
+
+# --- Analytics ---
+
+
+class AnalyticsSummaryResponse(BaseModel):
+    """High-level stats for the current user."""
+
+    total_generations: int = 0
+    completed: int = 0
+    failed: int = 0
+    cancelled: int = 0
+    avg_duration_ms: float | None = None
+    total_tokens: int = 0
+    success_rate: float = 0.0
+    most_used_model: str | None = None
+    most_used_provider: str | None = None
+
+
+class UsageDataPoint(BaseModel):
+    """Single data point for usage-over-time chart."""
+
+    date: date
+    generations_count: int = 0
+    tokens_used: int = 0
+
+
+class UsageResponse(BaseModel):
+    """Usage over time for chart rendering."""
+
+    period: str
+    data: list[UsageDataPoint]
+
+
+class ModelUsageItem(BaseModel):
+    """Model usage breakdown entry."""
+
+    model: str
+    count: int = 0
+    avg_duration_ms: float | None = None
+    total_tokens: int = 0
+
+
+class ModelUsageResponse(BaseModel):
+    """List of model usage breakdowns."""
+
+    items: list[ModelUsageItem]
+
+
+class RepoUsageItem(BaseModel):
+    """Most-generated repos entry."""
+
+    repo_name: str
+    count: int = 0
+    last_generated: datetime | None = None
+
+
+class RepoUsageResponse(BaseModel):
+    """List of most-generated repos."""
+
+    items: list[RepoUsageItem]
 
 
 # --- Provider Keys ---
