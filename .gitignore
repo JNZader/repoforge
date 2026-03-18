@@ -31,3 +31,4 @@ htmlcov/
 .DS_Store
 Thumbs.db
 apps/web/node_modules/
+apps/server/test.db
