@@ -31,16 +31,16 @@ This skill covers the creation of Pydantic schemas for API request and response 
 | Define Token Response Schema | `TokenResponse` |
 
 ## Critical Patterns (Summary)
-- **User Info Schema**: Defines the structure for user information in requests.
-- **Token Response Schema**: Specifies the format for token responses from the API.
+- **UserInfo**: Defines the schema for user information.
+- **TokenResponse**: Represents the structure of the token response.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### User Info Schema
+### UserInfo
 
-Defines the structure for user information in requests, ensuring data validation and serialization.
+Defines the schema for user information, ensuring data validation and serialization.
 
 ```python
 from apps.server.app.models.schemas import UserInfo
@@ -48,20 +48,20 @@ from apps.server.app.models.schemas import UserInfo
 user_info = UserInfo(username="john_doe", email="john@example.com")
 ```
 
-### Token Response Schema
+### TokenResponse
 
-Specifies the format for token responses from the API, including necessary fields for authentication.
+Represents the structure of the token response, including access and refresh tokens.
 
 ```python
 from apps.server.app.models.schemas import TokenResponse
 
-token_response = TokenResponse(access_token="abc123", token_type="bearer")
+token_response = TokenResponse(access_token="abc123", refresh_token="xyz456")
 ```
 
 ## When to Use
 
-- When creating API endpoints that require user data validation.
-- When handling authentication responses in the web API.
+- When creating schemas for user-related data in the API.
+- When defining responses for authentication endpoints.
 
 ## Commands
 
@@ -72,14 +72,12 @@ python repoforge/cli.py run
 
 ## Anti-Patterns
 
-### Don't: Use Inconsistent Schema Definitions
+### Don't: Use Plain Dictionaries for Schemas
 
-Using inconsistent schema definitions can lead to validation errors and unexpected behavior.
+Using plain dictionaries bypasses validation and serialization features provided by Pydantic.
 
 ```python
 # BAD
-from apps.server.app.models.schemas import UserInfo
-
-user_info = UserInfo(username="john_doe", email=123)  # email should be a string
+user_info = {"username": "john_doe", "email": "john@example.com"}
 ```
 <!-- L3:END -->

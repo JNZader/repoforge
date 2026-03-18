@@ -2,7 +2,7 @@
 name: encrypt-api-keys
 description: >
   This skill covers AES-256-GCM encryption for provider API keys.
-  Trigger: Load this skill when handling sensitive crypto operations.
+  Trigger: Load this skill when handling crypto operations for API keys.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -19,7 +19,7 @@ metadata:
 
 This skill covers AES-256-GCM encryption for provider API keys.
 
-**Trigger**: Load this skill when handling sensitive crypto operations.
+**Trigger**: Load this skill when handling crypto operations for API keys.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -32,7 +32,7 @@ This skill covers AES-256-GCM encryption for provider API keys.
 
 ## Critical Patterns (Summary)
 - **Derive User Key**: Generate a secure key for user-specific encryption.
-- **Encrypt API Key**: Securely encrypt an API key using AES-256-GCM.
+- **Encrypt API Key**: Encrypt sensitive API keys using AES-256-GCM.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -50,7 +50,7 @@ user_key = derive_user_key(user_id="example_user")
 
 ### Encrypt API Key
 
-Securely encrypt an API key using AES-256-GCM with the `encrypt_key` function.
+Encrypt sensitive API keys using AES-256-GCM with the `encrypt_key` function.
 
 ```python
 from apps.server.app.services.crypto import encrypt_key
@@ -61,7 +61,7 @@ encrypted_key = encrypt_key(api_key="my_secret_api_key", user_key=user_key)
 ## When to Use
 
 - When you need to securely store API keys for different providers.
-- When encrypting sensitive user data before transmission.
+- When transmitting sensitive information that requires encryption.
 
 ## Commands
 

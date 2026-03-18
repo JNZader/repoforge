@@ -6,19 +6,19 @@
 
 | Name | Description | Trigger | Complexity | ~Tokens | Priority | Path |
 |------|-------------|---------|------------|---------|----------|------|
-| backend-layer | This layer provides the backend services for the RepoForge a… | When working in backend/ — adding, modifying, or d… | — | 554 | — | `backend/SKILL.md` |
-| add-auth-endpoint | This skill covers the implementation of authentication route… | When setting up auth-related endpoints in the back… | — | 530 | — | `backend/auth/SKILL.md` |
-| encrypt-api-keys | This skill covers AES-256-GCM encryption for provider API ke… | Load this skill when handling sensitive crypto ope… | — | 460 | — | `backend/crypto/SKILL.md` |
+| backend-layer | This layer owns the backend services for the RepoForge proje… | When working in backend/ — adding, modifying, or d… | — | 543 | — | `backend/SKILL.md` |
+| manage-auth-routes | This skill covers the implementation of authentication route… | When handling user authentication in the backend | — | 536 | — | `backend/auth/SKILL.md` |
+| encrypt-api-keys | This skill covers AES-256-GCM encryption for provider API ke… | Load this skill when handling crypto operations fo… | — | 463 | — | `backend/crypto/SKILL.md` |
 | manage-database-session | This skill covers patterns for managing database sessions an… | Load when working with database interactions | — | 537 | — | `backend/database/SKILL.md` |
 | add-generation-event | This skill covers the creation and management of Generation … | When working with generation data in the backend | — | 571 | — | `backend/generation/SKILL.md` |
-| generate-github-oauth-state | This skill covers generating and validating OAuth states for… | Load this skill when implementing GitHub OAuth in … | — | 497 | — | `backend/github_oauth/SKILL.md` |
-| add-main-endpoint | This skill covers adding main endpoints to the FastAPI appli… | When setting up the main entry point for the appli… | — | 523 | — | `backend/main/SKILL.md` |
-| add-schemas-endpoint | This skill covers the creation of Pydantic schemas for API r… | Load this skill when defining schemas for the Repo… | — | 532 | — | `backend/schemas/SKILL.md` |
-| frontend-layer | This layer manages the user interface and client-side logic … | When working in frontend/ — adding, modifying, or … | — | 464 | — | `frontend/SKILL.md` |
-| fetch-api-data | This skill covers patterns for fetching and managing API dat… | When working with API interactions in the frontend | — | 565 | — | `frontend/api/SKILL.md` |
-| use-auth-provider | This skill covers patterns for implementing authentication i… | Load this skill when managing user authentication | — | 494 | — | `frontend/auth/SKILL.md` |
-| generate-request-types | This skill covers the generation of request and response typ… | Load this skill when defining types for generation… | — | 542 | — | `frontend/types/SKILL.md` |
-| usegenerationstream-hook | This skill covers patterns for managing generation streams i… | Load when using `useGenerationStream` for stream m… | — | 501 | — | `frontend/useGenerationStream/SKILL.md` |
+| generate-github-oauth-state | This skill covers generating and validating OAuth states for… | Load this skill when implementing GitHub OAuth in … | — | 511 | — | `backend/github_oauth/SKILL.md` |
+| add-main-endpoint | This skill covers adding main endpoints to the FastAPI appli… | When setting up the main entry point for the appli… | — | 520 | — | `backend/main/SKILL.md` |
+| add-schemas-endpoint | This skill covers the creation of Pydantic schemas for API r… | Load this skill when defining schemas for the Repo… | — | 492 | — | `backend/schemas/SKILL.md` |
+| frontend-layer | This layer manages the user interface and user experience of… | When working in frontend/ — adding, modifying, or … | — | 470 | — | `frontend/SKILL.md` |
+| fetch-api-data | This skill covers patterns for fetching and managing API dat… | When working with API interactions in the frontend | — | 563 | — | `frontend/api/SKILL.md` |
+| use-auth-provider | This skill covers patterns for implementing authentication i… | Load this skill when managing user authentication | — | 483 | — | `frontend/auth/SKILL.md` |
+| generate-request-response | This skill covers the generation of requests and responses i… | Load this skill when working with types related to… | — | 520 | — | `frontend/types/SKILL.md` |
+| usegenerationstream-hook | This skill covers patterns for using the `useGenerationStrea… | Load when managing streaming generation states in … | — | 519 | — | `frontend/useGenerationStream/SKILL.md` |
 | main-layer | This layer encompasses the core functionality of the project… | When working in main/ — adding, modifying, or debu… | — | 481 | — | `main/SKILL.md` |
 | add-cli-options | This skill covers the creation of shared options for CLI com… | When defining command-line interfaces using the `c… | — | 381 | — | `main/cli/SKILL.md` |
 | get-chapter-prompts | This skill covers the generation of chapter prompts for docu… | When integrating shared system prompts in document… | — | 498 | — | `main/docs_prompts/SKILL.md` |

@@ -40,7 +40,7 @@ This skill covers generating and validating OAuth states for GitHub authenticati
 
 ### Generate OAuth state
 
-This pattern generates a unique state parameter for OAuth requests to prevent CSRF attacks.
+This pattern uses `generate_state()` to create a unique state parameter for OAuth requests.
 
 ```python
 from apps.server.app.services.github_oauth import generate_state
@@ -50,12 +50,12 @@ state = generate_state()
 
 ### Validate OAuth state
 
-This pattern validates the state parameter received in the callback to ensure it matches the original.
+This pattern uses `validate_state()` to check if the received state matches the expected value.
 
 ```python
 from apps.server.app.services.github_oauth import validate_state
 
-is_valid = validate_state(received_state, original_state)
+is_valid = validate_state(received_state, expected_state)
 ```
 
 ## When to Use
@@ -67,17 +67,19 @@ is_valid = validate_state(received_state, original_state)
 
 ```bash
 docker-compose up
-python -m apps.server.app.main
+python repoforge/cli.py
 ```
 
 ## Anti-Patterns
 
-### Don't: Use static state values
+### Don't: Ignore state validation
 
-Using static values for the state parameter can lead to security vulnerabilities.
+Not validating the state can lead to security vulnerabilities such as CSRF attacks.
 
 ```python
-// BAD
-state = "static_value"
+# BAD
+# Missing state validation
+if received_state == expected_state:
+    # Process the callback
 ```
 <!-- L3:END -->

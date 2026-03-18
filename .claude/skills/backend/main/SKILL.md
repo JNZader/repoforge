@@ -89,6 +89,6 @@ Exposing sensitive information can lead to security vulnerabilities.
 # BAD
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "db": db_status, "secret": secret_key}
+    return {"status": "healthy", "db_password": "secret"}
 ```
 <!-- L3:END -->

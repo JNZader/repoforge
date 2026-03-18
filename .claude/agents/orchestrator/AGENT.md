@@ -24,10 +24,10 @@ Before handling any task:
 
 ## Routing Table
 
-| Task type              | Delegate to      |
-|-----------------------|------------------|
-| Work in `apps/web/`   | `frontend-agent`  |
-| Work in `apps/server/`| `backend-agent`   |
+| Task type            | Delegate to      |
+|---------------------|------------------|
+| Work in `apps/web/` | `frontend-agent`  |
+| Work in `apps/server/` | `backend-agent` |
 
 ## Delegation Protocol
 

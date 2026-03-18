@@ -27,28 +27,28 @@ This skill covers patterns for implementing authentication in a frontend applica
 
 | Task | Pattern |
 |------|---------|
-| Set API URL | `set-api-url` |
-| Provide Auth Context | `provide-auth-context` |
+| Set API URL for auth | `set-api-url` |
+| Provide authentication context | `provide-auth-context` |
 
 ## Critical Patterns (Summary)
-- **Set API URL**: Define the base URL for API requests.
-- **Provide Auth Context**: Wrap your application with the AuthProvider for authentication state management.
+- **Set API URL for auth**: Define the API endpoint for authentication.
+- **Provide authentication context**: Wrap your application with the AuthProvider for context access.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Set API URL
+### Set API URL for auth
 
-Define the base URL for API requests to ensure all authentication requests are directed correctly.
+Define the API endpoint for authentication using the exported `API_URL`.
 
 ```typescript
-const apiUrl = API_URL; // Use the exported API_URL for consistent API endpoint
+const apiUrl = API_URL; // Set the API URL for authentication
 ```
 
-### Provide Auth Context
+### Provide authentication context
 
-Wrap your application with the AuthProvider to manage authentication state across components.
+Wrap your application with the `AuthProvider` to provide authentication context to components.
 
 ```typescript
 import { AuthProvider } from './lib/auth';
@@ -62,8 +62,8 @@ const App = () => (
 
 ## When to Use
 
-- When setting up the authentication flow in your frontend application.
-- When you need to manage user sessions and authentication state across multiple components.
+- When you need to set the API URL for authentication requests.
+- When wrapping components to provide authentication context.
 
 ## Commands
 
@@ -76,10 +76,9 @@ python repoforge/cli.py run
 
 ### Don't: Hardcode API URLs
 
-Hardcoding API URLs can lead to maintenance issues and inconsistencies.
+Hardcoding API URLs can lead to maintenance issues and environment-specific bugs.
 
 ```typescript
-// BAD
-const apiUrl = 'http://localhost:3000/api'; // Avoid this practice
+const apiUrl = 'http://localhost:3000/api/auth'; // BAD
 ```
 <!-- L3:END -->

@@ -1,8 +1,8 @@
 ---
 name: frontend-layer
 description: >
-  This layer manages the user interface and client-side logic of the application.
-  Trigger: When working in frontend/ — adding, modifying, or debugging UI components and interactions.
+  This layer manages the user interface and user experience of the application.
+  Trigger: When working in frontend/ — adding, modifying, or debugging UI components.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -17,21 +17,21 @@ metadata:
 <!-- L1:START -->
 # frontend-layer
 
-This layer manages the user interface and client-side logic of the application.
+This layer manages the user interface and user experience of the application.
 
-**Trigger**: When working in frontend/ — adding, modifying, or debugging UI components and interactions.
+**Trigger**: When working in frontend/ — adding, modifying, or debugging UI components.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
+| Task               | Pattern                          |
+|--------------------|----------------------------------|
 | Create a new component | `export const NewComponent = () => { ... }` |
 
 ## Critical Patterns (Summary)
-- **Component Structure**: Each component should be a functional component returning JSX.
-- **Error Handling**: Use ErrorBoundary to catch and display errors gracefully.
+- **Component Structure**: Each component should be a functional component.
+- **Error Handling**: Use ErrorBoundary for catching errors in the UI.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -39,7 +39,7 @@ This layer manages the user interface and client-side logic of the application.
 
 ### Component Structure
 
-Each component should be a functional component returning JSX.
+Each component should be a functional component that returns JSX.
 
 ```typescript
 // Example of a functional component
@@ -50,12 +50,12 @@ export const NewComponent = () => {
 
 ### Error Handling
 
-Use ErrorBoundary to catch and display errors gracefully.
+Use ErrorBoundary to catch errors in the UI and display a fallback UI.
 
 ```typescript
 // Example of using ErrorBoundary
 <ErrorBoundary>
-  <SomeComponent />
+  <Layout />
 </ErrorBoundary>
 ```
 

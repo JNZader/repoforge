@@ -8,7 +8,7 @@ metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 450
+  token_estimate: 350
   dependencies: []
   related_skills: []
   load_priority: high
@@ -85,9 +85,9 @@ python repoforge/cli.py fetch-data
 
 ## Anti-Patterns
 
-### Don't: Ignore ApiError Handling
+### Don't: Ignore API Errors
 
-Ignoring `ApiError` can lead to unhandled exceptions and poor user experience.
+Ignoring API errors can lead to unhandled exceptions and poor user experience.
 
 ```typescript
 // BAD
