@@ -23,6 +23,7 @@ from app.routes.generate import router as generate_router
 from app.routes.history import router as history_router
 from app.routes.analytics import router as analytics_router
 from app.routes.providers import router as providers_router
+from app.services.generation_service import generation_service
 from app.services.session_keys import session_key_cleanup_loop
 
 logger = structlog.get_logger(__name__)
@@ -80,6 +81,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await cleanup_task
     except asyncio.CancelledError:
         pass
+
+    # Cancel any running generation tasks
+    await generation_service.shutdown()
 
     await engine.dispose()
     logger.info("database_engine_disposed")
@@ -191,7 +195,8 @@ async def health_detailed() -> dict:
         "status": "healthy" if healthy else "degraded",
         "uptime_seconds": int(time.monotonic() - _start_time),
         "checks": checks,
-        "active_generations": 0,  # Placeholder — wired up in Phase 4
+        "circuit_breaker": generation_service.circuit_breaker.get_state(),
+        "active_generations": generation_service.active_count(),
         "response_ms": int((time.monotonic() - start) * 1000),
     }
 
