@@ -1,8 +1,8 @@
 # ⚒ RepoForge
 
-> AI-powered code analysis tool that generates **technical documentation** and **AI agent skills** from any codebase — works with any LLM.
+> AI-powered code analysis tool that generates **technical documentation**, **AI agent skills**, **security scans**, **code graphs**, and **LLM-ready exports** from any codebase — works with any LLM.
 
-[![PyPI version](https://img.shields.io/pypi/v/repoforge)](https://pypi.org/project/repoforge/)
+[![PyPI version](https://img.shields.io/pypi/v/repoforge-ai)](https://pypi.org/project/repoforge-ai/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -10,7 +10,7 @@
 
 ## What it does
 
-RepoForge analyzes your codebase and generates two types of output:
+RepoForge analyzes your codebase and generates multiple types of output:
 
 ### 1. `repoforge docs` — Technical Documentation
 
@@ -36,8 +36,29 @@ Output is a `docs/` folder ready for **GitHub Pages** — zero extra config.
 Generates `SKILL.md` and `AGENT.md` compatible with:
 - **Claude Code** (`.claude/skills/`, `.claude/agents/`)
 - **OpenCode** (mirrored to `.opencode/`)
+- **Cursor** (`.cursor/rules/*.mdc`)
+- **Codex** (`AGENTS.md`)
+- **Gemini CLI** (`GEMINI.md`)
+- **GitHub Copilot** (`.github/copilot-instructions.md`)
 - **agent-teams-lite** (skill registry at `.atl/skill-registry.md`)
 - **Gentleman-Skills** format (YAML frontmatter, `Trigger:`, `Critical Patterns`)
+
+---
+
+## What's New in v0.3
+
+| # | Feature | Command / Flag | Description |
+|---|---------|---------------|-------------|
+| 1 | **LLM Export** | `repoforge export` | Flatten repo into single LLM-optimized file (markdown or XML) |
+| 2 | **Complexity routing** | `--complexity auto\|small\|medium\|large` | Auto-routes generation depth by repo size |
+| 3 | **Hooks generation** | `--with-hooks` | Generates HOOKS.md with recommended Claude Code hooks |
+| 4 | **Quality scorer** | `repoforge score` | Standalone scorer with 7 dimensions (no API key) |
+| 5 | **Multi-tool targets** | `--targets claude,cursor,codex,...` | Generate for 6 AI tools at once |
+| 6 | **Progressive disclosure** | `--disclosure tiered\|full` | L1/L2/L3 tier markers + DISCOVERY_INDEX.md |
+| 7 | **Token compressor** | `repoforge compress` | Reduce token count by 50-75% (no API key) |
+| 8 | **Security scanner** | `repoforge scan` | 37 rules in 5 categories (no API key) |
+| 9 | **Plugin hierarchy** | `--plugin` | Generates plugin.json + commands/ directory |
+| 10 | **Code graph** | `repoforge graph` | Dependency graph with blast radius analysis |
 
 ---
 
@@ -70,6 +91,18 @@ repoforge docs -w . --serve
 
 # Generate SKILL.md + AGENT.md for Claude Code
 repoforge skills -w /path/to/repo
+
+# Generate for ALL AI tools at once
+repoforge skills -w /path/to/repo --targets all
+
+# Generate + score + scan + compress in one shot
+repoforge skills -w /path/to/repo --score --scan --compress
+
+# Flatten repo for LLM context
+repoforge export -w /path/to/repo -o context.md
+
+# Build dependency graph
+repoforge graph -w /path/to/repo --format mermaid
 
 # Open skills browser
 repoforge skills --serve-only
@@ -129,6 +162,8 @@ repoforge docs [OPTIONS]
                             English|Spanish|French|German|Portuguese|
                             Chinese|Japanese|Korean|Russian|Italian|Dutch
   --name TEXT               Project name (auto-detected by default)
+  --complexity LEVEL        Override repo complexity  [default: auto]
+                            auto|small|medium|large
   --theme [vue|dark|buble]  Docsify theme  [default: vue]
   --serve                   Serve docs after generating (opens browser)
   --serve-only              Skip generation, serve existing docs
@@ -136,6 +171,15 @@ repoforge docs [OPTIONS]
   --dry-run                 Plan only, no LLM calls, no files written
   -q, --quiet               Suppress progress output
 ```
+
+### Complexity levels
+
+| Level | Files | Effect |
+|---|---|---|
+| `auto` | — | Auto-detected from file count + layer count |
+| `small` | ≤20 | Fewer chapters, detailed per-file coverage |
+| `medium` | ≤200 | Standard depth (default behavior) |
+| `large` | >200 | Concise chapters, more architectural focus |
 
 ### Publish to GitHub Pages
 
@@ -237,6 +281,18 @@ repoforge skills [OPTIONS]
   -w, --working-dir DIR     Repo to analyze  [default: .]
   -o, --output-dir DIR      Output directory  [default: .claude]
   --model TEXT              LLM model
+  --complexity LEVEL        Override repo complexity  [default: auto]
+                            auto|small|medium|large
+  --targets TARGETS         Comma-separated output targets  [default: claude,opencode]
+                            claude|opencode|cursor|codex|gemini|copilot|all
+  --disclosure MODE         Skill output mode  [default: tiered]
+                            tiered (L1/L2/L3 markers) | full (no markers)
+  --with-hooks              Generate HOOKS.md with recommended Claude Code hooks
+  --plugin                  Generate plugin.json + commands/ hierarchy
+  --score                   After generation, score quality of SKILL.md files
+  --compress                After generation, compress skills to reduce tokens
+  --aggressive              Use aggressive compression (with --compress)
+  --scan                    After generation, run security scanner
   --no-opencode             Skip mirroring to .opencode/
   --serve                   Open skills browser after generating
   --serve-only              Skip generation, open existing skills browser
@@ -244,6 +300,17 @@ repoforge skills [OPTIONS]
   --dry-run                 Plan only, no LLM calls
   -q, --quiet               Suppress progress output
 ```
+
+### Multi-tool output
+
+| Target | Output location | Format |
+|---|---|---|
+| `claude` | `.claude/skills/`, `.claude/agents/` | SKILL.md + AGENT.md |
+| `opencode` | `.opencode/` | Mirror of `.claude/` |
+| `cursor` | `.cursor/rules/*.mdc` | Cursor rules format |
+| `codex` | `AGENTS.md` (project root) | Single consolidated file |
+| `gemini` | `GEMINI.md` (project root) | Gemini CLI instructions |
+| `copilot` | `.github/copilot-instructions.md` | Copilot instructions |
 
 ### Output layout
 
@@ -261,10 +328,150 @@ repoforge skills [OPTIONS]
 │   ├── orchestrator/AGENT.md     ← delegate-only orchestrator
 │   ├── backend-agent/AGENT.md
 │   └── frontend-agent/AGENT.md
+├── commands/                     ← (with --plugin)
+│   ├── review.md
+│   └── deploy.md
+├── plugin.json                   ← (with --plugin)
+├── HOOKS.md                      ← (with --with-hooks)
+├── DISCOVERY_INDEX.md            ← (with --disclosure tiered)
 └── SKILLS_INDEX.md
 
 .opencode/                        ← identical mirror
 .atl/skill-registry.md            ← agent-teams-lite registry
+.cursor/rules/*.mdc               ← (with --targets cursor)
+AGENTS.md                         ← (with --targets codex)
+GEMINI.md                         ← (with --targets gemini)
+.github/copilot-instructions.md   ← (with --targets copilot)
+```
+
+---
+
+## `export` command
+
+Flatten a repo into a single LLM-optimized file. **No API key needed.**
+
+```
+repoforge export [OPTIONS]
+
+  -w, --working-dir DIR     Repo to analyze  [default: .]
+  -o, --output FILE         Output file (default: stdout)
+  --max-tokens INT          Token budget limit (prioritizes important files)
+  --no-contents             Skip file contents — tree + definitions only
+  --format FORMAT           Output format  [default: markdown]
+                            markdown|xml (CXML-style)
+  -q, --quiet               Suppress progress output
+```
+
+```bash
+repoforge export -w .                         # print to stdout
+repoforge export -w . -o context.md           # save to file
+repoforge export -w . --max-tokens 100000     # limit output size
+repoforge export -w . --no-contents           # tree + definitions only
+repoforge export -w . --format xml            # XML output (CXML-style)
+```
+
+---
+
+## `score` command
+
+Score quality of generated SKILL.md files across 7 dimensions. **No API key needed.**
+
+Dimensions: completeness, clarity, specificity, examples, format, safety, agent readiness.
+
+```
+repoforge score [OPTIONS]
+
+  -w, --working-dir DIR     Repo to analyze  [default: .]
+  -d, --skills-dir DIR      Skills directory  [default: .claude/skills/]
+  --format FORMAT           Output format  [default: table]
+                            table|json|markdown
+  --min-score FLOAT         Minimum score (0.0-1.0). Exit 1 if below.
+  -q, --quiet               Suppress progress output
+```
+
+```bash
+repoforge score -w .                     # score with table output
+repoforge score -w . --format json       # JSON output
+repoforge score -w . --min-score 0.7     # fail if any skill < 70%
+```
+
+---
+
+## `scan` command
+
+Security scanner with 37 rules in 5 categories. **No API key needed.**
+
+Categories: prompt injection, hardcoded secrets, PII exposure, destructive commands, unsafe code patterns.
+
+Context-aware: patterns inside Anti-Patterns sections are downgraded to INFO (not false positives).
+
+```
+repoforge scan [OPTIONS]
+
+  -w, --workspace DIR       Repo root  [default: .]
+  --target-dir DIR          Specific directory to scan (default: auto-detect)
+  --format FORMAT           Output format  [default: table]
+                            table|json|markdown
+  --allowlist IDS           Comma-separated rule IDs to skip (e.g. SEC-020,SEC-022)
+  --fail-on SEVERITY        Exit 1 if findings at or above this level
+                            critical|high|medium|low
+  -q, --quiet               Suppress progress output
+```
+
+```bash
+repoforge scan -w .                              # scan with table output
+repoforge scan -w . --fail-on critical           # CI gate: fail on critical
+repoforge scan -w . --allowlist SEC-020,SEC-022  # skip specific rules
+```
+
+---
+
+## `compress` command
+
+Token-optimize generated .md files with deterministic multi-pass compression (50-75% reduction). **No API key needed.**
+
+Passes: whitespace normalization, filler phrase removal, table compaction, code block cleanup, bullet consolidation, abbreviations (aggressive only).
+
+```
+repoforge compress [OPTIONS]
+
+  -w, --workspace DIR       Repo root  [default: .]
+  --target-dir DIR          Directory to compress  [default: .claude/skills/]
+  --aggressive              Use abbreviations (function→fn, configuration→config)
+  --dry-run                 Show compression stats without modifying files
+  -q, --quiet               Suppress progress output
+```
+
+```bash
+repoforge compress -w .                       # compress .claude/skills/
+repoforge compress -w . --aggressive          # also abbreviate words
+repoforge compress -w . --dry-run             # show stats only
+```
+
+---
+
+## `graph` command
+
+Build a code knowledge graph from scanner data. **No API key needed.**
+
+Uses import/export name matching — no tree-sitter needed.
+
+```
+repoforge graph [OPTIONS]
+
+  -w, --workspace DIR       Repo root  [default: .]
+  -o, --output FILE         Output file (default: stdout)
+  --format FORMAT           Output format  [default: summary]
+                            mermaid|json|dot|summary
+  --blast-radius MODULE     Show blast radius for a specific module
+  -q, --quiet               Suppress progress output
+```
+
+```bash
+repoforge graph -w .                              # summary to stdout
+repoforge graph -w . --format mermaid             # Mermaid diagram
+repoforge graph -w . --format json -o graph.json  # D3/Cytoscape-compatible
+repoforge graph -w . --blast-radius src/auth.py   # who breaks if auth changes?
 ```
 
 ---
@@ -315,6 +522,21 @@ language: Spanish
 
 # Default model
 model: github/gpt-4o-mini
+
+# Override auto-detected complexity (affects generation depth)
+# auto | small | medium | large
+complexity: auto
+
+# Output targets for multi-tool support
+# Default: [claude, opencode]
+# Valid: claude, opencode, cursor, codex, gemini, copilot
+targets: [claude, opencode]
+
+# Generate HOOKS.md with recommended Claude Code hooks
+generate_hooks: false
+
+# Generate plugin.json + commands/ hierarchy
+generate_plugin: false
 ```
 
 ---
@@ -322,7 +544,30 @@ model: github/gpt-4o-mini
 ## Python API
 
 ```python
-from repoforge import generate_artifacts, generate_docs
+from repoforge import (
+    # Skills + agents
+    generate_artifacts,
+    # Documentation
+    generate_docs,
+    # LLM export
+    export_llm_view,
+    # Quality scoring
+    SkillScorer, SkillScore,
+    # Multi-tool adapters
+    adapt_for_cursor, adapt_for_codex, adapt_for_gemini, adapt_for_copilot,
+    resolve_targets, ALL_TARGETS,
+    # Progressive disclosure
+    extract_tier, build_discovery_index, estimate_tokens,
+    # Token compression
+    SkillCompressor, CompressionResult, compress_file, compress_directory,
+    # Security scanning
+    SecurityScanner, ScanResult, Finding, Severity, scan_generated_output,
+    # Plugin hierarchy
+    Command, PluginManifest, build_commands, build_plugin_manifest,
+    manifest_to_json, manifest_to_markdown, write_plugin,
+    # Code graph
+    CodeGraph, Node, Edge, build_graph, build_graph_from_workspace,
+)
 
 # Skills + agents
 generate_artifacts(
@@ -330,6 +575,12 @@ generate_artifacts(
     output_dir=".claude",
     model="github/gpt-4o-mini",
     also_opencode=True,
+    complexity="auto",
+    with_hooks=True,
+    with_plugin=True,
+    targets="claude,cursor,codex",
+    disclosure="tiered",
+    compress=True,
 )
 
 # Documentation
@@ -338,7 +589,32 @@ generate_docs(
     output_dir="docs",
     model="claude-haiku-3-5",
     language="Spanish",
+    complexity="auto",
 )
+
+# LLM export (no API key needed)
+result = export_llm_view(
+    workspace="/path/to/repo",
+    output_path="context.md",
+    max_tokens=100000,
+    fmt="markdown",
+)
+
+# Quality scoring (no API key needed)
+scorer = SkillScorer()
+scores = scorer.score_directory(".claude/skills")
+print(scorer.report(scores, fmt="table"))
+
+# Security scanning (no API key needed)
+scan_result = scan_generated_output("/path/to/repo")
+scanner = SecurityScanner()
+print(scanner.report(scan_result, fmt="table"))
+
+# Code graph (no API key needed)
+graph = build_graph_from_workspace("/path/to/repo")
+print(graph.to_mermaid())
+print(graph.summary())
+affected = graph.get_blast_radius("src/auth.py")
 ```
 
 ---
@@ -346,13 +622,15 @@ generate_docs(
 ## How it works
 
 ```
-1. SCAN   (free, no LLM) — detect layers, extract exports/imports, detect stack
-2. PLAN   (free, no LLM) — select chapters by project type, rank modules
-3. GENERATE (LLM calls)  — one call per chapter or skill
-4. WRITE                 — Docsify-ready docs/ or .claude/ skills
+1. SCAN     (free, no LLM) — detect layers, extract exports/imports, detect stack
+2. PLAN     (free, no LLM) — select chapters by project type, rank modules, route by complexity
+3. GENERATE (LLM calls)    — one call per chapter or skill
+4. ADAPT    (free, no LLM) — convert to target formats (Cursor, Codex, Gemini, Copilot)
+5. ENRICH   (free, no LLM) — hooks, plugin manifest, disclosure index, compression, security scan
+6. WRITE                   — Docsify-ready docs/ or .claude/ skills + multi-tool output
 ```
 
-The LLM only generates **text**. All structural analysis is deterministic.
+The LLM only generates **text**. All structural analysis, scoring, compression, scanning, and graph building is deterministic.
 
 ---
 
@@ -381,4 +659,11 @@ MIT
 
 ---
 
-*Inspired by [CodeViewX](https://github.com/dean2021/codeviewx) · Skill format: [Gentleman-Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) · Agent pattern: [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite)*
+## v0.3.0 Inspirations
+
+- [CodeViewX](https://github.com/dean2021/codeviewx) — original export concept
+- [Gentleman-Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) — skill format spec
+- [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite) — agent orchestration pattern
+- [repomix](https://github.com/yamadashy/repomix) / [rendergit](https://github.com/nicobytes/rendergit) — LLM export and XML format inspiration
+- [aider](https://github.com/Aider-AI/aider) — RepoMap-based code graph approach
+- [semgrep](https://github.com/semgrep/semgrep) — security scanning rule categories
