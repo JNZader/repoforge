@@ -30,9 +30,9 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      FRONTEND_URL: https://jnzader.github.io/repoforge/app
+      FRONTEND_URL: https://repoforge.javierzader.com
       BACKEND_URL: https://repoforge-api.javierzader.com
-      ALLOWED_ORIGINS: '["https://jnzader.github.io","https://repoforge-api.javierzader.com"]'
+      ALLOWED_ORIGINS: '["https://repoforge.javierzader.com","https://repoforge-api.javierzader.com"]'
       DEBUG: "false"
     labels:
       - "traefik.enable=true"
@@ -51,8 +51,8 @@ services:
       # Middlewares (unique names to avoid conflicts with other apps)
       - "traefik.http.middlewares.repoforge-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.repoforge-gzip.compress=true"
-      # CORS middleware for cross-origin requests from GH Pages
-      - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowOriginList=https://jnzader.github.io"
+      # CORS middleware for cross-origin requests from Cloudflare
+      - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowOriginList=https://repoforge.javierzader.com"
       - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowMethods=GET,POST,PUT,DELETE,OPTIONS"
       - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowHeaders=Authorization,Content-Type"
       - "traefik.http.middlewares.repoforge-cors.headers.accessControlAllowCredentials=true"
