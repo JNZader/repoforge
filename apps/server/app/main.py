@@ -79,9 +79,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("database_engine_disposed")
 
 
+try:
+    from importlib.metadata import version as _pkg_version
+    APP_VERSION = _pkg_version("repoforge-ai")
+except Exception:
+    APP_VERSION = "0.3.0"
+
 app = FastAPI(
     title="RepoForge Web API",
-    version="0.1.0",
+    version=APP_VERSION,
     description="Web API for RepoForge doc/skills generation",
     lifespan=lifespan,
 )
@@ -183,7 +189,7 @@ app.include_router(providers_router)
 @app.get("/health")
 async def health() -> dict:
     """Simple health check — always returns 200 if the server is running."""
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": APP_VERSION}
 
 
 @app.get("/health/detailed")
