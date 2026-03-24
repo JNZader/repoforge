@@ -56,7 +56,7 @@ from .graph import (
     build_graph_from_workspace,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 __all__ = [
     "generate_artifacts",
     "generate_docs",
