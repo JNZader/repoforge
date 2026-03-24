@@ -32,3 +32,6 @@ htmlcov/
 Thumbs.db
 apps/web/node_modules/
 apps/server/test.db
+
+# Cloudflare Pages build output
+_site/
