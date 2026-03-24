@@ -16,9 +16,12 @@ Falls back to pure Python rglob + regex automatically.
 
 import json
 import ast
+import logging
 from pathlib import Path
 from typing import Optional
 import yaml
+
+logger = logging.getLogger(__name__)
 
 # Imported lazily inside functions to avoid circular import at module level
 # from .ripgrep import list_files, extract_definitions, extract_imports, extract_summary_hints
@@ -267,8 +270,8 @@ def _detect_tech_stack(root: Path) -> list:
                     stack.append("Zustand")
                 if "supabase" in " ".join(deps.keys()):
                     stack.append("Supabase")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to parse package.json %s: %s", p, e)
 
     # Python framework hints — search all subdirs
     for search_root in search_roots:
@@ -293,8 +296,8 @@ def _detect_tech_stack(root: Path) -> list:
                         stack.append("Supabase")
                     if "redis" in txt:
                         stack.append("Redis")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to parse Python manifest %s: %s", p, e)
 
     # Docker / infra
     for search_root in search_roots:
@@ -396,14 +399,14 @@ def _scan_layer(layer_path: Path, root: Path) -> list:
             try:
                 content = fpath.read_text(errors="replace")
                 _enrich_python(module, content)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to enrich Python module %s: %s", fpath, e)
         elif ext in (".ts", ".tsx", ".js", ".jsx") and not rg_available():
             try:
                 content = fpath.read_text(errors="replace")
                 _enrich_js(module, content)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to enrich JS/TS module %s: %s", fpath, e)
 
         modules.append(module)
 
@@ -545,8 +548,8 @@ def _find_entry_points(root: Path) -> list:
                                 found.append(mod)
                             else:
                                 found.append(f"{cmd_name} → {module_path}")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to detect entrypoints from pyproject.toml: %s", e)
 
     # 2. package.json main/bin
     pkg = root / "package.json"
@@ -559,8 +562,8 @@ def _find_entry_points(root: Path) -> list:
                 found.extend(data["bin"].values())
             elif isinstance(data.get("bin"), str):
                 found.append(data["bin"])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to parse package.json for entrypoints: %s", e)
 
     # 3. Common filename fallbacks
     candidates = [

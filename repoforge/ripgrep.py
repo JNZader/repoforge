@@ -11,11 +11,14 @@ Install: brew install ripgrep / sudo apt install ripgrep / scoop install ripgrep
 """
 
 import json
+import logging
 import re
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -43,7 +46,8 @@ def rg_version() -> Optional[str]:
             capture_output=True, text=True, timeout=5
         )
         return result.stdout.split("\n")[0].strip()
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to get ripgrep version: %s", e)
         return None
 
 

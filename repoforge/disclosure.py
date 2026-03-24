@@ -19,8 +19,11 @@ Backward compatible: skills without markers return full content.
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Tier markers
@@ -229,7 +232,8 @@ def build_discovery_index(skills_dir: str) -> str:
     for skill_path in sorted(root.rglob("SKILL.md")):
         try:
             content = skill_path.read_text(encoding="utf-8")
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to read skill file %s: %s", skill_path, e)
             continue
 
         fm = extract_frontmatter(content)

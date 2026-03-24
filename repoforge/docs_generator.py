@@ -11,9 +11,12 @@ Flow:
 Output is a Docsify-ready docs/ folder that works on GitHub Pages with zero config.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from .scanner import scan_repo, classify_complexity
 from .llm import build_llm
@@ -210,8 +213,8 @@ def _infer_project_name(root: Path, repo_map: dict) -> str:
             name = data.get("name", "")
             if name and name != "":
                 return _prettify_name(name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to read project name from package.json: %s", e)
 
     # Try pyproject.toml
     pyproject = root / "pyproject.toml"
@@ -226,8 +229,8 @@ def _infer_project_name(root: Path, repo_map: dict) -> str:
                         name = parts[1].strip().strip('"\'')
                         if name:
                             return _prettify_name(name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to read project name from pyproject.toml: %s", e)
 
     # Try go.mod
     gomod = root / "go.mod"
@@ -238,8 +241,8 @@ def _infer_project_name(root: Path, repo_map: dict) -> str:
             parts = first_line.split("/")
             if parts:
                 return _prettify_name(parts[-1].strip())
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to read project name from go.mod: %s", e)
 
     # Fall back to directory name
     return _prettify_name(root.name)
