@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Generate skills and agents
-        uses: JNZader/repoforge@v0.2.0
+        uses: JNZader/repoforge@v0.3.0
         with:
           command: skills
           output-dir: .claude
