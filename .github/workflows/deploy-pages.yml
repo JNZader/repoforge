@@ -5,9 +5,9 @@
 # GitHub Pages deployment.
 #
 # Final URL structure:
-#   /repoforge/          → Landing page (static HTML)
-#   /repoforge/app/      → Dashboard (React SPA)
-#   /repoforge/docs/     → Documentation (if docs/ exists)
+#   /              → Landing page (static HTML)
+#   /app/          → Dashboard (React SPA)
+#   /docs/         → Documentation (if docs/ exists)
 
 name: Deploy Pages
 

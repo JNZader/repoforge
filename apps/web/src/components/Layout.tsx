@@ -76,14 +76,14 @@ export function Layout({ children }: { children: ReactNode }) {
         {/* External links */}
         <div className="mt-4 border-t border-surface-border pt-4 space-y-1">
           <a
-            href="/repoforge/"
+            href="/"
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
           >
             <Home className="h-5 w-5" />
             Home
           </a>
           <a
-            href="/repoforge/docs/"
+            href="/docs/"
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
           >
             <BookOpen className="h-5 w-5" />
