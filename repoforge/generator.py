@@ -153,8 +153,13 @@ def generate_artifacts(
         f"orchestrator={'yes' if cx['generate_orchestrator'] else 'skip'}, "
         f"layer_agents={'yes' if cx['generate_layer_agents'] else 'skip'}")
 
-    llm = build_llm(model=model, api_key=api_key, api_base=api_base)
-    log(f"🤖 Using model: {llm.model}")
+    if dry_run:
+        # In dry-run mode, skip LLM initialization entirely (no API key needed)
+        llm = LLM(model=model or "(dry-run)")
+        log(f"🤖 Model: {llm.model} (dry-run — no LLM calls)")
+    else:
+        llm = build_llm(model=model, api_key=api_key, api_base=api_base)
+        log(f"🤖 Using model: {llm.model}")
 
     # Extract routing parameters from complexity
     max_skills = cx["max_module_skills_per_layer"]
@@ -430,9 +435,16 @@ def generate_artifacts(
     plugin_summary = ""
     if generated.get("plugin"):
         plugin_summary = f", {generated['plugin']['total_commands']} commands (plugin)"
-    log(f"\n🎉 Done! Generated {len(generated['skills'])} skills, {len(generated['agents'])} agents{plugin_summary}")
-    log(f"   Targets: {targets_summary}")
-    log(f"   Output: {_rel(out, root)}")
+
+    if dry_run:
+        log(f"\n🔍 DRY RUN — no LLM calls, no files written")
+        log(f"   Would generate {len(generated['skills'])} skills, {len(generated['agents'])} agents{plugin_summary}")
+        log(f"   Targets: {targets_summary}")
+        log(f"   Output: {_rel(out, root)}")
+    else:
+        log(f"\n🎉 Done! Generated {len(generated['skills'])} skills, {len(generated['agents'])} agents{plugin_summary}")
+        log(f"   Targets: {targets_summary}")
+        log(f"   Output: {_rel(out, root)}")
 
     return generated
 

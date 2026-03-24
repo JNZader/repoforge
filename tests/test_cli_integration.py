@@ -441,6 +441,31 @@ class TestSkillsCommand:
         ])
         assert result.exit_code == 0
 
+    def test_skills_dry_run_no_files_written(self, runner, sample_repo):
+        """Dry-run must NOT create any files or call the LLM."""
+        output_dir = sample_repo / ".claude"
+        opencode_dir = sample_repo / ".opencode"
+        atl_dir = sample_repo / ".atl"
+
+        # Ensure output dirs don't exist before the run
+        assert not output_dir.exists()
+        assert not opencode_dir.exists()
+        assert not atl_dir.exists()
+
+        with patch("repoforge.generator.build_llm") as mock_build_llm:
+            result = runner.invoke(main, [
+                "skills", "-w", str(sample_repo),
+                "--dry-run", "--no-opencode",
+            ])
+
+        assert result.exit_code == 0
+        # build_llm must NOT have been called
+        mock_build_llm.assert_not_called()
+        # No output directories should have been created
+        assert not output_dir.exists(), ".claude/ should not exist after dry-run"
+        assert not opencode_dir.exists(), ".opencode/ should not exist after dry-run"
+        assert not atl_dir.exists(), ".atl/ should not exist after dry-run"
+
     def test_skills_invalid_dir(self, runner, tmp_path):
         result = runner.invoke(main, [
             "skills", "-w", str(tmp_path / "nonexistent"),
