@@ -62,7 +62,7 @@ def _common_options(f):
 # ---------------------------------------------------------------------------
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
-@click.version_option(package_name="repoforge")
+@click.version_option(package_name="repoforge-ai")
 def main():
     """
     RepoForge — AI-powered code analysis tool.
