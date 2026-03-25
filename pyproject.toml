@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "litellm>=1.40.0",      # universal LLM abstraction
+    "litellm>=1.82.6,!=1.82.8",  # !=1.82.8 was compromised (supply chain attack)
     "click>=8.1.0",          # CLI
     "pyyaml>=6.0",           # config file parsing
 ]
