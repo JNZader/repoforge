@@ -139,6 +139,7 @@ FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
         "Go": [
             (r'\.(?:Get|Post|Put|Delete|Patch|Handle(?:Func)?)\s*\(\s*"(/[^"]*)"', "route"),
             (r'(?:http\.Handle|mux\.Handle)\s*\(\s*"(/[^"]*)"', "handle"),
+            (r'\.Handle(?:Func)?\s*\(\s*"(?:GET|POST|PUT|DELETE|PATCH)\s+(/[^"]*)"', "go122_route"),
             (r'e\.(?:GET|POST|PUT|DELETE|PATCH)\s*\(\s*"(/[^"]*)"', "echo"),
         ],
         "Python": [
