@@ -49,11 +49,15 @@ from .plugins import (
     write_plugin,
 )
 from .graph import (
+    BlastRadiusResult,
     CodeGraph,
     Node,
     Edge,
     build_graph,
     build_graph_from_workspace,
+    build_graph_v2,
+    get_blast_radius_v2,
+    is_test_file,
 )
 
 __version__ = "0.4.0"
@@ -94,9 +98,13 @@ __all__ = [
     "manifest_to_json",
     "manifest_to_markdown",
     "write_plugin",
+    "BlastRadiusResult",
     "CodeGraph",
     "Node",
     "Edge",
     "build_graph",
     "build_graph_from_workspace",
+    "build_graph_v2",
+    "get_blast_radius_v2",
+    "is_test_file",
 ]

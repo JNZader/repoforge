@@ -696,9 +696,17 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     help="Output format: mermaid, json, dot, or summary.")
 @click.option("--blast-radius", default=None,
     help="Show blast radius for a specific module (path or name).")
+@click.option("--v2", is_flag=True, default=False,
+    help="Use extractor-based graph builder (file-level dependencies).")
+@click.option("--depth", default=3, show_default=True, type=int,
+    help="Max BFS depth for blast radius (v2 only).")
+@click.option("--max-files", default=50, show_default=True, type=int,
+    help="Max files in blast radius result (v2 only).")
+@click.option("--include-tests/--no-include-tests", default=True, show_default=True,
+    help="Include test files in blast radius (v2 only).")
 @click.option("-q", "--quiet", is_flag=True, default=False,
     help="Suppress progress output.")
-def graph(workspace, output_path, fmt, blast_radius, quiet):
+def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, include_tests, quiet):
     """
     Build a code knowledge graph from scanner data (no API key needed).
 
@@ -722,12 +730,17 @@ def graph(workspace, output_path, fmt, blast_radius, quiet):
       repoforge graph -w . --blast-radius src/auth.py  # blast radius
     """
     import sys
-    from .graph import build_graph_from_workspace
 
     if not quiet:
-        print(f"Building code graph for {workspace} ...", file=sys.stderr)
+        mode = "v2 (extractor-based)" if v2 else "v1 (name-matching)"
+        print(f"Building code graph for {workspace} ({mode}) ...", file=sys.stderr)
 
-    code_graph = build_graph_from_workspace(workspace)
+    if v2:
+        from .graph import build_graph_v2
+        code_graph = build_graph_v2(workspace)
+    else:
+        from .graph import build_graph_from_workspace
+        code_graph = build_graph_from_workspace(workspace)
 
     # Handle blast radius mode
     if blast_radius:
@@ -748,20 +761,49 @@ def graph(workspace, output_path, fmt, blast_radius, quiet):
                     click.echo(f"  {n.id} ({n.name})", err=True)
             sys.exit(1)
 
-        affected = code_graph.get_blast_radius(node.id)
-        lines = [
-            f"Blast radius for: {node.id}",
-            f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
-            f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
-            f"Total affected by change: {len(affected)} module(s)",
-        ]
-        if affected:
-            lines.append("")
-            lines.append("Affected modules:")
-            for mid in affected:
-                anode = code_graph.get_node(mid)
-                name = anode.name if anode else mid
-                lines.append(f"  {name} ({mid})")
+        if v2:
+            from .graph import get_blast_radius_v2
+            br = get_blast_radius_v2(
+                code_graph, node.id,
+                max_depth=depth, max_files=max_files,
+                include_tests=include_tests,
+            )
+            lines = [
+                f"Blast radius for: {node.id}",
+                f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
+                f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
+                f"Affected files: {len(br.files)}",
+                f"Test files: {len(br.test_files)}",
+                f"Max depth reached: {br.depth}",
+                f"Exceeded cap: {br.exceeded_cap}",
+            ]
+            if br.files:
+                lines.append("")
+                lines.append("Affected files:")
+                for fid in br.files:
+                    anode = code_graph.get_node(fid)
+                    name = anode.name if anode else fid
+                    lines.append(f"  {name} ({fid})")
+            if br.test_files:
+                lines.append("")
+                lines.append("Related test files:")
+                for fid in br.test_files:
+                    lines.append(f"  {fid}")
+        else:
+            affected = code_graph.get_blast_radius(node.id)
+            lines = [
+                f"Blast radius for: {node.id}",
+                f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
+                f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
+                f"Total affected by change: {len(affected)} module(s)",
+            ]
+            if affected:
+                lines.append("")
+                lines.append("Affected modules:")
+                for mid in affected:
+                    anode = code_graph.get_node(mid)
+                    name = anode.name if anode else mid
+                    lines.append(f"  {name} ({mid})")
 
         output = "\n".join(lines)
     else:

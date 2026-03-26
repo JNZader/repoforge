@@ -12,11 +12,14 @@ Outputs:
 """
 
 import json
+import logging
 import re
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +343,272 @@ def build_graph_from_workspace(workspace: str) -> CodeGraph:
 
 
 # ---------------------------------------------------------------------------
-# Import resolution
+# V2: Extractor-based graph builder
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BlastRadiusResult:
+    """Enhanced blast radius result with depth tracking and test separation."""
+    files: list[str] = field(default_factory=list)
+    """All non-test files in the blast radius (dependents only, not changed)."""
+
+    test_files: list[str] = field(default_factory=list)
+    """Test files that depend on affected files."""
+
+    changed_files: list[str] = field(default_factory=list)
+    """The original changed file(s) that triggered the analysis."""
+
+    depth: int = 0
+    """Maximum BFS depth actually reached."""
+
+    exceeded_cap: bool = False
+    """True if the blast radius exceeded max_files cap."""
+
+
+def is_test_file(file_path: str) -> bool:
+    """Detect whether a file is a test file based on naming conventions.
+
+    Patterns checked (all 6 supported languages):
+    - Python: test_*.py, *_test.py
+    - TypeScript/JavaScript: *.test.ts, *.spec.ts, *.test.js, *.spec.js, *.test.tsx, *.spec.tsx
+    - Go: *_test.go
+    - Java: *Test.java, *Tests.java
+    - Rust: tests/ directory or *_test.rs
+    """
+    # Normalize to forward slashes
+    p = file_path.replace("\\", "/")
+    name = p.rsplit("/", 1)[-1] if "/" in p else p
+
+    # Python: test_*.py, *_test.py
+    if name.endswith(".py"):
+        return name.startswith("test_") or name.endswith("_test.py")
+
+    # Go: *_test.go
+    if name.endswith("_test.go"):
+        return True
+
+    # TS/JS: *.test.ts, *.spec.ts, *.test.tsx, *.spec.tsx, *.test.js, etc.
+    for ext in (".ts", ".tsx", ".js", ".jsx", ".mjs"):
+        if name.endswith(f".test{ext}") or name.endswith(f".spec{ext}"):
+            return True
+
+    # Java: *Test.java, *Tests.java, *IT.java
+    if name.endswith(".java"):
+        stem = name[:-5]  # remove .java
+        return stem.endswith("Test") or stem.endswith("Tests") or stem.endswith("IT")
+
+    # Rust: files inside tests/ directory or *_test.rs
+    if name.endswith(".rs"):
+        if name.endswith("_test.rs"):
+            return True
+        if "/tests/" in p or p.startswith("tests/"):
+            return True
+
+    # Directory-based patterns for any language
+    if "/__tests__/" in p or p.startswith("__tests__/"):
+        return True
+
+    return False
+
+
+def build_graph_v2(root_dir: str, files: list[str] | None = None) -> CodeGraph:
+    """Build a CodeGraph using extractor-based import/export detection.
+
+    Unlike build_graph() which uses RepoMap data with fuzzy name matching,
+    this version reads actual file content, extracts imports/exports with
+    language-specific regex extractors, and resolves imports to file paths.
+
+    Args:
+        root_dir: Absolute path to the project root.
+        files: Optional list of relative file paths. If None, discovers files
+            using ripgrep.
+
+    Returns:
+        CodeGraph with file-level dependency edges.
+    """
+    from .extractors import get_extractor
+    from .extractors.resolver import (
+        resolve_import,
+        resolve_go_import,
+        resolve_python_import,
+    )
+
+    root = Path(root_dir).resolve()
+
+    # Discover files if not provided
+    if files is None:
+        from .ripgrep import list_files
+        discovered = list_files(root)
+        files = []
+        for f in discovered:
+            try:
+                files.append(str(f.relative_to(root)))
+            except ValueError:
+                pass
+
+    available_files = set(files)
+    graph = CodeGraph()
+
+    # Phase 1: Extract imports and exports from each file, build nodes
+    file_imports: dict[str, list] = {}  # file → list of ImportInfo
+
+    # Read go.mod if present for Go resolution
+    go_mod_content: str | None = None
+    go_mod_path = root / "go.mod"
+    if go_mod_path.exists():
+        try:
+            go_mod_content = go_mod_path.read_text(errors="replace")
+        except OSError:
+            pass
+
+    for file_path in files:
+        extractor = get_extractor(file_path)
+        if not extractor:
+            continue
+
+        abs_path = root / file_path
+        try:
+            content = abs_path.read_text(errors="replace")
+        except OSError:
+            logger.debug("Failed to read %s", abs_path)
+            continue
+
+        imports = extractor.extract_imports(content)
+        exports = extractor.extract_exports(content)
+        is_test = is_test_file(file_path)
+
+        # Create node
+        node = Node(
+            id=file_path,
+            name=Path(file_path).stem,
+            node_type="module",
+            layer="",  # No layer detection in v2 — flat file graph
+            file_path=file_path,
+            exports=[e.name for e in exports],
+        )
+        graph.add_node(node)
+
+        # Store imports for resolution in phase 2
+        file_imports[file_path] = imports
+
+    # Phase 2: Resolve imports to file paths and create edges
+    for file_path, imports in file_imports.items():
+        for imp in imports:
+            resolved: str | None = None
+
+            # Determine extractor language for dispatch
+            extractor = get_extractor(file_path)
+            lang = extractor.language if extractor else ""
+
+            if lang == "go" and go_mod_content and not imp.is_relative:
+                # Go uses module paths, not relative imports
+                resolved = resolve_go_import(
+                    imp.source, go_mod_content, available_files, root_dir,
+                )
+            elif lang == "python":
+                resolved = resolve_python_import(
+                    file_path, imp.source, available_files,
+                    is_relative=imp.is_relative,
+                )
+            elif imp.is_relative or imp.source.startswith("."):
+                # TS/JS/Rust/Java relative imports
+                resolved = resolve_import(
+                    file_path, imp.source, available_files, root_dir,
+                    is_relative=True,
+                )
+
+            if resolved and resolved != file_path and resolved in available_files:
+                graph.add_edge(Edge(
+                    source=file_path,
+                    target=resolved,
+                    edge_type="imports",
+                ))
+
+    return graph
+
+
+def get_blast_radius_v2(
+    graph: CodeGraph,
+    node_id: str,
+    max_depth: int = 3,
+    max_files: int = 50,
+    include_tests: bool = True,
+) -> BlastRadiusResult:
+    """Compute enhanced blast radius with depth limiting and test separation.
+
+    Uses BFS on reverse dependency edges. Test files are collected but
+    not traversed further (they are leaf nodes in the blast radius).
+
+    Args:
+        graph: The CodeGraph to analyze.
+        node_id: File path of the changed node.
+        max_depth: Maximum BFS depth (default 3).
+        max_files: Cap on total files in result (default 50).
+        include_tests: Whether to include test files (default True).
+
+    Returns:
+        BlastRadiusResult with separated files, test_files, depth, and cap info.
+    """
+    result = BlastRadiusResult(changed_files=[node_id])
+
+    if graph.get_node(node_id) is None:
+        return result
+
+    # BFS with depth tracking
+    visited: set[str] = {node_id}
+    dependents: list[str] = []
+    test_files: list[str] = []
+    actual_depth = 0
+
+    queue: list[str] = [node_id]
+
+    for depth in range(max_depth):
+        next_queue: list[str] = []
+
+        for current in queue:
+            for dependent in graph.get_dependents(current):
+                if dependent in visited:
+                    continue
+
+                if is_test_file(dependent):
+                    if include_tests and dependent not in test_files:
+                        test_files.append(dependent)
+                    # Test files are NOT traversed further
+                    continue
+
+                visited.add(dependent)
+                dependents.append(dependent)
+                next_queue.append(dependent)
+
+        if next_queue:
+            actual_depth = depth + 1
+        queue = next_queue
+
+        if not queue:
+            break
+
+    # Post-BFS: collect test files that depend on any visited file
+    if include_tests:
+        for file_id in list(visited):
+            for dependent in graph.get_dependents(file_id):
+                if dependent not in visited and is_test_file(dependent):
+                    if dependent not in test_files:
+                        test_files.append(dependent)
+
+    # Check cap
+    total = len(dependents) + len(test_files)
+    exceeded_cap = total > max_files
+
+    result.files = dependents
+    result.test_files = test_files
+    result.depth = actual_depth
+    result.exceeded_cap = exceeded_cap
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Import resolution (v1 — used by build_graph)
 # ---------------------------------------------------------------------------
 
 def _resolve_import(
