@@ -7,6 +7,11 @@ that generators inject into prompts so the LLM understands module relationships.
 Also provides CodeSnippet selection: picks the most relevant source fragments
 (entry points first, then most-connected) within a token budget.
 
+build_semantic_context() combines all context layers:
+  1. Graph context (module deps, top connected)
+  2. Extracted facts (endpoints, ports, env vars, etc.)
+  3. Code snippets (entry points, most-connected modules)
+
 Token budget: ~500 tokens for full context, ~200 for short summary.
 """
 
@@ -15,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .graph import CodeGraph, build_graph_v2, get_blast_radius_v2, is_test_file
+from .facts import extract_facts, FactItem
 
 logger = logging.getLogger(__name__)
 
@@ -299,6 +305,152 @@ def select_code_snippets(
         remaining -= tokens
 
     return snippets
+
+
+# ---------------------------------------------------------------------------
+# Semantic context — combines graph + facts + snippets
+# ---------------------------------------------------------------------------
+
+# Human-readable labels for fact types
+_FACT_TYPE_LABELS: dict[str, str] = {
+    "endpoint": "HTTP Endpoints",
+    "port": "Port Configuration",
+    "version": "Version",
+    "db_table": "Database Tables",
+    "cli_command": "CLI Commands",
+    "env_var": "Environment Variables",
+}
+
+
+def format_facts_section(facts: list[FactItem]) -> str:
+    """Format a list of FactItems into a markdown section.
+
+    Groups facts by type with human-readable headings.
+    Returns empty string if no facts provided.
+    """
+    if not facts:
+        return ""
+
+    # Group by fact_type
+    grouped: dict[str, list[FactItem]] = {}
+    for f in facts:
+        grouped.setdefault(f.fact_type, []).append(f)
+
+    lines = ["## Extracted Facts\n"]
+
+    for fact_type, items in grouped.items():
+        label = _FACT_TYPE_LABELS.get(fact_type, fact_type.replace("_", " ").title())
+        lines.append(f"### {label}\n")
+        for item in items:
+            lines.append(f"- {item.value} ({item.file}:{item.line})\n")
+        lines.append("")
+
+    return "".join(lines)
+
+
+def format_snippets_section(snippets: list[CodeSnippet]) -> str:
+    """Format a list of CodeSnippets into a markdown section.
+
+    Returns empty string if no snippets provided.
+    """
+    if not snippets:
+        return ""
+
+    lines = ["## Key Source Code\n"]
+
+    for snippet in snippets:
+        # Detect language from extension for code fence
+        ext = Path(snippet.file).suffix.lower()
+        lang_map = {
+            ".py": "python", ".go": "go", ".ts": "typescript", ".tsx": "typescript",
+            ".js": "javascript", ".jsx": "javascript", ".rs": "rust", ".java": "java",
+            ".rb": "ruby", ".cs": "csharp", ".cpp": "cpp", ".c": "c",
+        }
+        lang = lang_map.get(ext, "")
+
+        reason_label = snippet.reason.replace("_", " ")
+        lines.append(f"### {snippet.file} ({reason_label})\n")
+        lines.append(f"```{lang}\n{snippet.content}\n```\n\n")
+
+    return "".join(lines)
+
+
+def build_semantic_context(
+    root_dir: str,
+    files: list[str],
+    graph: CodeGraph | None = None,
+    include_snippets: bool = True,
+) -> str:
+    """Combine all context layers into a single markdown string for LLM prompts.
+
+    Layers:
+      1. Graph context (module deps, top connected) — from graph
+      2. Extracted facts (endpoints, ports, env vars) — from extract_facts
+      3. Code snippets (entry points, most-connected) — from select_code_snippets
+
+    Each layer gracefully degrades: if one fails or returns empty, the others
+    still produce output.
+
+    Args:
+        root_dir: Absolute path to the project root.
+        files: List of relative file paths to extract facts from.
+        graph: Pre-built CodeGraph. If None, builds one (may fail gracefully).
+        include_snippets: Whether to include code snippets (set False to save tokens).
+
+    Returns:
+        Markdown string combining all available context layers.
+        Returns empty string only if ALL layers produce nothing.
+    """
+    sections: list[str] = []
+
+    # 1. Graph context
+    _graph = graph
+    if _graph is None:
+        try:
+            _graph = build_graph_v2(root_dir, files if files else None)
+        except Exception:
+            logger.debug("Failed to build graph for semantic context", exc_info=True)
+            _graph = None
+
+    if _graph is not None:
+        graph_ctx = format_graph_context(_graph)
+        if graph_ctx:
+            sections.append(graph_ctx)
+
+    # 2. Extracted facts
+    try:
+        facts = extract_facts(root_dir, files)
+        facts_section = format_facts_section(facts)
+        if facts_section:
+            sections.append(facts_section)
+    except Exception:
+        logger.debug("Failed to extract facts for semantic context", exc_info=True)
+
+    # 3. Code snippets (optional — can be heavy on tokens)
+    if include_snippets and _graph is not None:
+        try:
+            snippets = select_code_snippets(_graph, root_dir)
+            snippets_section = format_snippets_section(snippets)
+            if snippets_section:
+                sections.append(snippets_section)
+        except Exception:
+            logger.debug("Failed to select code snippets for semantic context", exc_info=True)
+
+    return "\n".join(sections)
+
+
+def build_module_facts_context(root_dir: str, module_path: str, files: list[str]) -> str:
+    """Build facts context filtered to a specific module.
+
+    Returns only facts from the given module file, formatted as markdown.
+    Useful for per-module skill generation.
+    """
+    try:
+        facts = extract_facts(root_dir, [module_path])
+        return format_facts_section(facts)
+    except Exception:
+        logger.debug("Failed to extract module facts for %s", module_path, exc_info=True)
+        return ""
 
 
 def _detect_entry_points(graph: CodeGraph) -> set[str]:
