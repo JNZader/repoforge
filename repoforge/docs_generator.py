@@ -22,6 +22,10 @@ from .scanner import scan_repo, classify_complexity
 from .llm import build_llm
 from .docs_prompts import get_chapter_prompts
 from .docsify import build_docsify_files
+from .graph_context import (
+    build_graph_context_from_graph,
+    build_short_graph_context,
+)
 
 
 def generate_docs(
@@ -98,9 +102,30 @@ def generate_docs(
     log(f"🌐 Language: {language}")
 
     # ------------------------------------------------------------------
+    # 3b. Build dependency graph context (cached, used by all chapters)
+    # ------------------------------------------------------------------
+    graph_ctx = ""
+    short_graph_ctx = ""
+    try:
+        from .graph import build_graph_v2
+        log(f"🔗 Building dependency graph...")
+        _graph = build_graph_v2(str(root))
+        graph_ctx = build_graph_context_from_graph(_graph)
+        short_graph_ctx = build_short_graph_context(_graph)
+        module_count = len([n for n in _graph.nodes if n.node_type == "module"])
+        edge_count = len([e for e in _graph.edges if e.edge_type in ("imports", "depends_on")])
+        log(f"   ✅ Graph: {module_count} modules, {edge_count} dependencies")
+    except Exception as e:
+        log(f"   ⚠️  Graph analysis skipped: {e}")
+
+    # ------------------------------------------------------------------
     # 4. Get chapter list (trimmed by complexity)
     # ------------------------------------------------------------------
-    all_chapters = get_chapter_prompts(repo_map, language, project_name)
+    all_chapters = get_chapter_prompts(
+        repo_map, language, project_name,
+        graph_context=graph_ctx,
+        short_graph_context=short_graph_ctx,
+    )
     max_ch = cx["max_chapters"]
     if len(all_chapters) > max_ch:
         # Always keep index + first chapters; trim type-specific ones from the end
