@@ -23,7 +23,12 @@ from repoforge.graph_context import (
     format_graph_context,
     build_short_graph_context,
     build_module_graph_context,
+    build_semantic_context,
+    format_facts_section,
+    format_snippets_section,
+    build_module_facts_context,
 )
+from repoforge.facts import FactItem
 
 
 # ---------------------------------------------------------------------------
@@ -297,3 +302,209 @@ class TestPromptIntegration:
         assert len(overview) == 1
         assert "Dependency Summary" in overview[0]["user"]
         assert "Full graph here" not in overview[0]["user"]
+
+
+# ---------------------------------------------------------------------------
+# Semantic context: format_facts_section
+# ---------------------------------------------------------------------------
+
+class TestFormatFactsSection:
+    def test_returns_empty_for_no_facts(self):
+        assert format_facts_section([]) == ""
+
+    def test_groups_by_fact_type(self):
+        facts = [
+            FactItem(fact_type="endpoint", value="GET /health", file="server.go", line=42, language="Go"),
+            FactItem(fact_type="endpoint", value="POST /save", file="server.go", line=67, language="Go"),
+            FactItem(fact_type="port", value="7437", file="server.go", line=75, language="Go"),
+        ]
+        result = format_facts_section(facts)
+        assert "## Extracted Facts" in result
+        assert "### HTTP Endpoints" in result
+        assert "GET /health" in result
+        assert "POST /save" in result
+        assert "### Port Configuration" in result
+        assert "7437" in result
+
+    def test_includes_file_and_line(self):
+        facts = [
+            FactItem(fact_type="env_var", value="ENGRAM_PORT", file="main.go", line=80, language="Go"),
+        ]
+        result = format_facts_section(facts)
+        assert "main.go:80" in result
+
+    def test_all_fact_types_get_labels(self):
+        """Each known fact type should have a human-readable label."""
+        for ft in ("endpoint", "port", "version", "db_table", "cli_command", "env_var"):
+            facts = [FactItem(fact_type=ft, value="test", file="f.go", line=1, language="Go")]
+            result = format_facts_section(facts)
+            # Should NOT just use the raw fact_type as heading
+            assert f"### {ft}" not in result or ft == "version"
+
+
+# ---------------------------------------------------------------------------
+# Semantic context: format_snippets_section
+# ---------------------------------------------------------------------------
+
+class TestFormatSnippetsSection:
+    def test_returns_empty_for_no_snippets(self):
+        from repoforge.graph_context import CodeSnippet
+        assert format_snippets_section([]) == ""
+
+    def test_formats_code_blocks(self):
+        from repoforge.graph_context import CodeSnippet
+        snippets = [
+            CodeSnippet(file="cmd/main.go", content="package main\nfunc main() {}", token_estimate=10, reason="entry_point"),
+        ]
+        result = format_snippets_section(snippets)
+        assert "## Key Source Code" in result
+        assert "```go" in result
+        assert "cmd/main.go" in result
+        assert "entry point" in result
+
+    def test_detects_python_language(self):
+        from repoforge.graph_context import CodeSnippet
+        snippets = [
+            CodeSnippet(file="app.py", content="def main(): pass", token_estimate=5, reason="most_connected"),
+        ]
+        result = format_snippets_section(snippets)
+        assert "```python" in result
+
+
+# ---------------------------------------------------------------------------
+# Semantic context: build_semantic_context
+# ---------------------------------------------------------------------------
+
+class TestBuildSemanticContext:
+    def test_returns_string_for_repoforge_project(self):
+        """Semantic context on repoforge itself should produce non-empty output."""
+        root = str(Path(__file__).parent.parent)
+        from repoforge.scanner import scan_repo
+        repo_map = scan_repo(root)
+        all_files = [
+            m["path"]
+            for layer in repo_map["layers"].values()
+            for m in layer.get("modules", [])
+        ]
+        result = build_semantic_context(root, all_files)
+        # Should have at least graph context (repoforge has modules)
+        assert result != ""
+        assert "Dependency Analysis" in result
+
+    def test_returns_empty_when_all_fail(self):
+        """When root is invalid, graph fails, facts fail — return empty string."""
+        result = build_semantic_context("/nonexistent/path", [])
+        assert result == ""
+
+    def test_includes_facts_when_available(self, sample_graph, tmp_path):
+        """When facts are extractable, they appear in the output."""
+        # Create a Go file with an endpoint pattern
+        go_file = tmp_path / "server.go"
+        go_file.write_text('package main\nfunc init() {\n  r.Get("/health", handler)\n}\n')
+
+        result = build_semantic_context(
+            str(tmp_path),
+            ["server.go"],
+            graph=sample_graph,
+            include_snippets=False,
+        )
+        # Graph context should be present
+        assert "Dependency Analysis" in result
+        # Facts should be present (endpoint extracted)
+        assert "Extracted Facts" in result
+        assert "/health" in result
+
+    def test_works_without_graph(self, tmp_path):
+        """Even without a graph, facts should still be extracted."""
+        go_file = tmp_path / "main.go"
+        go_file.write_text('package main\nvar VERSION = "1.0.0"\n')
+
+        result = build_semantic_context(
+            str(tmp_path),
+            ["main.go"],
+            graph=None,
+            include_snippets=False,
+        )
+        # No graph context, but version fact should appear
+        assert "1.0.0" in result
+
+    def test_include_snippets_false_skips_code(self, sample_graph, tmp_path):
+        """include_snippets=False should omit the Key Source Code section."""
+        result = build_semantic_context(
+            str(tmp_path), [],
+            graph=sample_graph,
+            include_snippets=False,
+        )
+        assert "Key Source Code" not in result
+
+
+# ---------------------------------------------------------------------------
+# Semantic context: build_module_facts_context
+# ---------------------------------------------------------------------------
+
+class TestBuildModuleFactsContext:
+    def test_returns_empty_for_nonexistent_file(self, tmp_path):
+        result = build_module_facts_context(str(tmp_path), "nonexistent.go", [])
+        assert result == ""
+
+    def test_extracts_facts_from_specific_module(self, tmp_path):
+        go_file = tmp_path / "server.go"
+        go_file.write_text('package main\nfunc init() {\n  r.Get("/api/v1/users", handler)\n}\n')
+
+        result = build_module_facts_context(str(tmp_path), "server.go", ["server.go"])
+        assert "/api/v1/users" in result
+
+
+# ---------------------------------------------------------------------------
+# Graceful fallback: semantic context in prompts
+# ---------------------------------------------------------------------------
+
+class TestSemanticContextFallback:
+    def test_docs_prompts_with_semantic_context(self, minimal_repo_map):
+        """Docs prompts work with semantic context (facts + graph) injected."""
+        from repoforge.docs_prompts import get_chapter_prompts
+
+        semantic_ctx = "## Extracted Facts\n### Port Configuration\n- 7437 (server.go:75)\n\n## Dependency Analysis\nFull graph\n"
+        facts_short = "## Extracted Facts\n### Port Configuration\n- 7437 (server.go:75)\n"
+
+        chapters = get_chapter_prompts(
+            minimal_repo_map, "English", "TestProject",
+            graph_context=semantic_ctx,
+            short_graph_context=facts_short,
+        )
+        assert len(chapters) > 0
+        # Architecture chapter should have full semantic context
+        arch = [c for c in chapters if c["file"] == "03-architecture.md"]
+        assert len(arch) == 1
+        assert "7437" in arch[0]["user"]
+        assert "Dependency Analysis" in arch[0]["user"]
+
+        # Other chapters get facts but not full graph
+        overview = [c for c in chapters if c["file"] == "01-overview.md"]
+        assert len(overview) == 1
+        assert "7437" in overview[0]["user"]
+
+    def test_skill_prompt_with_facts_context(self, minimal_repo_map):
+        """Skill prompt works when facts context is injected."""
+        from repoforge.prompts import skill_prompt
+
+        module = minimal_repo_map["layers"]["main"]["modules"][0]
+        facts_ctx = "## Extracted Facts\n### Environment Variables\n- ENGRAM_PORT (main.go:80)\n"
+        system, user = skill_prompt(
+            module, "main", minimal_repo_map,
+            graph_context=facts_ctx,
+        )
+        assert "ENGRAM_PORT" in user
+
+    def test_extracted_facts_rule_in_docs_system_prompt(self):
+        """The docs system prompt should mention the Extracted Facts rule."""
+        from repoforge.docs_prompts import _base_system
+        system = _base_system("English")
+        assert "Extracted Facts" in system
+        assert "EXACT" in system
+
+    def test_extracted_facts_rule_in_skill_system_prompt(self):
+        """The skills system prompt should mention the Extracted Facts rule."""
+        from repoforge.prompts import SKILL_SYSTEM, LAYER_SKILL_SYSTEM
+        assert "Extracted Facts" in SKILL_SYSTEM
+        assert "Extracted Facts" in LAYER_SKILL_SYSTEM
