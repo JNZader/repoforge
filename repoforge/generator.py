@@ -42,6 +42,9 @@ from .graph_context import (
     build_graph_context_from_graph,
     build_short_graph_context,
     build_module_graph_context,
+    build_semantic_context,
+    build_module_facts_context,
+    format_facts_section,
 )
 
 
@@ -185,6 +188,25 @@ def generate_artifacts(
     except Exception as e:
         log(f"   ⚠️  Graph analysis skipped: {e}")
 
+    # Extract semantic facts (cached, reused for all skills)
+    _all_files = [
+        m["path"]
+        for layer in repo_map["layers"].values()
+        for m in layer.get("modules", [])
+    ]
+    _facts_ctx = ""
+    try:
+        log(f"🔍 Extracting semantic facts...")
+        from .facts import extract_facts as _extract_facts
+        _all_facts = _extract_facts(str(root), _all_files)
+        _facts_ctx = format_facts_section(_all_facts)
+        if _all_facts:
+            log(f"   ✅ Facts: {len(_all_facts)} items extracted")
+        else:
+            log(f"   ℹ️  No semantic facts found")
+    except Exception as e:
+        log(f"   ⚠️  Fact extraction skipped: {e}")
+
     generated = {
         "skills": [],
         "agents": [],
@@ -197,10 +219,12 @@ def generate_artifacts(
     # -----------------------------------------------------------------------
     for layer_name, layer_data in repo_map["layers"].items():
         log(f"\n✏️  Generating layer skill: {layer_name} ...")
+        # Layer skills get graph context + global facts
+        _layer_ctx = (_facts_ctx + "\n" + _graph_ctx).strip() if _facts_ctx else _graph_ctx
         system, user = layer_skill_prompt(layer_name, layer_data, repo_map,
                                           prompt_detail=detail,
                                           disclosure=disclosure,
-                                          graph_context=_graph_ctx)
+                                          graph_context=_layer_ctx)
         content = _generate(llm, system, user, dry_run)
         path = out / "skills" / layer_name / "SKILL.md"
         _write(path, content, dry_run)
@@ -219,14 +243,17 @@ def generate_artifacts(
         for module in top:
             mod_name = Path(module["path"]).stem
             log(f"✏️  Module skill: {module['path']} ...")
-            # Build per-module blast radius context
+            # Build per-module blast radius + module-specific facts
             mod_graph_ctx = ""
             if _graph is not None:
                 mod_graph_ctx = build_module_graph_context(_graph, module["path"])
+            mod_facts_ctx = build_module_facts_context(str(root), module["path"], _all_files)
+            # Combine: module facts + blast radius
+            mod_ctx = (mod_facts_ctx + "\n" + mod_graph_ctx).strip() if mod_facts_ctx else mod_graph_ctx
             system, user = skill_prompt(module, layer_name, repo_map,
                                         prompt_detail=detail,
                                         disclosure=disclosure,
-                                        graph_context=mod_graph_ctx)
+                                        graph_context=mod_ctx)
             content = _generate(llm, system, user, dry_run)
             path = out / "skills" / layer_name / mod_name / "SKILL.md"
             _write(path, content, dry_run)
