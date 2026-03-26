@@ -38,6 +38,11 @@ from .prompts import (
 from .adapters import resolve_targets, run_adapters, ADAPTER_TARGETS
 from .disclosure import build_discovery_index
 from .plugins import build_plugin_manifest, write_plugin, commands_prompt
+from .graph_context import (
+    build_graph_context_from_graph,
+    build_short_graph_context,
+    build_module_graph_context,
+)
 
 
 # Defaults — overridden by complexity classification at runtime
@@ -166,6 +171,20 @@ def generate_artifacts(
     min_exports = cx["min_exports_for_skill"]
     detail = cx["prompt_detail"]
 
+    # Build dependency graph (cached, reused for all skills)
+    _graph = None
+    _graph_ctx = ""
+    try:
+        from .graph import build_graph_v2
+        log(f"\n🔗 Building dependency graph...")
+        _graph = build_graph_v2(str(root))
+        _graph_ctx = build_short_graph_context(_graph)
+        module_count = len([n for n in _graph.nodes if n.node_type == "module"])
+        edge_count = len([e for e in _graph.edges if e.edge_type in ("imports", "depends_on")])
+        log(f"   ✅ Graph: {module_count} modules, {edge_count} dependencies")
+    except Exception as e:
+        log(f"   ⚠️  Graph analysis skipped: {e}")
+
     generated = {
         "skills": [],
         "agents": [],
@@ -180,7 +199,8 @@ def generate_artifacts(
         log(f"\n✏️  Generating layer skill: {layer_name} ...")
         system, user = layer_skill_prompt(layer_name, layer_data, repo_map,
                                           prompt_detail=detail,
-                                          disclosure=disclosure)
+                                          disclosure=disclosure,
+                                          graph_context=_graph_ctx)
         content = _generate(llm, system, user, dry_run)
         path = out / "skills" / layer_name / "SKILL.md"
         _write(path, content, dry_run)
@@ -199,9 +219,14 @@ def generate_artifacts(
         for module in top:
             mod_name = Path(module["path"]).stem
             log(f"✏️  Module skill: {module['path']} ...")
+            # Build per-module blast radius context
+            mod_graph_ctx = ""
+            if _graph is not None:
+                mod_graph_ctx = build_module_graph_context(_graph, module["path"])
             system, user = skill_prompt(module, layer_name, repo_map,
                                         prompt_detail=detail,
-                                        disclosure=disclosure)
+                                        disclosure=disclosure,
+                                        graph_context=mod_graph_ctx)
             content = _generate(llm, system, user, dry_run)
             path = out / "skills" / layer_name / mod_name / "SKILL.md"
             _write(path, content, dry_run)
