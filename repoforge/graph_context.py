@@ -4,10 +4,14 @@ graph_context.py - Build concise dependency context from graph v2 for LLM prompt
 Provides architectural context (dependency analysis, layer detection, blast radius)
 that generators inject into prompts so the LLM understands module relationships.
 
+Also provides CodeSnippet selection: picks the most relevant source fragments
+(entry points first, then most-connected) within a token budget.
+
 Token budget: ~500 tokens for full context, ~200 for short summary.
 """
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from .graph import CodeGraph, build_graph_v2, get_blast_radius_v2, is_test_file
@@ -203,6 +207,135 @@ def build_module_graph_context(graph: CodeGraph, module_path: str) -> str:
         lines.append("**Blast radius**: isolated — changes here affect no other modules\n")
 
     return "".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Code snippet selection
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True, slots=True)
+class CodeSnippet:
+    """A source code fragment selected for LLM context injection."""
+    file: str           # relative file path
+    content: str        # the source text
+    token_estimate: int # rough token count (~4 chars per token)
+    reason: str         # why it was selected ("entry_point", "most_connected", etc.)
+
+
+def select_code_snippets(
+    graph: CodeGraph,
+    root_dir: str,
+    entry_points: list[str] | None = None,
+    token_budget: int = 2000,
+) -> list[CodeSnippet]:
+    """Select the most relevant source file snippets within a token budget.
+
+    Selection priority:
+      1. Entry point files (always included first)
+      2. Most-connected modules by graph degree (imports + dependents)
+
+    Each file is read in full and its token cost estimated at ~4 chars/token.
+    Files exceeding the remaining budget are skipped.
+
+    Args:
+        graph: Pre-built CodeGraph.
+        root_dir: Absolute path to the project root.
+        entry_points: List of relative file paths considered entry points.
+            If None, auto-detects from common patterns (main.go, main.py, etc.).
+        token_budget: Maximum total estimated tokens for all snippets.
+
+    Returns:
+        List of CodeSnippet ordered by selection priority.
+    """
+    root = Path(root_dir).resolve()
+    entry_set = set(entry_points or [])
+
+    # Auto-detect entry points if none provided
+    if not entry_set:
+        entry_set = _detect_entry_points(graph)
+
+    # Compute connection counts for ranking
+    module_nodes = [n for n in graph.nodes if n.node_type == "module"]
+    connections: dict[str, int] = {}
+    for n in module_nodes:
+        connections[n.id] = 0
+    for e in graph.edges:
+        if e.edge_type in ("imports", "depends_on"):
+            connections[e.source] = connections.get(e.source, 0) + 1
+            connections[e.target] = connections.get(e.target, 0) + 1
+
+    # Split into entry points and others, sort others by connections desc
+    entry_files = [n.id for n in module_nodes if n.id in entry_set]
+    other_files = sorted(
+        [n.id for n in module_nodes if n.id not in entry_set and not is_test_file(n.id)],
+        key=lambda nid: connections.get(nid, 0),
+        reverse=True,
+    )
+
+    snippets: list[CodeSnippet] = []
+    remaining = token_budget
+
+    for file_id, reason in (
+        *((f, "entry_point") for f in entry_files),
+        *((f, "most_connected") for f in other_files),
+    ):
+        if remaining <= 0:
+            break
+
+        content = _read_file_content(root, file_id)
+        if not content:
+            continue
+
+        tokens = _estimate_tokens(content)
+        if tokens > remaining:
+            continue
+
+        snippets.append(CodeSnippet(
+            file=file_id,
+            content=content,
+            token_estimate=tokens,
+            reason=reason,
+        ))
+        remaining -= tokens
+
+    return snippets
+
+
+def _detect_entry_points(graph: CodeGraph) -> set[str]:
+    """Auto-detect entry point files from common naming patterns."""
+    entry_patterns = {
+        "main.go", "main.py", "app.py", "server.py", "index.ts", "index.js",
+        "main.rs", "Main.java", "main.ts", "main.js", "cli.py", "cli.go",
+        "manage.py", "wsgi.py", "asgi.py",
+    }
+    result: set[str] = set()
+    for node in graph.nodes:
+        if node.node_type != "module":
+            continue
+        name = Path(node.id).name
+        if name in entry_patterns:
+            result.add(node.id)
+        # Also match cmd/ directories (Go convention)
+        parts = Path(node.id).parts
+        if len(parts) >= 2 and parts[0] == "cmd":
+            result.add(node.id)
+    return result
+
+
+def _read_file_content(root: Path, relative_path: str) -> str:
+    """Read file content, returning empty string on failure."""
+    try:
+        full_path = root / relative_path
+        if not full_path.is_file():
+            return ""
+        return full_path.read_text(errors="replace")
+    except OSError:
+        return ""
+
+
+def _estimate_tokens(content: str) -> int:
+    """Rough token estimate: ~4 characters per token."""
+    return max(1, len(content) // 4)
 
 
 # ---------------------------------------------------------------------------
