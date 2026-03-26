@@ -99,6 +99,9 @@ RULES:
 4. No sections like "What this skill does" or "Overview" — go straight to patterns
 5. Commands section must have real commands for the detected tech stack
 6. Minimum 2 Critical Patterns, minimum 1 Anti-Pattern
+7. EXTRACTED FACTS: When "Extracted Facts" are provided in the context, use the EXACT
+   port numbers, endpoints, environment variables, database tables, CLI commands, and
+   version strings from them. Do NOT guess or fabricate these values.
 """
 
 # ---------------------------------------------------------------------------
@@ -362,6 +365,9 @@ RULES:
 2. "Adding a New X" section is mandatory — use the most common task for this layer type
 3. Anti-patterns must be layer-specific, not generic
 4. Quick Reference must have real file paths
+5. EXTRACTED FACTS: When "Extracted Facts" are provided in the context, use the EXACT
+   port numbers, endpoints, environment variables, database tables, CLI commands, and
+   version strings from them. Do NOT guess or fabricate these values.
 """
 
 

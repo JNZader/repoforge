@@ -40,6 +40,11 @@ CRITICAL RULES:
    field of the repo context. Do NOT infer technologies from function names, variable names,
    or export names. If a function is named `make_fastapi_example()` that does NOT mean
    FastAPI is in the stack. If stack says ["Python"], document ONLY Python.
+10. EXTRACTED FACTS — STRICT RULE: When an "Extracted Facts" section is provided, use the
+    EXACT values from it for port numbers, endpoints, environment variables, database tables,
+    CLI commands, and version strings. Do NOT guess or fabricate these values. If the facts
+    say port 7437, write 7437 — not 8080, not 3000. If the facts list specific endpoints,
+    use those exact paths. Facts are extracted from source code and are authoritative.
 """
 
 
