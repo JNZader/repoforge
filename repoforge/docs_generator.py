@@ -25,6 +25,8 @@ from .docsify import build_docsify_files
 from .graph_context import (
     build_graph_context_from_graph,
     build_short_graph_context,
+    build_semantic_context,
+    format_facts_section,
 )
 
 
@@ -102,10 +104,12 @@ def generate_docs(
     log(f"🌐 Language: {language}")
 
     # ------------------------------------------------------------------
-    # 3b. Build dependency graph context (cached, used by all chapters)
+    # 3b. Build dependency graph + semantic context (cached, used by all chapters)
     # ------------------------------------------------------------------
     graph_ctx = ""
     short_graph_ctx = ""
+    semantic_ctx = ""
+    facts_ctx = ""
     try:
         from .graph import build_graph_v2
         log(f"🔗 Building dependency graph...")
@@ -117,14 +121,45 @@ def generate_docs(
         log(f"   ✅ Graph: {module_count} modules, {edge_count} dependencies")
     except Exception as e:
         log(f"   ⚠️  Graph analysis skipped: {e}")
+        _graph = None
+
+    # Build semantic context (graph + facts + snippets)
+    try:
+        all_files = [
+            m["path"]
+            for layer in repo_map["layers"].values()
+            for m in layer.get("modules", [])
+        ]
+        log(f"🔍 Extracting semantic facts...")
+        # Full context for architecture chapter (includes snippets)
+        semantic_ctx = build_semantic_context(
+            str(root), all_files,
+            graph=_graph if '_graph' in dir() else None,
+            include_snippets=True,
+        )
+        # Facts-only context for other chapters (no snippets to save tokens)
+        from .facts import extract_facts as _extract_facts
+        _facts = _extract_facts(str(root), all_files)
+        facts_ctx = format_facts_section(_facts)
+        if _facts:
+            log(f"   ✅ Facts: {len(_facts)} items extracted")
+        else:
+            log(f"   ℹ️  No semantic facts found (project may not match patterns)")
+    except Exception as e:
+        log(f"   ⚠️  Semantic context extraction skipped: {e}")
 
     # ------------------------------------------------------------------
     # 4. Get chapter list (trimmed by complexity)
     # ------------------------------------------------------------------
+    # Architecture chapter gets FULL semantic context (graph + facts + snippets)
+    # Other chapters get facts + short graph (no snippets to save tokens)
+    _arch_context = semantic_ctx or graph_ctx
+    _other_context = (facts_ctx + "\n" + short_graph_ctx).strip() if facts_ctx else short_graph_ctx
+
     all_chapters = get_chapter_prompts(
         repo_map, language, project_name,
-        graph_context=graph_ctx,
-        short_graph_context=short_graph_ctx,
+        graph_context=_arch_context,
+        short_graph_context=_other_context,
     )
     max_ch = cx["max_chapters"]
     if len(all_chapters) > max_ch:
