@@ -214,12 +214,14 @@ _DETAIL_INSTRUCTIONS = {
 
 def skill_prompt(module: dict, layer_name: str, repo_map: dict,
                  prompt_detail: str = "standard",
-                 disclosure: str = "full") -> tuple[str, str]:
+                 disclosure: str = "full",
+                 graph_context: str = "") -> tuple[str, str]:
     """Build prompt for a module-level SKILL.md.
 
     Args:
         prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
         disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
+        graph_context: Pre-built module dependency context from graph v2.
     """
     tech = ", ".join(repo_map.get("tech_stack", []))
     exports = module.get("exports", [])
@@ -273,7 +275,8 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict,
 - Code blocks MUST use `{lang_hint}` language tag
 - Commands must be real {tech} commands (not placeholders)
 - Trigger in description must mention: `{module['name']}` or its domain
-{detail_suffix}{tiered_suffix}"""
+{detail_suffix}{tiered_suffix}
+{graph_context}"""
     return SKILL_SYSTEM, user
 
 
@@ -364,12 +367,14 @@ RULES:
 
 def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
                       prompt_detail: str = "standard",
-                      disclosure: str = "full") -> tuple[str, str]:
+                      disclosure: str = "full",
+                      graph_context: str = "") -> tuple[str, str]:
     """Build prompt for a layer-level SKILL.md.
 
     Args:
         prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
         disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
+        graph_context: Pre-built dependency context from graph v2.
     """
     tech = ", ".join(repo_map.get("tech_stack", []))
     modules = layer.get("modules", [])
@@ -420,7 +425,8 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
 {"- MULTILANGUAGE LAYER: include one code block per language: " + ", ".join(languages) if is_multilang else "- Single language: " + (languages[0] if languages else "unknown")}
 - 'Adding a New X' step names must match real file structure shown above
 - Anti-patterns must cover cross-layer issues (what breaks when {layer_name} changes)
-{detail_suffix}{tiered_suffix}"""
+{detail_suffix}{tiered_suffix}
+{graph_context}"""
     return LAYER_SKILL_SYSTEM, user
 
 

@@ -88,9 +88,13 @@ def _format_config_files(config_files: list[str]) -> str:
     return ", ".join(f"`{c}`" for c in config_files) if config_files else "none"
 
 
-def _repo_context(repo_map: dict) -> str:
-    """Build the shared repo context block used in all prompts."""
-    return f"""
+def _repo_context(repo_map: dict, graph_context: str = "") -> str:
+    """Build the shared repo context block used in all prompts.
+
+    Args:
+        graph_context: Optional dependency analysis from graph v2.
+    """
+    ctx = f"""
 ## Repo context (from static analysis — use this as your source of truth)
 
 - **Tech stack**: {_format_stack(repo_map.get("tech_stack", []))}
@@ -104,13 +108,17 @@ def _repo_context(repo_map: dict) -> str:
 ### Key modules by layer
 {_format_modules(repo_map.get("layers", {}))}
 """
+    if graph_context:
+        ctx += f"\n{graph_context}\n"
+    return ctx
 
 
 # ---------------------------------------------------------------------------
 # Chapter 0: index.md — Navigation hub
 # ---------------------------------------------------------------------------
 
-def index_prompt(repo_map: dict, language: str, project_name: str, chapters: list[dict]) -> tuple[str, str]:
+def index_prompt(repo_map: dict, language: str, project_name: str, chapters: list[dict],
+                 graph_context: str = "") -> tuple[str, str]:
     """
     chapters: [{"file": "01-overview.md", "title": "Overview", "description": "..."}, ...]
     """
@@ -121,7 +129,7 @@ def index_prompt(repo_map: dict, language: str, project_name: str, chapters: lis
 
     user = f"""Generate the **index.md** (home page) for the documentation of **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ## Chapters to link (generate a navigation table)
 | Chapter | Description |
@@ -145,14 +153,15 @@ Language: {language}
 # Chapter 1: 01-overview.md — Tech stack & structure
 # ---------------------------------------------------------------------------
 
-def overview_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
+def overview_prompt(repo_map: dict, language: str, project_name: str,
+                    graph_context: str = "") -> tuple[str, str]:
     # Build extension breakdown
     by_ext = repo_map.get("stats", {}).get("by_extension", {})
     ext_lines = "\n".join(f"  - `{ext}`: {count} files" for ext, count in sorted(by_ext.items(), key=lambda x: -x[1])[:10])
 
     user = f"""Generate **01-overview.md** — the technical overview chapter for **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### File breakdown by extension
 {ext_lines or "  (not available)"}
@@ -178,7 +187,8 @@ Language: {language}
 # Chapter 2: 02-quickstart.md — Installation & first run
 # ---------------------------------------------------------------------------
 
-def quickstart_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
+def quickstart_prompt(repo_map: dict, language: str, project_name: str,
+                      graph_context: str = "") -> tuple[str, str]:
     stack = repo_map.get("tech_stack", [])
     has_python = "Python" in stack
     has_node = "Node.js" in stack
@@ -197,7 +207,7 @@ def quickstart_prompt(repo_map: dict, language: str, project_name: str) -> tuple
 
     user = f"""Generate **02-quickstart.md** — the Quick Start guide for **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Setup hints (inferred from stack)
 {chr(10).join(f"- {h}" for h in hints) or "- Infer from entry points and config files"}
@@ -225,14 +235,15 @@ Language: {language}
 # Chapter 3: 03-architecture.md — Architecture & design
 # ---------------------------------------------------------------------------
 
-def architecture_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
+def architecture_prompt(repo_map: dict, language: str, project_name: str,
+                        graph_context: str = "") -> tuple[str, str]:
     layers = repo_map.get("layers", {})
     layer_names = list(layers.keys())
     is_monorepo = len(layers) > 1
 
     user = f"""Generate **03-architecture.md** — the Architecture chapter for **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Architecture hints
 - {"Monorepo with multiple layers: " + ", ".join(layer_names) if is_monorepo else "Single-layer project: " + (layer_names[0] if layer_names else "main")}
@@ -268,7 +279,8 @@ Language: {language}
 # Chapter 4: 04-core-mechanisms.md — Deep dive
 # ---------------------------------------------------------------------------
 
-def core_mechanisms_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
+def core_mechanisms_prompt(repo_map: dict, language: str, project_name: str,
+                           graph_context: str = "") -> tuple[str, str]:
     # Pick the most interesting modules across all layers
     top_modules = []
     for layer_name, layer_data in repo_map.get("layers", {}).items():
@@ -291,7 +303,7 @@ def core_mechanisms_prompt(repo_map: dict, language: str, project_name: str) -> 
 
     user = f"""Generate **04-core-mechanisms.md** — the Core Mechanisms deep-dive for **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Most interesting modules (analyze these in depth)
 {modules_detail or "  (use modules from repo context above)"}
@@ -320,7 +332,8 @@ Language: {language}
 # Chapter 5: 05-data-models.md — Data structures
 # ---------------------------------------------------------------------------
 
-def data_models_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
+def data_models_prompt(repo_map: dict, language: str, project_name: str,
+                       graph_context: str = "") -> tuple[str, str]:
     # Find modules that likely define models
     model_modules = []
     for layer_name, layer_data in repo_map.get("layers", {}).items():
@@ -354,7 +367,7 @@ def data_models_prompt(repo_map: dict, language: str, project_name: str) -> tupl
 
     user = f"""Generate **05-data-models.md** — the Data Models chapter for **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Modules likely containing data models/schemas
 {modules_text or "  (infer from modules with PascalCase exports or ORM imports)"}
@@ -381,7 +394,8 @@ Language: {language}
 # Chapter 6: 06-api-reference.md — Public API / endpoints
 # ---------------------------------------------------------------------------
 
-def api_reference_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
+def api_reference_prompt(repo_map: dict, language: str, project_name: str,
+                         graph_context: str = "") -> tuple[str, str]:
     # Find API-related modules
     api_modules = []
     for layer_name, layer_data in repo_map.get("layers", {}).items():
@@ -407,7 +421,7 @@ def api_reference_prompt(repo_map: dict, language: str, project_name: str) -> tu
 
     user = f"""Generate **06-api-reference.md** — the API Reference for **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Modules likely containing API endpoints/routes
 {modules_text or "  (infer from modules with router/handler naming patterns)"}
@@ -435,12 +449,13 @@ Language: {language}
 # Chapter 7: 07-dev-guide.md — Development guide
 # ---------------------------------------------------------------------------
 
-def dev_guide_prompt(repo_map: dict, language: str, project_name: str) -> tuple[str, str]:
+def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
+                     graph_context: str = "") -> tuple[str, str]:
     layers = repo_map.get("layers", {})
 
     user = f"""Generate **07-dev-guide.md** — the Developer Guide for **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ## What this document must contain
 1. `# Developer Guide` heading
@@ -702,37 +717,39 @@ ADAPTIVE_CHAPTERS: dict[str, list[dict]] = {
 
 def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                      project_name: str, project_type: str,
-                     active_chapters: list[dict]) -> tuple[str, str]:
+                     active_chapters: list[dict],
+                     graph_context: str = "") -> tuple[str, str]:
     """Route a chapter file to its prompt function."""
 
     # Existing prompts (reused across types)
     if chapter_file == "index.md":
         non_index = [c for c in active_chapters if c["file"] != "index.md"]
-        return index_prompt(repo_map, language, project_name, non_index)
+        return index_prompt(repo_map, language, project_name, non_index, graph_context=graph_context)
     if chapter_file == "01-overview.md":
-        return overview_prompt(repo_map, language, project_name)
+        return overview_prompt(repo_map, language, project_name, graph_context=graph_context)
     if chapter_file == "02-quickstart.md":
-        return quickstart_prompt(repo_map, language, project_name)
+        return quickstart_prompt(repo_map, language, project_name, graph_context=graph_context)
     if chapter_file == "03-architecture.md":
-        return architecture_prompt(repo_map, language, project_name)
+        return architecture_prompt(repo_map, language, project_name, graph_context=graph_context)
     if chapter_file == "04-core-mechanisms.md":
-        return core_mechanisms_prompt(repo_map, language, project_name)
+        return core_mechanisms_prompt(repo_map, language, project_name, graph_context=graph_context)
     if chapter_file == "05-data-models.md":
-        return data_models_prompt(repo_map, language, project_name)
+        return data_models_prompt(repo_map, language, project_name, graph_context=graph_context)
     if chapter_file == "06-api-reference.md":
-        return api_reference_prompt(repo_map, language, project_name)
+        return api_reference_prompt(repo_map, language, project_name, graph_context=graph_context)
     if chapter_file == "07-dev-guide.md":
-        return dev_guide_prompt(repo_map, language, project_name)
+        return dev_guide_prompt(repo_map, language, project_name, graph_context=graph_context)
 
     # Adaptive chapter prompts
-    return _adaptive_prompt(chapter_file, repo_map, language, project_name, project_type)
+    return _adaptive_prompt(chapter_file, repo_map, language, project_name, project_type, graph_context=graph_context)
 
 
 def _adaptive_prompt(chapter_file: str, repo_map: dict, language: str,
-                     project_name: str, project_type: str) -> tuple[str, str]:
+                     project_name: str, project_type: str,
+                     graph_context: str = "") -> tuple[str, str]:
     """Generate prompts for project-type-specific chapters."""
     sys = _base_system(language)
-    ctx = _repo_context(repo_map)
+    ctx = _repo_context(repo_map, graph_context=graph_context)
 
     # --- CLI: commands reference
     if chapter_file == "05-commands.md":
@@ -1035,12 +1052,18 @@ Language: {language}"""
 # New main entry point (replaces get_chapter_prompts)
 # ---------------------------------------------------------------------------
 
-def get_chapter_prompts(repo_map: dict, language: str, project_name: str) -> list[dict]:
+def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
+                        graph_context: str = "",
+                        short_graph_context: str = "") -> list[dict]:
     """
     Return the adaptive list of chapters to generate with their prompts.
 
     Detects project type first, then builds a tailored chapter list.
     Each entry: {"file": str, "title": str, "description": str, "system": str, "user": str}
+
+    Args:
+        graph_context: Full dependency analysis for architecture chapter.
+        short_graph_context: Short summary for other chapters.
     """
     project_type = classify_project(repo_map)
 
@@ -1059,9 +1082,11 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str) -> lis
     # Build prompts for each chapter
     result = []
     for chapter in all_chapters:
+        # Architecture chapter gets full graph context, others get short
+        ch_graph = graph_context if chapter["file"] == "03-architecture.md" else short_graph_context
         system, user = _dispatch_prompt(
             chapter["file"], repo_map, language, project_name,
-            project_type, all_chapters
+            project_type, all_chapters, graph_context=ch_graph
         )
         result.append({
             "file":        chapter["file"],
@@ -1210,7 +1235,8 @@ def _layer_repo_map(layer_name: str, layer_data: dict, repo_map: dict) -> dict:
 
 
 def _monorepo_root_chapters(repo_map: dict, language: str,
-                             project_name: str, layer_types: dict[str, str]) -> list[dict]:
+                             project_name: str, layer_types: dict[str, str],
+                             graph_context: str = "") -> list[dict]:
     """
     Build the root-level chapters for a monorepo.
     These describe the whole project and link to per-layer docs.
@@ -1242,7 +1268,7 @@ def _monorepo_root_chapters(repo_map: dict, language: str,
             )
             user = f"""Generate **index.md** — the home page for the monorepo **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Layers in this monorepo
 {layer_summary}
@@ -1262,7 +1288,7 @@ Language: {language}"""
         elif f == "01-overview.md":
             user = f"""Generate **01-overview.md** — the global overview for the monorepo **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Layers
 {layer_summary}
@@ -1280,7 +1306,7 @@ Language: {language}"""
         elif f == "02-quickstart.md":
             user = f"""Generate **02-quickstart.md** — the Quick Start for the full monorepo **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Layers to start
 {layer_summary}
@@ -1298,7 +1324,7 @@ Language: {language}"""
         elif f == "03-architecture.md":
             user = f"""Generate **03-architecture.md** — the Architecture chapter for the monorepo **{project_name}**.
 
-{_repo_context(repo_map)}
+{_repo_context(repo_map, graph_context=graph_context)}
 
 ### Layers and their types
 {layer_summary}
@@ -1322,7 +1348,8 @@ Language: {language}"""
         else:
             # Reuse existing dispatcher for service-map and dev-guide
             sys_, user = _dispatch_prompt(f, repo_map, language, project_name,
-                                           "monorepo", root_chapters_meta)
+                                           "monorepo", root_chapters_meta,
+                                           graph_context=graph_context)
 
         result.append({
             "file":         f,
@@ -1448,7 +1475,9 @@ def get_monorepo_chapter_prompts(repo_map: dict, language: str,
 _original_get_chapter_prompts = get_chapter_prompts
 
 
-def get_chapter_prompts(repo_map: dict, language: str, project_name: str) -> list[dict]:  # noqa: F811
+def get_chapter_prompts(repo_map: dict, language: str, project_name: str,  # noqa: F811
+                        graph_context: str = "",
+                        short_graph_context: str = "") -> list[dict]:
     """
     Main entry point. Routes monorepos through hierarchical generation,
     single projects through the original adaptive path.
@@ -1457,6 +1486,10 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str) -> lis
       file, title, description, project_type, system, user
     Monorepo entries also have:
       subdir  (None = root, "layername" = per-layer subfolder)
+
+    Args:
+        graph_context: Full dependency analysis for architecture chapters.
+        short_graph_context: Short summary for other chapters.
     """
     # Allow repoforge.yaml to force the project type
     cfg_type = repo_map.get("repoforge_config", {}).get("project_type")
@@ -1466,7 +1499,11 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str) -> lis
         return get_monorepo_chapter_prompts(repo_map, language, project_name)
 
     # Single project: use original adaptive path, add subdir=None for compatibility
-    chapters = _original_get_chapter_prompts(repo_map, language, project_name)
+    chapters = _original_get_chapter_prompts(
+        repo_map, language, project_name,
+        graph_context=graph_context,
+        short_graph_context=short_graph_context,
+    )
     for ch in chapters:
         ch.setdefault("subdir", None)
     return chapters
