@@ -15,6 +15,7 @@ import logging
 import re
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -115,6 +116,98 @@ IMPORT_PATTERNS = {
     "Go": r"""^\s*"([^"./][^"]*)"$""",
     "Rust": r"^use\s+([\w:]+)",
 }
+
+
+# ---------------------------------------------------------------------------
+# Fact extraction — semantic facts like endpoints, ports, env vars, etc.
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True, slots=True)
+class FactItem:
+    """A single semantic fact extracted from source code."""
+    fact_type: str   # 'endpoint', 'port', 'version', 'db_table', 'cli_command', 'env_var'
+    value: str       # the extracted value (e.g., "GET /health", "7437", "v1.2.3")
+    file: str        # source file path (relative)
+    line: int        # line number (1-based)
+    language: str    # detected language
+
+
+# Pattern structure: { fact_type: { lang_or_"*": [(regex, label), ...] } }
+# "*" matches all languages. Language-specific keys add to (not replace) "*".
+FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
+    "endpoint": {
+        "Go": [
+            (r'\.(?:Get|Post|Put|Delete|Patch|Handle(?:Func)?)\s*\(\s*"(/[^"]*)"', "route"),
+            (r'(?:http\.Handle|mux\.Handle)\s*\(\s*"(/[^"]*)"', "handle"),
+            (r'e\.(?:GET|POST|PUT|DELETE|PATCH)\s*\(\s*"(/[^"]*)"', "echo"),
+        ],
+        "Python": [
+            (r'@(?:app|router|api)\.(?:get|post|put|delete|patch|route)\s*\(\s*["\'](/[^"\']*)', "decorator"),
+            (r'path\s*\(\s*["\']([^"\']+)', "django_path"),
+        ],
+        "TypeScript": [
+            (r'\.(?:get|post|put|delete|patch)\s*\(\s*["\'](/[^"\']*)', "route"),
+            (r'server\.route\s*\(\s*["\'](/[^"\']*)', "route"),
+        ],
+        "JavaScript": [
+            (r'\.(?:get|post|put|delete|patch)\s*\(\s*["\'](/[^"\']*)', "route"),
+        ],
+        "Java": [
+            (r'@(?:Get|Post|Put|Delete|Patch|Request)Mapping\s*\(\s*["\']?(/[^"\')\s]*)', "annotation"),
+        ],
+        "Rust": [
+            (r'#\[(?:get|post|put|delete|patch)\s*\(\s*"(/[^"]*)"', "macro"),
+            (r'\.route\s*\(\s*"(/[^"]*)"', "route"),
+        ],
+    },
+    "port": {
+        "*": [
+            (r'(?:ListenAndServe|listen|EXPOSE)\s*[(":]?\s*[:]?(\d{2,5})', "port"),
+            (r'(?:port|PORT)\s*[:=]\s*["\']?(\d{2,5})', "port_assign"),
+        ],
+    },
+    "version": {
+        "*": [
+            (r'(?:version|VERSION|Version)\s*[:=]\s*["\']([^"\']+)', "version"),
+        ],
+    },
+    "db_table": {
+        "*": [
+            (r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"\']?(\w+)', "sql"),
+        ],
+        "Python": [
+            (r'__tablename__\s*=\s*["\'](\w+)', "orm"),
+            (r'class\s+\w+.*\bModel\b', "django_model"),
+        ],
+        "TypeScript": [
+            (r'@Entity\s*\(\s*["\'](\w+)', "typeorm"),
+            (r'model\s+(\w+)\s*\{', "prisma"),
+        ],
+    },
+    "cli_command": {
+        "Go": [
+            (r'Use:\s*"(\w+)"', "cobra"),
+            (r'flag\.(?:String|Int|Bool)\w*\s*\(\s*"([^"]+)"', "flag"),
+        ],
+        "Python": [
+            (r'@(?:click\.command|app\.command)\s*\(\s*["\']?(\w*)', "click"),
+            (r'add_parser\s*\(\s*["\'](\w+)', "argparse"),
+            (r'add_argument\s*\(\s*["\']--([^"\']+)', "argparse_flag"),
+        ],
+        "TypeScript": [
+            (r'\.command\s*\(\s*["\'](\w+)', "commander"),
+        ],
+    },
+    "env_var": {
+        "*": [
+            (r'os\.(?:Getenv|LookupEnv)\s*\(\s*["\']([A-Z][A-Z0-9_]+)', "go_env"),
+            (r'os\.environ(?:\.get)?\s*[\[(]\s*["\']([A-Z][A-Z0-9_]+)', "python_env"),
+            (r'process\.env\.([A-Z][A-Z0-9_]+)', "node_env"),
+            (r'os\.getenv\s*\(\s*["\']([A-Z][A-Z0-9_]+)', "python_getenv"),
+        ],
+    },
+}
+
 
 # Max files per rg invocation to avoid "argument list too long"
 _MAX_FILES_PER_RG_CALL = 200
@@ -521,6 +614,176 @@ def _extract_first_comment(content: str) -> str:
             if len(inner) > 8:
                 return inner[:200]
     return ""
+
+
+# ---------------------------------------------------------------------------
+# Fact extraction
+# ---------------------------------------------------------------------------
+
+def extract_facts(files: list[Path], root: Path) -> list[FactItem]:
+    """
+    Extract semantic facts (endpoints, ports, env vars, etc.) from source files.
+
+    Uses ripgrep when available, falls back to Python regex.
+    Returns a deduplicated, sorted list of FactItem.
+    """
+    if not files:
+        return []
+    rg = _find_rg()
+    if rg:
+        result = _rg_extract_facts(rg, files, root)
+        if result is not None:
+            return result
+    return _fallback_extract_facts(files, root)
+
+
+def _get_fact_patterns_for_lang(lang: str) -> list[tuple[str, str, str]]:
+    """Get all (regex, label, fact_type) tuples applicable to a language.
+
+    Merges "*" (universal) patterns with language-specific patterns.
+    """
+    combined: list[tuple[str, str, str]] = []
+    for fact_type, lang_map in FACT_PATTERNS.items():
+        # Universal patterns
+        for pattern, label in lang_map.get("*", []):
+            combined.append((pattern, label, fact_type))
+        # Language-specific patterns
+        for pattern, label in lang_map.get(lang, []):
+            combined.append((pattern, label, fact_type))
+    return combined
+
+
+def _rg_extract_facts(
+    rg: str, files: list[Path], root: Path,
+) -> Optional[list[FactItem]]:
+    """Use rg --json to extract facts from files, batched by language."""
+    by_lang: dict[str, list[Path]] = {}
+    for f in files:
+        lang = EXT_TO_LANG.get(f.suffix.lower())
+        if lang:
+            by_lang.setdefault(lang, []).append(f)
+
+    if not by_lang:
+        return []
+
+    facts: list[FactItem] = []
+
+    for lang, lang_files in by_lang.items():
+        patterns = _get_fact_patterns_for_lang(lang)
+        if not patterns:
+            continue
+
+        # Build combined OR pattern for rg
+        combined = "|".join(f"(?:{p})" for p, _, _ in patterns)
+
+        for batch in _batched(lang_files, _MAX_FILES_PER_RG_CALL):
+            cmd = [rg, "--json", "--line-number", "-e", combined] + [
+                str(f.resolve()) for f in batch
+            ]
+            try:
+                proc = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=60,
+                )
+            except (subprocess.TimeoutExpired, OSError):
+                # Fallback for this batch
+                _fallback_facts_batch(batch, root, lang, facts)
+                continue
+
+            _parse_rg_facts(proc.stdout, patterns, lang, root, facts)
+
+    return _deduplicate_facts(facts)
+
+
+def _parse_rg_facts(
+    stdout: str,
+    patterns: list[tuple[str, str, str]],
+    lang: str,
+    root: Path,
+    facts: list[FactItem],
+) -> None:
+    """Parse rg --json output and append FactItems to the facts list."""
+    for line in stdout.strip().split("\n"):
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if obj.get("type") != "match":
+            continue
+
+        file_path_raw = obj.get("data", {}).get("path", {}).get("text", "")
+        match_text = obj.get("data", {}).get("lines", {}).get("text", "")
+        line_number = obj.get("data", {}).get("line_number", 0)
+        if not file_path_raw or not match_text:
+            continue
+
+        rel = _to_relative(Path(file_path_raw), root)
+
+        for pattern, label, fact_type in patterns:
+            m = re.search(pattern, match_text)
+            if m:
+                value = m.group(1) if m.lastindex and m.lastindex >= 1 else match_text.strip()
+                facts.append(FactItem(
+                    fact_type=fact_type,
+                    value=value.strip(),
+                    file=rel,
+                    line=line_number,
+                    language=lang,
+                ))
+                break  # first matching pattern wins
+
+
+def _fallback_extract_facts(files: list[Path], root: Path) -> list[FactItem]:
+    """Pure Python fallback for fact extraction."""
+    facts: list[FactItem] = []
+    for f in files:
+        lang = EXT_TO_LANG.get(f.suffix.lower())
+        if not lang:
+            continue
+        _fallback_facts_batch([f], root, lang, facts)
+    return _deduplicate_facts(facts)
+
+
+def _fallback_facts_batch(
+    files: list[Path], root: Path, lang: str, facts: list[FactItem],
+) -> None:
+    """Extract facts from a batch of files using Python regex."""
+    patterns = _get_fact_patterns_for_lang(lang)
+    if not patterns:
+        return
+
+    for f in files:
+        try:
+            content = f.read_text(errors="replace")
+        except OSError:
+            continue
+        rel = _to_relative(f, root)
+        for line_num, line in enumerate(content.split("\n"), start=1):
+            for pattern, label, fact_type in patterns:
+                m = re.search(pattern, line)
+                if m:
+                    value = m.group(1) if m.lastindex and m.lastindex >= 1 else line.strip()
+                    facts.append(FactItem(
+                        fact_type=fact_type,
+                        value=value.strip(),
+                        file=rel,
+                        line=line_num,
+                        language=lang,
+                    ))
+                    break  # first matching pattern wins per line
+
+
+def _deduplicate_facts(facts: list[FactItem]) -> list[FactItem]:
+    """Deduplicate by (fact_type, value) keeping first occurrence, then sort."""
+    seen: set[tuple[str, str]] = set()
+    unique: list[FactItem] = []
+    for f in facts:
+        key = (f.fact_type, f.value)
+        if key not in seen:
+            seen.add(key)
+            unique.append(f)
+    return sorted(unique, key=lambda f: (f.fact_type, f.value))
 
 
 # ---------------------------------------------------------------------------
