@@ -421,6 +421,107 @@ class TestGraphCommand:
 
 
 # ---------------------------------------------------------------------------
+# graph subcommand (v2 — extractor-based)
+# ---------------------------------------------------------------------------
+
+class TestGraphV2Command:
+    def test_graph_v2_summary(self, runner, sample_repo):
+        """--v2 should produce a summary with Modules and Dependencies."""
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo), "--v2", "-q",
+        ])
+        assert result.exit_code == 0
+        assert "Modules:" in result.output
+
+    def test_graph_v2_mermaid(self, runner, sample_repo):
+        """--v2 --format mermaid should produce valid Mermaid output."""
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo),
+            "--v2", "--format", "mermaid", "-q",
+        ])
+        assert result.exit_code == 0
+        assert "graph LR" in result.output
+
+    def test_graph_v2_json(self, runner, sample_repo):
+        """--v2 --format json should produce valid JSON with nodes+edges."""
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo),
+            "--v2", "--format", "json", "-q",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "nodes" in data
+        assert "edges" in data
+        assert isinstance(data["nodes"], list)
+        assert isinstance(data["edges"], list)
+
+    def test_graph_v2_dot(self, runner, sample_repo):
+        """--v2 --format dot should produce valid DOT output."""
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo),
+            "--v2", "--format", "dot", "-q",
+        ])
+        assert result.exit_code == 0
+        assert "digraph" in result.output
+
+    def test_graph_v2_blast_radius(self, runner, sample_repo):
+        """--v2 --blast-radius should show blast radius with v2 details."""
+        # First get a valid file path from the v2 graph
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo),
+            "--v2", "--format", "json", "-q",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        if data["nodes"]:
+            node_id = data["nodes"][0]["id"]
+            result = runner.invoke(main, [
+                "graph", "-w", str(sample_repo),
+                "--v2", "--blast-radius", node_id, "-q",
+            ])
+            assert result.exit_code == 0
+            assert "Blast radius for:" in result.output
+            assert "Affected files:" in result.output or "Max depth reached:" in result.output
+
+    def test_graph_v2_depth_flag(self, runner, sample_repo):
+        """--v2 --depth should be accepted and work."""
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo),
+            "--v2", "--depth", "1", "-q",
+        ])
+        assert result.exit_code == 0
+
+    def test_graph_v2_json_valid_structure(self, runner, sample_repo):
+        """v2 JSON nodes should have expected fields."""
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo),
+            "--v2", "--format", "json", "-q",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        if data["nodes"]:
+            node = data["nodes"][0]
+            assert "id" in node
+            assert "name" in node
+            assert "type" in node
+            assert "file_path" in node
+            assert "exports" in node
+
+    def test_graph_v2_to_file(self, runner, sample_repo):
+        """v2 output should be writable to a file."""
+        out_file = sample_repo / "graph_v2.json"
+        result = runner.invoke(main, [
+            "graph", "-w", str(sample_repo),
+            "--v2", "--format", "json",
+            "-o", str(out_file), "-q",
+        ])
+        assert result.exit_code == 0
+        assert out_file.exists()
+        data = json.loads(out_file.read_text())
+        assert "nodes" in data
+
+
+# ---------------------------------------------------------------------------
 # skills subcommand (dry-run only — no LLM)
 # ---------------------------------------------------------------------------
 
