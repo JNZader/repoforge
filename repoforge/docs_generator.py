@@ -3,12 +3,17 @@ docs_generator.py - Pipeline for generating technical documentation.
 
 Flow:
   1. scan_repo()           → repo_map (deterministic, no LLM)
-  2. get_chapter_prompts() → list of (file, system, user) per chapter
-  3. llm.complete()        → markdown content per chapter
-  4. write files           → docs/01-overview.md, etc.
-  5. docsify.build()       → index.html, _sidebar.md, .nojekyll
+  2. Extract AST symbols + facts (deterministic, no LLM)
+  3. Build pre-digested chunks per chapter type (deterministic, no LLM)
+  4. get_chapter_prompts() → list of (file, system, user) per chapter
+  5. llm.complete()        → markdown content per chapter
+  6. write files           → docs/01-overview.md, etc.
+  7. docsify.build()       → index.html, _sidebar.md, .nojekyll
 
 Output is a Docsify-ready docs/ folder that works on GitHub Pages with zero config.
+
+v8: Chunked documentation — each chapter gets ONLY the pre-digested data it needs,
+not the entire project context. This reduces hallucination and token waste.
 """
 
 import logging
@@ -165,6 +170,59 @@ def generate_docs(
         log(f"   ⚠️  API Surface extraction skipped: {e}")
 
     # ------------------------------------------------------------------
+    # 3d. Build pre-digested chunks for focused chapter generation
+    # ------------------------------------------------------------------
+    doc_chunks = {}
+    try:
+        from .intelligence.doc_chunks import (
+            chunk_endpoints,
+            chunk_data_models,
+            chunk_mcp_tools,
+            chunk_cli_commands,
+            chunk_architecture,
+            chunk_module_summary,
+            build_all_ast_symbols,
+        )
+        log(f"🧩 Building documentation chunks...")
+
+        # Extract AST symbols once for all files
+        ast_symbols = build_all_ast_symbols(str(root), all_files)
+        if ast_symbols:
+            log(f"   ✅ AST symbols: {sum(len(v) for v in ast_symbols.values())} symbols from {len(ast_symbols)} files")
+
+        # Build per-chapter chunks
+        _facts_list = _facts if '_facts' in dir() else []
+        _build_info = repo_map.get("build_info", {})
+
+        endpoints_chunk = chunk_endpoints(_facts_list, ast_symbols)
+        models_chunk = chunk_data_models(_facts_list, ast_symbols)
+        mcp_chunk = chunk_mcp_tools(ast_symbols, _facts_list)
+        cli_chunk = chunk_cli_commands(_facts_list, ast_symbols)
+        arch_chunk = chunk_architecture(graph_ctx, _build_info)
+
+        # Module summaries for overview
+        module_summaries = []
+        for file_path, symbols in list(ast_symbols.items())[:15]:
+            summary = chunk_module_summary(file_path, symbols)
+            if summary:
+                module_summaries.append(summary)
+        modules_chunk = "\n\n".join(module_summaries) if module_summaries else ""
+
+        doc_chunks = {
+            "endpoints": endpoints_chunk,
+            "data_models": models_chunk,
+            "mcp_tools": mcp_chunk,
+            "cli_commands": cli_chunk,
+            "architecture": arch_chunk,
+            "module_summaries": modules_chunk,
+        }
+
+        non_empty = sum(1 for v in doc_chunks.values() if v)
+        log(f"   ✅ Chunks: {non_empty}/{len(doc_chunks)} non-empty")
+    except Exception as e:
+        log(f"   ⚠️  Doc chunks skipped: {e}")
+
+    # ------------------------------------------------------------------
     # 4. Get chapter list (trimmed by complexity)
     # ------------------------------------------------------------------
     # Architecture chapter gets FULL semantic context (graph + facts + snippets)
@@ -177,6 +235,7 @@ def generate_docs(
         repo_map, language, project_name,
         graph_context=_arch_context,
         short_graph_context=_other_context,
+        doc_chunks=doc_chunks,
     )
     max_ch = cx["max_chapters"]
     if len(all_chapters) > max_ch:

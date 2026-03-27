@@ -39,6 +39,17 @@ from .budget import select_context, ContextItem  # noqa: F401
 # Source code compression (tree-sitter for full, fallback for basic)
 from .compressor import compress_file, compression_stats  # noqa: F401
 
+# Pre-digested documentation chunks (always available)
+from .doc_chunks import (  # noqa: F401
+    chunk_endpoints,
+    chunk_data_models,
+    chunk_mcp_tools,
+    chunk_cli_commands,
+    chunk_architecture,
+    chunk_module_summary,
+    build_all_ast_symbols,
+)
+
 __all__ = [
     "INTELLIGENCE_AVAILABLE",
     "BuildInfo",
@@ -55,4 +66,11 @@ __all__ = [
     "ContextItem",
     "compress_file",
     "compression_stats",
+    "chunk_endpoints",
+    "chunk_data_models",
+    "chunk_mcp_tools",
+    "chunk_cli_commands",
+    "chunk_architecture",
+    "chunk_module_summary",
+    "build_all_ast_symbols",
 ]
