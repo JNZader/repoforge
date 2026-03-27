@@ -462,37 +462,25 @@ def format_api_surface(
             lines.extend(sig_lines)
             lines.append("\n")
 
-    # Append CLI commands if found
+    # CLI commands and MCP tools are ALWAYS included — they are high-value,
+    # low-cost, and the primary reason the LLM hallucinates wrong names.
     if cli_commands:
-        cmd_header = "### CLI Commands (from AST)\n"
-        cmd_tokens = _estimate_tokens(cmd_header)
-        if token_used + cmd_tokens < max_tokens:
-            lines.append(cmd_header)
-            token_used += cmd_tokens
-            for cmd_name, cmd_file in cli_commands:
-                line = f"- `{cmd_name}` ({cmd_file})\n"
-                lt = _estimate_tokens(line)
-                if token_used + lt > max_tokens:
-                    break
-                lines.append(line)
-                token_used += lt
-            lines.append("\n")
+        lines.append("### CLI Commands (from AST)\n")
+        seen_cmds: set[str] = set()
+        for cmd_name, cmd_file in cli_commands:
+            if cmd_name not in seen_cmds:
+                seen_cmds.add(cmd_name)
+                lines.append(f"- `{cmd_name}` ({cmd_file})\n")
+        lines.append("\n")
 
-    # Append MCP tools if found
     if mcp_tools:
-        tool_header = "### MCP Tools (from AST)\n"
-        tool_tokens = _estimate_tokens(tool_header)
-        if token_used + tool_tokens < max_tokens:
-            lines.append(tool_header)
-            token_used += tool_tokens
-            for tool_name, tool_file in mcp_tools:
-                line = f"- `{tool_name}` ({tool_file})\n"
-                lt = _estimate_tokens(line)
-                if token_used + lt > max_tokens:
-                    break
-                lines.append(line)
-                token_used += lt
-            lines.append("\n")
+        lines.append("### MCP Tools (from AST)\n")
+        seen_tools: set[str] = set()
+        for tool_name, tool_file in mcp_tools:
+            if tool_name not in seen_tools:
+                seen_tools.add(tool_name)
+                lines.append(f"- `{tool_name}` ({tool_file})\n")
+        lines.append("\n")
 
     return "".join(lines)
 
@@ -535,14 +523,20 @@ def _extract_cli_and_mcp(
         cli_commands.append((m.group(1), file_path))
 
     # Go switch/case CLI dispatch: case "serve":, case "mcp":
-    # Common in simple Go CLIs that use os.Args[1] switch
-    for m in re.finditer(r'case\s+"([a-z][\w-]*)"\s*:', content):
-        cmd = m.group(1)
-        # Filter out non-command cases (common Go values, flags)
-        if cmd.startswith("-") or cmd in ("true", "false", "yes", "no", "on", "off"):
-            continue
-        if (cmd, file_path) not in cli_commands:
-            cli_commands.append((cmd, file_path))
+    # Common in simple Go CLIs that use os.Args[1] switch.
+    # Only match in likely CLI entry-point files to avoid noise from TUI/test code.
+    _cli_path_hints = ("cmd/", "main.", "cli.", "/cli/", "entrypoint")
+    if any(hint in file_path.lower() for hint in _cli_path_hints):
+        # Filter: must be 2+ chars, alphabetic start, no single-char commands
+        _noise = {"true", "false", "yes", "no", "on", "off", "ok", "err",
+                  "default", "nil", "null", "none", "unknown", "no-args",
+                  "windows", "linux", "darwin"}
+        for m in re.finditer(r'case\s+"([a-z][\w-]*)"\s*:', content):
+            cmd = m.group(1)
+            if len(cmd) < 2 or cmd in _noise or cmd.startswith("-"):
+                continue
+            if (cmd, file_path) not in cli_commands:
+                cli_commands.append((cmd, file_path))
 
     # Python argparse: subparsers.add_parser("command")
     for m in re.finditer(r'add_parser\s*\(\s*["\']([^"\']+)["\']', content):
