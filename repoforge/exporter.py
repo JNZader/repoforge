@@ -74,6 +74,7 @@ def export_llm_view(
     max_tokens: Optional[int] = None,
     include_contents: bool = True,
     fmt: str = "markdown",
+    compress: bool = False,
 ) -> str:
     """
     Flatten a repository into a single LLM-optimized document.
@@ -84,6 +85,8 @@ def export_llm_view(
         max_tokens:       Optional token budget (uses char estimation).
         include_contents: If False, skip file contents (only tree + definitions).
         fmt:              Output format — "markdown" or "xml".
+        compress:         If True, compress file contents to API surface only
+                          using tree-sitter (falls back to first N lines).
 
     Returns:
         The generated document as a string.
@@ -104,10 +107,10 @@ def export_llm_view(
     # 4. Build the document
     if fmt == "xml":
         doc = _build_xml(root, project_name, repo_map, all_files, definitions,
-                         include_contents, max_tokens)
+                         include_contents, max_tokens, compress)
     else:
         doc = _build_markdown(root, project_name, repo_map, all_files, definitions,
-                              include_contents, max_tokens)
+                              include_contents, max_tokens, compress)
 
     # 5. Optionally write to file
     if output_path:
@@ -249,6 +252,7 @@ def _build_markdown(
     definitions: dict[str, list[str]],
     include_contents: bool,
     max_tokens: Optional[int],
+    compress: bool = False,
 ) -> str:
     """Build a markdown-formatted LLM context document."""
     parts: list[str] = []
@@ -299,6 +303,8 @@ def _build_markdown(
         header_text = "\n".join(parts)
         used_chars = len(header_text)
 
+        compression_stats_total = {"original": 0, "compressed": 0}
+
         for f in ordered:
             try:
                 rel = str(f.relative_to(root))
@@ -309,9 +315,16 @@ def _build_markdown(
             except OSError:
                 continue
 
+            # Apply compression if requested
+            display_content = content
+            if compress and f.suffix.lower() in SUPPORTED_EXTENSIONS:
+                display_content = _compress_content(content, rel)
+                compression_stats_total["original"] += len(content)
+                compression_stats_total["compressed"] += len(display_content)
+
             # Build file section
             lang = _ext_to_lang_hint(f.suffix.lower())
-            section = f"### `{rel}`\n\n```{lang}\n{content}\n```\n"
+            section = f"### `{rel}`\n\n```{lang}\n{display_content}\n```\n"
 
             # Check budget
             if budget_chars is not None:
@@ -321,6 +334,16 @@ def _build_markdown(
                 used_chars += len(section)
 
             parts.append(section)
+
+        # Add compression stats if compression was used
+        if compress and compression_stats_total["original"] > 0:
+            orig_tok = compression_stats_total["original"] // _CHARS_PER_TOKEN
+            comp_tok = compression_stats_total["compressed"] // _CHARS_PER_TOKEN
+            reduction = (1.0 - comp_tok / max(orig_tok, 1)) * 100
+            parts.append(
+                f"<!-- Compression: {orig_tok:,} -> {comp_tok:,} tokens "
+                f"({reduction:.0f}% reduction) -->\n"
+            )
 
     return "\n".join(parts)
 
@@ -337,6 +360,7 @@ def _build_xml(
     definitions: dict[str, list[str]],
     include_contents: bool,
     max_tokens: Optional[int],
+    compress: bool = False,
 ) -> str:
     """Build an XML-formatted LLM context document (CXML-style)."""
     parts: list[str] = []
@@ -392,7 +416,12 @@ def _build_xml(
             except OSError:
                 continue
 
-            section = f'    <file path="{_xml_escape(rel)}">\n{_xml_escape(content)}\n    </file>'
+            # Apply compression if requested
+            display_content = content
+            if compress and f.suffix.lower() in SUPPORTED_EXTENSIONS:
+                display_content = _compress_content(content, rel)
+
+            section = f'    <file path="{_xml_escape(rel)}">\n{_xml_escape(display_content)}\n    </file>'
 
             if budget_chars is not None:
                 if used_chars + len(section) > budget_chars:
@@ -444,3 +473,19 @@ def _indent(text: str, spaces: int) -> str:
     """Indent each line of text by N spaces."""
     prefix = " " * spaces
     return "\n".join(prefix + line for line in text.split("\n"))
+
+
+def _compress_content(content: str, file_path: str) -> str:
+    """Compress file content using intelligence compressor if available.
+
+    Falls back to first-N-lines extraction if tree-sitter is not available.
+    """
+    try:
+        from .intelligence.compressor import compress_file
+        return compress_file(content, file_path)
+    except ImportError:
+        # Intelligence module not available — fallback to first 30 lines
+        lines = content.split("\n")
+        if len(lines) <= 30:
+            return content
+        return "\n".join(lines[:30]) + f"\n# ... ({len(lines) - 30} more lines)"

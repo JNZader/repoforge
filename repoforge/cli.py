@@ -332,9 +332,11 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
     default="markdown", show_default=True,
     type=click.Choice(["markdown", "xml"], case_sensitive=False),
     help="Output format: markdown or xml (CXML-style, like rendergit).")
+@click.option("--compress", "do_compress", is_flag=True, default=False,
+    help="Compress source files to API surface only (signatures, no bodies).")
 @click.option("-q", "--quiet", is_flag=True, default=False,
     help="Suppress progress output.")
-def export(working_dir, output_path, max_tokens, no_contents, fmt, quiet):
+def export(working_dir, output_path, max_tokens, no_contents, fmt, do_compress, quiet):
     """
     Flatten a repo into a single LLM-optimized file (no API key needed).
 
@@ -352,6 +354,7 @@ def export(working_dir, output_path, max_tokens, no_contents, fmt, quiet):
       repoforge export -w . --max-tokens 100000 # limit output size
       repoforge export -w . --no-contents       # tree + definitions only
       repoforge export -w . --format xml        # XML output (CXML-style)
+      repoforge export -w . --compress          # API surface only (60-80% smaller)
     """
     import sys
     from .exporter import export_llm_view
@@ -365,6 +368,7 @@ def export(working_dir, output_path, max_tokens, no_contents, fmt, quiet):
         max_tokens=max_tokens,
         include_contents=not no_contents,
         fmt=fmt,
+        compress=do_compress,
     )
 
     if output_path:
