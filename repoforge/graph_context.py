@@ -351,10 +351,21 @@ def format_facts_section(facts: list[FactItem]) -> str:
 def format_snippets_section(snippets: list[CodeSnippet]) -> str:
     """Format a list of CodeSnippets into a markdown section.
 
+    When tree-sitter is available, enriches snippets with extracted
+    function/class signatures for more informative context.
+
     Returns empty string if no snippets provided.
     """
     if not snippets:
         return ""
+
+    # Try to get AST registry for signature extraction
+    ast_registry = None
+    try:
+        from .intelligence.extractor_registry import get_ast_registry
+        ast_registry = get_ast_registry()
+    except Exception:
+        pass
 
     lines = ["## Key Source Code\n"]
 
@@ -370,6 +381,19 @@ def format_snippets_section(snippets: list[CodeSnippet]) -> str:
 
         reason_label = snippet.reason.replace("_", " ")
         lines.append(f"### {snippet.file} ({reason_label})\n")
+
+        # If AST extraction available, add a signatures summary before the code
+        if ast_registry is not None:
+            try:
+                symbols = ast_registry.extract_symbols(snippet.content, snippet.file)
+                if symbols:
+                    lines.append("**Signatures:**\n")
+                    for sym in symbols[:15]:  # Cap at 15 to avoid bloat
+                        lines.append(f"- `{sym.signature}`\n")
+                    lines.append("\n")
+            except Exception:
+                pass  # Graceful fallback — just show the raw code
+
         lines.append(f"```{lang}\n{snippet.content}\n```\n\n")
 
     return "".join(lines)

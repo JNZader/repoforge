@@ -19,8 +19,25 @@ except ImportError:
 # Build parser is always available (no extra deps)
 from .build_parser import BuildInfo, parse_build_files  # noqa: F401
 
+# AST types are always importable (no native deps)
+from .ast_extractor import ASTSymbol, ASTLanguageExtractor  # noqa: F401
+
+# Registry convenience functions (gracefully return empty when tree-sitter unavailable)
+from .extractor_registry import (  # noqa: F401
+    get_ast_registry,
+    ast_extract_symbols,
+    ast_extract_endpoints,
+    ast_extract_schemas,
+)
+
 __all__ = [
     "INTELLIGENCE_AVAILABLE",
     "BuildInfo",
     "parse_build_files",
+    "ASTSymbol",
+    "ASTLanguageExtractor",
+    "get_ast_registry",
+    "ast_extract_symbols",
+    "ast_extract_endpoints",
+    "ast_extract_schemas",
 ]
