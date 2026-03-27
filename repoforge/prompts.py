@@ -102,6 +102,11 @@ RULES:
 7. EXTRACTED FACTS: When "Extracted Facts" are provided in the context, use the EXACT
    port numbers, endpoints, environment variables, database tables, CLI commands, and
    version strings from them. Do NOT guess or fabricate these values.
+8. API SURFACE: When an "API Surface" section is provided, it contains REAL function
+   signatures extracted via AST parsing. You MUST use these exact function names,
+   parameter types, and return types in code examples. Do NOT invent function names
+   or signatures not listed in the API Surface. If it lists CLI commands or MCP tools,
+   use those exact names.
 """
 
 # ---------------------------------------------------------------------------
@@ -368,6 +373,11 @@ RULES:
 5. EXTRACTED FACTS: When "Extracted Facts" are provided in the context, use the EXACT
    port numbers, endpoints, environment variables, database tables, CLI commands, and
    version strings from them. Do NOT guess or fabricate these values.
+6. API SURFACE: When an "API Surface" section is provided, it contains REAL function
+   signatures extracted via AST parsing. You MUST use these exact function names,
+   parameter types, and return types in code examples. Do NOT invent function names
+   or signatures not listed in the API Surface. If it lists CLI commands or MCP tools,
+   use those exact names.
 """
 
 

@@ -45,6 +45,12 @@ CRITICAL RULES:
     CLI commands, and version strings. Do NOT guess or fabricate these values. If the facts
     say port 7437, write 7437 — not 8080, not 3000. If the facts list specific endpoints,
     use those exact paths. Facts are extracted from source code and are authoritative.
+11. API SURFACE — CRITICAL RULE: When an "API Surface" section is provided, it contains REAL
+    function signatures extracted from the source code via AST parsing. You MUST use these exact
+    function names, parameter types, and return types in any code examples. Do NOT invent
+    function names or signatures that are not listed in the API Surface. If a function is not
+    in the API Surface, do NOT reference it in code examples. The API Surface also lists real
+    CLI commands and MCP tools when detected — use those exact names.
 """
 
 

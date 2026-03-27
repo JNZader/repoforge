@@ -21,6 +21,7 @@ from pathlib import Path
 
 from .graph import CodeGraph, build_graph_v2, get_blast_radius_v2, is_test_file
 from .facts import extract_facts, FactItem
+from .intelligence.ast_extractor import ASTSymbol
 
 logger = logging.getLogger(__name__)
 
@@ -342,6 +343,215 @@ def select_code_snippets(
 # Semantic context — combines graph + facts + snippets
 # ---------------------------------------------------------------------------
 
+def format_api_surface(
+    root_dir: str,
+    files: list[str],
+    max_tokens: int = 2000,
+    graph: CodeGraph | None = None,
+) -> str:
+    """Format an API Surface section from AST-extracted symbols.
+
+    For each file, extracts symbols via tree-sitter and formats them as
+    a concise list of signatures. This gives the LLM real function names,
+    parameter types, and return types so it cannot hallucinate them.
+
+    Files are prioritised by PageRank score when a graph is available.
+
+    Args:
+        root_dir: Absolute path to the project root.
+        files: List of relative file paths to extract symbols from.
+        max_tokens: Token budget for the entire section (~10 tokens/signature).
+        graph: Optional CodeGraph for PageRank-based ordering.
+
+    Returns:
+        Markdown string with the API Surface section, or empty string.
+    """
+    try:
+        from .intelligence.extractor_registry import get_ast_registry
+        ast_registry = get_ast_registry()
+    except Exception:
+        ast_registry = None
+
+    if ast_registry is None:
+        return ""
+
+    root = Path(root_dir).resolve()
+
+    # Determine file order: PageRank if graph available, else as-given
+    if graph is not None:
+        ranks = _compute_ranks(graph)
+        if ranks:
+            file_order = sorted(
+                files,
+                key=lambda f: ranks.get(f, 0),
+                reverse=True,
+            )
+        else:
+            file_order = list(files)
+    else:
+        file_order = list(files)
+
+    # Extract symbols per file
+    file_symbols: list[tuple[str, list[ASTSymbol]]] = []
+    for rel_path in file_order:
+        content = _read_file_content(root, rel_path)
+        if not content:
+            continue
+        symbols = ast_registry.extract_symbols(content, rel_path)
+        if symbols:
+            file_symbols.append((rel_path, symbols))
+
+    if not file_symbols:
+        return ""
+
+    # Also extract CLI commands and MCP tools from AST patterns
+    cli_commands: list[tuple[str, str]] = []  # (command_name, file)
+    mcp_tools: list[tuple[str, str]] = []  # (tool_name, file)
+    for rel_path, symbols in file_symbols:
+        content = _read_file_content(root, rel_path)
+        if not content:
+            continue
+        _cmds, _tools = _extract_cli_and_mcp(content, rel_path, symbols)
+        cli_commands.extend(_cmds)
+        mcp_tools.extend(_tools)
+
+    # Build the section, respecting token budget
+    lines = [
+        "## API Surface (from AST analysis — use these EXACT signatures)\n\n",
+    ]
+    token_used = _estimate_tokens(lines[0])
+
+    for rel_path, symbols in file_symbols:
+        header = f"### {rel_path}\n"
+        header_tokens = _estimate_tokens(header)
+        if token_used + header_tokens > max_tokens:
+            break
+
+        sig_lines: list[str] = []
+        for sym in symbols:
+            # Build a concise line based on symbol kind
+            if sym.kind in ("struct", "interface"):
+                line = f"- `{sym.signature}`"
+                if sym.fields:
+                    # Show first few fields inline
+                    preview = "; ".join(sym.fields[:5])
+                    if len(sym.fields) > 5:
+                        preview += "; ..."
+                    line += f" {{ {preview} }}"
+            elif sym.kind in ("function", "method"):
+                line = f"- `{sym.signature}`"
+            elif sym.kind in ("constant", "variable"):
+                line = f"- `{sym.signature}`"
+            elif sym.kind == "type":
+                line = f"- `{sym.signature}`"
+            else:
+                line = f"- `{sym.signature}`"
+
+            if sym.docstring:
+                line += f"  — {sym.docstring[:60]}"
+
+            sig_tokens = _estimate_tokens(line + "\n")
+            if token_used + header_tokens + sig_tokens > max_tokens:
+                break
+            sig_lines.append(line + "\n")
+            token_used += sig_tokens
+
+        if sig_lines:
+            lines.append(header)
+            token_used += header_tokens
+            lines.extend(sig_lines)
+            lines.append("\n")
+
+    # Append CLI commands if found
+    if cli_commands:
+        cmd_header = "### CLI Commands (from AST)\n"
+        cmd_tokens = _estimate_tokens(cmd_header)
+        if token_used + cmd_tokens < max_tokens:
+            lines.append(cmd_header)
+            token_used += cmd_tokens
+            for cmd_name, cmd_file in cli_commands:
+                line = f"- `{cmd_name}` ({cmd_file})\n"
+                lt = _estimate_tokens(line)
+                if token_used + lt > max_tokens:
+                    break
+                lines.append(line)
+                token_used += lt
+            lines.append("\n")
+
+    # Append MCP tools if found
+    if mcp_tools:
+        tool_header = "### MCP Tools (from AST)\n"
+        tool_tokens = _estimate_tokens(tool_header)
+        if token_used + tool_tokens < max_tokens:
+            lines.append(tool_header)
+            token_used += tool_tokens
+            for tool_name, tool_file in mcp_tools:
+                line = f"- `{tool_name}` ({tool_file})\n"
+                lt = _estimate_tokens(line)
+                if token_used + lt > max_tokens:
+                    break
+                lines.append(line)
+                token_used += lt
+            lines.append("\n")
+
+    return "".join(lines)
+
+
+def _extract_cli_and_mcp(
+    content: str, file_path: str, symbols: list[ASTSymbol]
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Extract CLI commands and MCP tool registrations from source code.
+
+    Uses regex patterns to find:
+    - CLI: cobra.Command Use fields, click.command, typer commands, Go flag subcommands
+    - MCP: mcp.NewTool, addTool, registerTool, server.AddTool patterns
+
+    Returns:
+        (cli_commands, mcp_tools) — each a list of (name, file_path) tuples.
+    """
+    import re
+
+    cli_commands: list[tuple[str, str]] = []
+    mcp_tools: list[tuple[str, str]] = []
+
+    # --- CLI detection ---
+    # Cobra: Use: "command-name"
+    for m in re.finditer(r'Use:\s*"([^"]+)"', content):
+        cli_commands.append((m.group(1), file_path))
+
+    # Click: @click.command(name="...") or @app.command(name="...")
+    for m in re.finditer(r'@\w+\.command\(\s*(?:name\s*=\s*)?["\']([^"\']+)["\']', content):
+        cli_commands.append((m.group(1), file_path))
+
+    # Typer: app.command(name="...")
+    for m in re.finditer(r'\.command\(\s*(?:name\s*=\s*)?["\']([^"\']+)["\']', content):
+        # Avoid duplicating click matches
+        cmd = m.group(1)
+        if (cmd, file_path) not in cli_commands:
+            cli_commands.append((cmd, file_path))
+
+    # Go subcommand registration: rootCmd.AddCommand(serveCmd) — infer from var names
+    for m in re.finditer(r'AddCommand\((\w+)Cmd\)', content):
+        cli_commands.append((m.group(1), file_path))
+
+    # --- MCP tool detection ---
+    # mcp.NewTool("tool_name", ...) or server.AddTool(mcp.NewTool("tool_name"...
+    for m in re.finditer(r'(?:NewTool|AddTool|registerTool)\s*\(\s*["\']([^"\']+)["\']', content):
+        mcp_tools.append((m.group(1), file_path))
+
+    # Python MCP: @server.tool() def tool_name or server.add_tool("name"...)
+    for m in re.finditer(r'add_tool\s*\(\s*["\']([^"\']+)["\']', content):
+        mcp_tools.append((m.group(1), file_path))
+
+    # Go pattern: mcp.NewTool("tool_name") — commonly seen in engram
+    # Already covered above, but also catch: Tool{Name: "tool_name"}
+    for m in re.finditer(r'(?:Tool\s*\{\s*Name|ToolName|tool_name)\s*:\s*["\']([^"\']+)["\']', content):
+        if (m.group(1), file_path) not in mcp_tools:
+            mcp_tools.append((m.group(1), file_path))
+
+    return cli_commands, mcp_tools
+
+
 # Human-readable labels for fact types
 _FACT_TYPE_LABELS: dict[str, str] = {
     "endpoint": "HTTP Endpoints",
@@ -481,7 +691,15 @@ def build_semantic_context(
     except Exception:
         logger.debug("Failed to extract facts for semantic context", exc_info=True)
 
-    # 3. Code snippets (optional — can be heavy on tokens)
+    # 3. API Surface (real signatures from AST — placed BEFORE snippets)
+    try:
+        api_surface = format_api_surface(root_dir, files, graph=_graph)
+        if api_surface:
+            sections.append(api_surface)
+    except Exception:
+        logger.debug("Failed to build API surface for semantic context", exc_info=True)
+
+    # 4. Code snippets (optional — can be heavy on tokens)
     if include_snippets and _graph is not None:
         try:
             snippets = select_code_snippets(_graph, root_dir)
