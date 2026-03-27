@@ -334,18 +334,24 @@ class PythonASTExtractor:
 
         first_stmt = None
         for c in body.children:
-            if c.type != "comment" and c.type not in ("newline", "indent", "dedent"):
+            if c.type not in ("comment", "newline", "indent", "dedent"):
                 first_stmt = c
                 break
 
         if not first_stmt:
             return None
 
+        # Direct string node in block (Python tree-sitter sometimes parses
+        # docstrings as bare string nodes rather than expression_statement)
+        if first_stmt.type == "string":
+            text = node_text(first_stmt).strip("\"'").strip()
+            first_line = text.split("\n")[0].strip()
+            return first_line if first_line else None
+
         if first_stmt.type == "expression_statement":
             inner = find_first_child(first_stmt, "string", "concatenated_string")
             if inner:
                 text = node_text(inner).strip("\"'").strip()
-                # Return first line only
                 first_line = text.split("\n")[0].strip()
                 return first_line if first_line else None
 

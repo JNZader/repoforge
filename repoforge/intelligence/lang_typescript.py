@@ -147,7 +147,8 @@ class TypeScriptASTExtractor:
     # ------------------------------------------------------------------
 
     def _extract_class(self, node, file_path: str) -> ASTSymbol | None:
-        name_node = find_first_child(node, "type_identifier")
+        # TS uses type_identifier, JS uses identifier for class names
+        name_node = find_first_child(node, "type_identifier", "identifier")
         if not name_node:
             return None
 
