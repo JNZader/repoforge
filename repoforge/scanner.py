@@ -82,7 +82,14 @@ SUPPORTED_EXTENSIONS = {
 }
 
 MAX_FILE_SIZE = 100 * 1024  # 100KB per file
-MAX_FILES_PER_LAYER = 80
+
+# Previously hardcoded to 80, which silently dropped files from large layers.
+# Now defaults to 500 — large enough for most repos while still providing a
+# safety rail. Override via --max-files CLI flag or repoforge.yaml config.
+# The real token budget enforcement happens downstream in graph_context.py
+# (intelligence engine's budget.py when available), so this cap only limits
+# the scan phase, not the final output.
+DEFAULT_MAX_FILES_PER_LAYER = 500
 
 
 # ---------------------------------------------------------------------------
@@ -143,9 +150,22 @@ def classify_complexity(repo_map: dict, override: str = "auto") -> dict:
 # Public entry point
 # ---------------------------------------------------------------------------
 
-def scan_repo(working_dir: str, config: Optional[dict] = None) -> dict:
+def scan_repo(
+    working_dir: str,
+    config: Optional[dict] = None,
+    max_files_per_layer: Optional[int] = None,
+) -> dict:
     """
     Scan a repo and return a RepoMap dict.
+
+    Args:
+        working_dir: Path to the repo root.
+        config: Optional repoforge.yaml config dict.
+        max_files_per_layer: Cap on files per layer. Defaults to
+            DEFAULT_MAX_FILES_PER_LAYER (500). Pass 0 or None to use
+            the default. The old hardcoded cap of 80 silently dropped
+            files — we now default to 500 because token-budgeted
+            selection downstream handles the real output limits.
 
     RepoMap structure:
     {
@@ -182,8 +202,13 @@ def scan_repo(working_dir: str, config: Optional[dict] = None) -> dict:
     root = Path(working_dir).resolve()
     config = config or _load_config(root)
 
+    # Resolve max files: CLI flag > config > default
+    effective_max = max_files_per_layer or config.get(
+        "max_files_per_layer", DEFAULT_MAX_FILES_PER_LAYER
+    )
+
     tech_stack = _detect_tech_stack(root)
-    layers = _detect_layers(root, config)
+    layers = _detect_layers(root, config, effective_max)
     entry_points = _find_entry_points(root)
     config_files = _find_config_files(root)
     stats = repo_stats(root)
@@ -314,7 +339,9 @@ def _detect_tech_stack(root: Path) -> list:
 # Layer detection
 # ---------------------------------------------------------------------------
 
-def _detect_layers(root: Path, config: dict) -> dict:
+def _detect_layers(
+    root: Path, config: dict, max_files: int = DEFAULT_MAX_FILES_PER_LAYER,
+) -> dict:
     # Allow full override from config
     layer_map = config.get("layers", {})
 
@@ -343,7 +370,7 @@ def _detect_layers(root: Path, config: dict) -> dict:
     for layer_name, layer_path in layer_map.items():
         p = Path(layer_path) if Path(layer_path).is_absolute() else root / layer_path
         if p.exists():
-            modules = _scan_layer(p, root)
+            modules = _scan_layer(p, root, max_files)
             result[layer_name] = {
                 "path": str(p.relative_to(root)),
                 "modules": modules,
@@ -352,7 +379,9 @@ def _detect_layers(root: Path, config: dict) -> dict:
     return result
 
 
-def _scan_layer(layer_path: Path, root: Path) -> list:
+def _scan_layer(
+    layer_path: Path, root: Path, max_files: int = DEFAULT_MAX_FILES_PER_LAYER,
+) -> list:
     from .ripgrep import (
         list_files,
         extract_definitions,
@@ -363,7 +392,14 @@ def _scan_layer(layer_path: Path, root: Path) -> list:
 
     # 1. Discover files (rg respects .gitignore; fallback uses rglob)
     all_files = list_files(layer_path, max_size_kb=MAX_FILE_SIZE // 1024)
-    files = all_files[:MAX_FILES_PER_LAYER]
+    files = all_files[:max_files]
+
+    if len(all_files) > max_files:
+        logger.warning(
+            "Layer %s has %d files, capped at %d. "
+            "Use --max-files to increase the limit.",
+            layer_path, len(all_files), max_files,
+        )
 
     if not files:
         return []

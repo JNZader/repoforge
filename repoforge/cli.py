@@ -54,6 +54,12 @@ def _common_options(f):
         help="Scan and plan, but don't call the LLM or write files.")(f)
     f = click.option("-q", "--quiet", is_flag=True, default=False,
         help="Suppress progress output.")(f)
+    f = click.option("--max-files", "max_files_per_layer", default=None, type=int,
+        help=(
+            "Max files per layer during scanning. "
+            "Default: 500. Previously hardcoded to 80, which silently dropped files. "
+            "Token budget enforcement now happens downstream, so this cap is just a safety rail."
+        ))(f)
     return f
 
 
@@ -140,6 +146,7 @@ def main():
 @click.option("--plugin/--no-plugin", "with_plugin", default=False, show_default=True,
     help="Generate plugin.json + commands/ hierarchy (Skills → Commands → Plugins).")
 def skills(working_dir, model, api_key, api_base, dry_run, quiet,
+           max_files_per_layer,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
            with_hooks, do_score, targets, disclosure, do_compress, aggressive,
            do_scan, with_plugin):
@@ -249,6 +256,7 @@ SUPPORTED_LANGUAGES = [
 @click.option("--serve-only", is_flag=True, default=False,
     help="Skip generation, only serve existing docs in output-dir.")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
+         max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
@@ -835,7 +843,7 @@ def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, inclu
 @_common_options
 @click.option("-o", "--output-dir", default=".claude", show_default=True)
 @click.option("--no-opencode", is_flag=True, default=False)
-def run_default(working_dir, model, api_key, api_base, dry_run, quiet, output_dir, no_opencode):
+def run_default(working_dir, model, api_key, api_base, dry_run, quiet, max_files_per_layer, output_dir, no_opencode):
     """Alias for 'skills' (backwards compatibility)."""
     from .generator import generate_artifacts
     generate_artifacts(
