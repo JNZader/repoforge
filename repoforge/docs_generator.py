@@ -48,6 +48,9 @@ def generate_docs(
     dry_run: bool = False,
     complexity: str = "auto",
     chunked: bool = False,
+    verify: bool = True,
+    verify_model: Optional[str] = None,
+    no_verify_docs: bool = False,
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -264,7 +267,41 @@ def generate_docs(
         }
 
     # ------------------------------------------------------------------
-    # 5. Generate each chapter
+    # 5. Prepare post-processing pipeline (Stage D + Stage C)
+    # ------------------------------------------------------------------
+    do_post_process = not no_verify_docs
+    do_verify = verify and not no_verify_docs
+
+    # Resolve facts/build_info/ast_symbols for post-processing
+    _pp_facts: list = _facts if '_facts' in dir() else []
+    _pp_build_info = None
+    _pp_ast_symbols: dict | None = None
+
+    if do_post_process or do_verify:
+        try:
+            from .intelligence.build_parser import parse_build_files
+            _pp_build_info = parse_build_files(str(root))
+        except Exception as e:
+            log(f"   ⚠️  Build info for post-processing unavailable: {e}")
+
+        if chunked and 'ast_symbols' in dir() and ast_symbols:
+            _pp_ast_symbols = ast_symbols
+        elif do_post_process:
+            try:
+                from .intelligence.doc_chunks import build_all_ast_symbols
+                _all_files = [
+                    m["path"]
+                    for layer in repo_map["layers"].values()
+                    for m in layer.get("modules", [])
+                ]
+                _pp_ast_symbols = build_all_ast_symbols(str(root), _all_files)
+            except Exception:
+                pass
+
+    all_corrections_log: list[dict] = []
+
+    # ------------------------------------------------------------------
+    # 6. Generate each chapter
     # ------------------------------------------------------------------
     out.mkdir(parents=True, exist_ok=True)
     generated = []
@@ -278,6 +315,56 @@ def generate_docs(
         try:
             content = llm.complete(chapter["user"], system=chapter["system"])
             content = content.strip() + "\n"
+            log("✅", end="")
+
+            # Stage D: Deterministic post-processing
+            if do_post_process:
+                try:
+                    from .intelligence.post_process import post_process_chapter
+                    content, d_corrections = post_process_chapter(
+                        content=content,
+                        facts=_pp_facts,
+                        build_info=_pp_build_info,
+                        ast_symbols=_pp_ast_symbols,
+                        chapter_file=chapter["file"],
+                    )
+                    if d_corrections:
+                        log(f" 🔧D:{len(d_corrections)}", end="")
+                        all_corrections_log.append({
+                            "file": chapter["file"],
+                            "stage": "D",
+                            "corrections": [
+                                {"original": c.original, "corrected": c.corrected,
+                                 "reason": c.reason, "line": c.line}
+                                for c in d_corrections
+                            ],
+                        })
+                except Exception as e:
+                    log(f" ⚠️D:{e}", end="")
+
+            # Stage C: LLM verification
+            if do_verify:
+                try:
+                    from .intelligence.verifier import verify_chapter
+                    content, v_issues = verify_chapter(
+                        chapter_content=content,
+                        facts=_pp_facts,
+                        ast_symbols=_pp_ast_symbols,
+                        llm=llm,
+                        model=verify_model,
+                    )
+                    if v_issues:
+                        log(f" 🔍C:{len(v_issues)}", end="")
+                        all_corrections_log.append({
+                            "file": chapter["file"],
+                            "stage": "C",
+                            "issues": v_issues,
+                        })
+                except Exception as e:
+                    log(f" ⚠️C:{e}", end="")
+
+            log("")  # newline after all status indicators
+
             # Write to per-layer subdir for monorepos, root otherwise
             if subdir:
                 chapter_dir = out / subdir
@@ -287,13 +374,24 @@ def generate_docs(
                 path = out / chapter["file"]
             path.write_text(content, encoding="utf-8")
             generated.append(str(path))
-            log("✅")
         except Exception as e:
             errors.append({"file": chapter["file"], "error": str(e)})
             log(f"❌ {e}")
 
     # ------------------------------------------------------------------
-    # 6. Generate Docsify files (deterministic, no LLM)
+    # 6b. Write corrections log
+    # ------------------------------------------------------------------
+    if all_corrections_log:
+        import json as _json
+        corrections_path = out / "_corrections_log.json"
+        corrections_path.write_text(
+            _json.dumps(all_corrections_log, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        log(f"\n📋 Corrections log: {_rel(corrections_path, root)}")
+
+    # ------------------------------------------------------------------
+    # 7. Generate Docsify files (deterministic, no LLM)
     # ------------------------------------------------------------------
     log("\n🌐 Building Docsify files...")
     docsify_files = build_docsify_files(
@@ -306,11 +404,25 @@ def generate_docs(
         log(f"   ✅ {_rel(f, root)}")
 
     # ------------------------------------------------------------------
-    # 7. Summary
+    # 8. Summary
     # ------------------------------------------------------------------
     total = len(generated)
-    log(f"\n🎉 Done! {total} chapters + {len(docsify_files)} Docsify files")
+    verify_status = ""
+    if no_verify_docs:
+        verify_status = " (verification disabled)"
+    elif do_verify:
+        verify_status = f" (verified with {verify_model or 'Phi-4'})"
+    elif do_post_process:
+        verify_status = " (deterministic corrections only)"
+
+    log(f"\n🎉 Done! {total} chapters + {len(docsify_files)} Docsify files{verify_status}")
     log(f"   Output: {_rel(out, root)}/")
+    if all_corrections_log:
+        total_fixes = sum(
+            len(entry.get("corrections", entry.get("issues", [])))
+            for entry in all_corrections_log
+        )
+        log(f"   📋 {total_fixes} correction(s) applied across {len(all_corrections_log)} chapter(s)")
     log("\n📖 To preview locally:")
     log(f"   npx serve {_rel(out, root)}   (or: python3 -m http.server 8000 --directory {_rel(out, root)})")
     log("\n🚀 To publish on GitHub Pages:")
@@ -328,6 +440,7 @@ def generate_docs(
         "chapters_generated": generated,
         "docsify_files": docsify_files,
         "errors": errors,
+        "corrections": all_corrections_log,
     }
 
 

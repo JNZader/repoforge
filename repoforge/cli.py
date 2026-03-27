@@ -257,10 +257,16 @@ SUPPORTED_LANGUAGES = [
     help="Skip generation, only serve existing docs in output-dir.")
 @click.option("--chunked", is_flag=True, default=False,
     help="Use chunked doc generation (pre-digested per-chapter data). Default: full-context mode.")
+@click.option("--verify/--no-verify", "do_verify", default=True, show_default=True,
+    help="Enable/disable LLM verification of generated chapters (Stage C).")
+@click.option("--verify-model", default=None,
+    help="Model for verification. Default: github/Phi-4 (or gpt-4o-mini if generator is Phi-4).")
+@click.option("--no-verify-docs", is_flag=True, default=False,
+    help="Disable BOTH deterministic corrections (Stage D) and LLM verification (Stage C).")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
-         chunked):
+         chunked, do_verify, verify_model, no_verify_docs):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -305,6 +311,9 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             dry_run=dry_run,
             complexity=complexity,
             chunked=chunked,
+            verify=do_verify,
+            verify_model=verify_model,
+            no_verify_docs=no_verify_docs,
         )
 
     if do_serve or serve_only:
