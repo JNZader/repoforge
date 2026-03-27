@@ -245,6 +245,11 @@ def scan_repo(
     if build_info.go_version:
         build_metadata["go_version"] = build_info.go_version
 
+    # Build a complete list of directories for the full project tree.
+    # This ensures the directory tree in docs includes ALL directories,
+    # even if layer detection or module scanning missed some.
+    all_directories = _discover_all_directories(root)
+
     result = {
         "root": str(root),
         "tech_stack": tech_stack,
@@ -253,6 +258,7 @@ def scan_repo(
         "config_files": config_files,
         "repoforge_config": config,   # expose so generator/docs_generator can read
         "stats": stats,
+        "_all_directories": all_directories,
     }
 
     if build_metadata:
@@ -672,6 +678,40 @@ def _ext_to_language(ext: str) -> str:
         ".swift": "Swift", ".kt": "Kotlin",
     }
     return mapping.get(ext, "Unknown")
+
+
+# ---------------------------------------------------------------------------
+# Full directory tree discovery
+# ---------------------------------------------------------------------------
+
+def _discover_all_directories(root: Path) -> list[str]:
+    """
+    Discover ALL directories containing source files under root.
+
+    This walks the file system directly (not relying on layer detection)
+    to ensure the full project structure is available for documentation.
+    Returns relative directory paths sorted alphabetically.
+    """
+    directories: set[str] = set()
+    try:
+        for entry in root.rglob("*"):
+            if not entry.is_file():
+                continue
+            if entry.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                continue
+            try:
+                rel_parts = entry.relative_to(root).parts
+            except ValueError:
+                continue
+            if any(part in SKIP_DIRS for part in rel_parts):
+                continue
+            # Add the directory containing this file
+            if len(rel_parts) > 1:
+                dir_path = str(entry.parent.relative_to(root))
+                directories.add(dir_path)
+    except PermissionError:
+        pass
+    return sorted(directories)
 
 
 # ---------------------------------------------------------------------------
