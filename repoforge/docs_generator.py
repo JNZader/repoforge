@@ -26,6 +26,7 @@ from .graph_context import (
     build_graph_context_from_graph,
     build_short_graph_context,
     build_semantic_context,
+    format_api_surface,
     format_facts_section,
 )
 
@@ -149,12 +150,28 @@ def generate_docs(
         log(f"   ⚠️  Semantic context extraction skipped: {e}")
 
     # ------------------------------------------------------------------
+    # 3c. Extract API Surface separately for non-architecture chapters
+    # ------------------------------------------------------------------
+    api_surface_ctx = ""
+    try:
+        if all_files:
+            api_surface_ctx = format_api_surface(
+                str(root), all_files,
+                graph=_graph if '_graph' in dir() else None,
+            )
+            if api_surface_ctx:
+                log(f"   ✅ API Surface extracted for all chapters")
+    except Exception as e:
+        log(f"   ⚠️  API Surface extraction skipped: {e}")
+
+    # ------------------------------------------------------------------
     # 4. Get chapter list (trimmed by complexity)
     # ------------------------------------------------------------------
     # Architecture chapter gets FULL semantic context (graph + facts + snippets)
-    # Other chapters get facts + short graph (no snippets to save tokens)
+    # Other chapters get facts + API Surface + short graph (no snippets to save tokens)
     _arch_context = semantic_ctx or graph_ctx
-    _other_context = (facts_ctx + "\n" + short_graph_ctx).strip() if facts_ctx else short_graph_ctx
+    _other_parts = [p for p in [facts_ctx, api_surface_ctx, short_graph_ctx] if p]
+    _other_context = "\n".join(_other_parts).strip() if _other_parts else ""
 
     all_chapters = get_chapter_prompts(
         repo_map, language, project_name,
