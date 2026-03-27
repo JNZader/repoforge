@@ -534,6 +534,22 @@ def _extract_cli_and_mcp(
     for m in re.finditer(r'AddCommand\((\w+)Cmd\)', content):
         cli_commands.append((m.group(1), file_path))
 
+    # Go switch/case CLI dispatch: case "serve":, case "mcp":
+    # Common in simple Go CLIs that use os.Args[1] switch
+    for m in re.finditer(r'case\s+"([a-z][\w-]*)"\s*:', content):
+        cmd = m.group(1)
+        # Filter out non-command cases (common Go values, flags)
+        if cmd.startswith("-") or cmd in ("true", "false", "yes", "no", "on", "off"):
+            continue
+        if (cmd, file_path) not in cli_commands:
+            cli_commands.append((cmd, file_path))
+
+    # Python argparse: subparsers.add_parser("command")
+    for m in re.finditer(r'add_parser\s*\(\s*["\']([^"\']+)["\']', content):
+        cmd = m.group(1)
+        if (cmd, file_path) not in cli_commands:
+            cli_commands.append((cmd, file_path))
+
     # --- MCP tool detection ---
     # mcp.NewTool("tool_name", ...) or server.AddTool(mcp.NewTool("tool_name"...
     for m in re.finditer(r'(?:NewTool|AddTool|registerTool)\s*\(\s*["\']([^"\']+)["\']', content):
