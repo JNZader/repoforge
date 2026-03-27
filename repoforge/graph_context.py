@@ -56,6 +56,9 @@ def build_graph_context_from_graph(graph: CodeGraph) -> str:
 def format_graph_context(graph: CodeGraph) -> str:
     """Format a CodeGraph into a concise markdown summary for LLM prompts.
 
+    When the intelligence engine is available, uses PageRank scores to order
+    the "Most Connected Modules" section by importance rather than raw degree.
+
     Returns empty string for empty graphs.
     """
     module_nodes = [n for n in graph.nodes if n.node_type == "module"]
@@ -64,7 +67,7 @@ def format_graph_context(graph: CodeGraph) -> str:
     if not module_nodes:
         return ""
 
-    # Count connections per node
+    # Count connections per node (used for isolated detection and fallback)
     connections: dict[str, int] = {}
     for n in module_nodes:
         connections[n.id] = 0
@@ -75,9 +78,21 @@ def format_graph_context(graph: CodeGraph) -> str:
     # Isolated (no connections)
     isolated = [nid for nid, count in connections.items() if count == 0]
 
-    # Most connected (top 5)
-    sorted_nodes = sorted(connections.items(), key=lambda x: x[1], reverse=True)
-    top5 = [(nid, count) for nid, count in sorted_nodes[:5] if count > 0]
+    # Try PageRank for ordering, fall back to degree count
+    ranks = _compute_ranks(graph)
+
+    if ranks:
+        # Order by PageRank score
+        sorted_nodes = sorted(
+            [(nid, connections[nid]) for nid in ranks if nid in connections and connections[nid] > 0],
+            key=lambda x: ranks.get(x[0], 0),
+            reverse=True,
+        )
+        top5 = sorted_nodes[:5]
+    else:
+        # Fallback: order by degree
+        sorted_nodes = sorted(connections.items(), key=lambda x: x[1], reverse=True)
+        top5 = [(nid, count) for nid, count in sorted_nodes[:5] if count > 0]
 
     lines = [
         "## Dependency Analysis\n",
@@ -95,7 +110,10 @@ def format_graph_context(graph: CodeGraph) -> str:
             deps = graph.get_dependencies(nid)
             dep_of_names = [Path(d).stem for d in deps[:5]]
 
-            parts = [f"- **{Path(nid).name}** ({count} connections)"]
+            rank_label = ""
+            if ranks and nid in ranks:
+                rank_label = f", rank {ranks[nid]:.3f}"
+            parts = [f"- **{Path(nid).name}** ({count} connections{rank_label})"]
             if dep_names:
                 parts.append(f"  imported by: {', '.join(dep_names)}")
             if dep_of_names:
@@ -238,7 +256,8 @@ def select_code_snippets(
 
     Selection priority:
       1. Entry point files (always included first)
-      2. Most-connected modules by graph degree (imports + dependents)
+      2. Files ranked by PageRank score (when intelligence available),
+         or by graph degree as fallback.
 
     Each file is read in full and its token cost estimated at ~4 chars/token.
     Files exceeding the remaining budget are skipped.
@@ -260,23 +279,35 @@ def select_code_snippets(
     if not entry_set:
         entry_set = _detect_entry_points(graph)
 
-    # Compute connection counts for ranking
-    module_nodes = [n for n in graph.nodes if n.node_type == "module"]
-    connections: dict[str, int] = {}
-    for n in module_nodes:
-        connections[n.id] = 0
-    for e in graph.edges:
-        if e.edge_type in ("imports", "depends_on"):
-            connections[e.source] = connections.get(e.source, 0) + 1
-            connections[e.target] = connections.get(e.target, 0) + 1
+    # Try PageRank for ranking, fall back to degree count
+    ranks = _compute_ranks(graph)
 
-    # Split into entry points and others, sort others by connections desc
+    module_nodes = [n for n in graph.nodes if n.node_type == "module"]
+
+    # Split into entry points and others, sort others by rank or connections
     entry_files = [n.id for n in module_nodes if n.id in entry_set]
-    other_files = sorted(
-        [n.id for n in module_nodes if n.id not in entry_set and not is_test_file(n.id)],
-        key=lambda nid: connections.get(nid, 0),
-        reverse=True,
-    )
+
+    if ranks:
+        # Sort by PageRank score (higher = more important)
+        other_files = sorted(
+            [n.id for n in module_nodes if n.id not in entry_set and not is_test_file(n.id)],
+            key=lambda nid: ranks.get(nid, 0),
+            reverse=True,
+        )
+    else:
+        # Fallback: sort by connection count
+        connections: dict[str, int] = {}
+        for n in module_nodes:
+            connections[n.id] = 0
+        for e in graph.edges:
+            if e.edge_type in ("imports", "depends_on"):
+                connections[e.source] = connections.get(e.source, 0) + 1
+                connections[e.target] = connections.get(e.target, 0) + 1
+        other_files = sorted(
+            [n.id for n in module_nodes if n.id not in entry_set and not is_test_file(n.id)],
+            key=lambda nid: connections.get(nid, 0),
+            reverse=True,
+        )
 
     snippets: list[CodeSnippet] = []
     remaining = token_budget
@@ -612,3 +643,16 @@ def _safe_id(name: str) -> str:
     """Make a name safe for mermaid node IDs."""
     import re
     return re.sub(r"[^a-zA-Z0-9_]", "_", name)
+
+
+def _compute_ranks(graph: CodeGraph) -> dict[str, float]:
+    """Compute PageRank scores if intelligence engine is available.
+
+    Returns empty dict if ranker is not available or fails.
+    """
+    try:
+        from .intelligence.ranker import pagerank
+        return pagerank(graph)
+    except Exception:
+        logger.debug("PageRank computation unavailable or failed", exc_info=True)
+        return {}
