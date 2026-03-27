@@ -294,12 +294,13 @@ def overview_prompt(repo_map: dict, language: str, project_name: str,
     by_ext = repo_map.get("stats", {}).get("by_extension", {})
     ext_lines = "\n".join(f"  - `{ext}`: {count} files" for ext, count in sorted(by_ext.items(), key=lambda x: -x[1])[:10])
 
-    # When chunks are available, use lighter context (no full module list)
-    # to avoid hitting token limits. Module summaries replace the verbose listing.
+    # When chunks are available, use lighter context (no full module list,
+    # no graph context) to avoid hitting token limits on small models.
+    # Module summaries replace both the verbose listing AND the API surface.
     module_summaries = chunks.get("module_summaries", "")
     if module_summaries:
-        # Lighter context: just stack + structure + layers (skip per-module listing)
-        ctx = _repo_context_light(repo_map, graph_context=graph_context)
+        # Lighter context: just stack + structure + layers (no per-module listing, no graph)
+        ctx = _repo_context_light(repo_map)
         focused_section = f"""
 ### Module API Summaries (from AST — use these EXACT names)
 {module_summaries}

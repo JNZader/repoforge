@@ -200,10 +200,11 @@ def generate_docs(
         cli_chunk = chunk_cli_commands(_facts_list, ast_symbols)
         arch_chunk = chunk_architecture(graph_ctx, _build_info)
 
-        # Module summaries for overview
+        # Module summaries for overview — cap at 8 most important files
+        # to avoid blowing token budgets on small models
         module_summaries = []
-        for file_path, symbols in list(ast_symbols.items())[:15]:
-            summary = chunk_module_summary(file_path, symbols)
+        for file_path, symbols in list(ast_symbols.items())[:8]:
+            summary = chunk_module_summary(file_path, symbols, max_lines=10)
             if summary:
                 module_summaries.append(summary)
         modules_chunk = "\n\n".join(module_summaries) if module_summaries else ""
