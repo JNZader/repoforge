@@ -221,6 +221,31 @@ def _repo_context(repo_map: dict, graph_context: str = "") -> str:
     return ctx
 
 
+def _repo_context_light(repo_map: dict, graph_context: str = "") -> str:
+    """Build a lighter repo context — directory tree + layers, NO per-module listing.
+
+    Used when pre-digested chunks (module summaries) replace the verbose module list.
+    Saves ~40-60% of tokens compared to _repo_context.
+    """
+    ctx = f"""
+## Repo context (from static analysis — use this as your source of truth)
+
+- **Tech stack**: {_format_stack(repo_map.get("tech_stack", []))}
+- **Entry points**: {_format_entry_points(repo_map.get("entry_points", []))}
+- **Config files**: {_format_config_files(repo_map.get("config_files", []))}
+- **Total files scanned**: {repo_map.get("stats", {}).get("total_files", "?")}
+
+### Full Project Structure
+{_build_directory_tree(repo_map)}
+
+### Layers detected
+{_format_layers(repo_map.get("layers", {}))}
+"""
+    if graph_context:
+        ctx += f"\n{graph_context}\n"
+    return ctx
+
+
 # ---------------------------------------------------------------------------
 # Chapter 0: index.md — Navigation hub
 # ---------------------------------------------------------------------------
@@ -269,18 +294,23 @@ def overview_prompt(repo_map: dict, language: str, project_name: str,
     by_ext = repo_map.get("stats", {}).get("by_extension", {})
     ext_lines = "\n".join(f"  - `{ext}`: {count} files" for ext, count in sorted(by_ext.items(), key=lambda x: -x[1])[:10])
 
-    # Focused context: module summaries instead of full repo dump
+    # When chunks are available, use lighter context (no full module list)
+    # to avoid hitting token limits. Module summaries replace the verbose listing.
     module_summaries = chunks.get("module_summaries", "")
-    focused_section = ""
     if module_summaries:
+        # Lighter context: just stack + structure + layers (skip per-module listing)
+        ctx = _repo_context_light(repo_map, graph_context=graph_context)
         focused_section = f"""
 ### Module API Summaries (from AST — use these EXACT names)
 {module_summaries}
 """
+    else:
+        ctx = _repo_context(repo_map, graph_context=graph_context)
+        focused_section = ""
 
     user = f"""Generate **01-overview.md** — the technical overview chapter for **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
+{ctx}
 
 ### File breakdown by extension
 {ext_lines or "  (not available)"}
