@@ -198,6 +198,7 @@ def scan_repo(
     }
     """
     from .ripgrep import repo_stats
+    from .intelligence import parse_build_files
 
     root = Path(working_dir).resolve()
     config = config or _load_config(root)
@@ -207,13 +208,44 @@ def scan_repo(
         "max_files_per_layer", DEFAULT_MAX_FILES_PER_LAYER
     )
 
+    # Parse build/manifest files FIRST — they're the authoritative source
+    # of module structure, dependencies, and entry points.
+    build_info = parse_build_files(str(root))
+
     tech_stack = _detect_tech_stack(root)
+
+    # Correct/enrich tech stack from build info
+    if build_info.language:
+        _enrich_tech_stack(tech_stack, build_info)
+
     layers = _detect_layers(root, config, effective_max)
+
+    # Merge build-discovered packages into layers as additional modules
+    if build_info.packages:
+        _merge_build_packages(layers, build_info, root, effective_max)
+
     entry_points = _find_entry_points(root)
+
+    # Add build-discovered entry points
+    for ep in build_info.entry_points:
+        if ep not in entry_points:
+            entry_points.append(ep)
+
     config_files = _find_config_files(root)
     stats = repo_stats(root)
 
-    return {
+    # Include build metadata in the repo map
+    build_metadata = {}
+    if build_info.language:
+        build_metadata["language"] = build_info.language
+    if build_info.module_path:
+        build_metadata["module_path"] = build_info.module_path
+    if build_info.version:
+        build_metadata["version"] = build_info.version
+    if build_info.go_version:
+        build_metadata["go_version"] = build_info.go_version
+
+    result = {
         "root": str(root),
         "tech_stack": tech_stack,
         "layers": layers,
@@ -222,6 +254,11 @@ def scan_repo(
         "repoforge_config": config,   # expose so generator/docs_generator can read
         "stats": stats,
     }
+
+    if build_metadata:
+        result["build_info"] = build_metadata
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +272,98 @@ def _load_config(root: Path) -> dict:
             with open(p) as f:
                 return yaml.safe_load(f) or {}
     return {}
+
+
+# ---------------------------------------------------------------------------
+# Build info integration helpers
+# ---------------------------------------------------------------------------
+
+_LANG_TO_STACK = {
+    "go": "Go",
+    "python": "Python",
+    "typescript": "Node.js",
+    "javascript": "Node.js",
+    "rust": "Rust",
+    "java": "Java",
+}
+
+
+def _enrich_tech_stack(tech_stack: list, build_info) -> None:
+    """Add/correct tech stack entries using authoritative build file data."""
+    canonical = _LANG_TO_STACK.get(build_info.language)
+    if canonical and canonical not in tech_stack:
+        tech_stack.insert(0, canonical)  # primary language goes first
+
+
+def _merge_build_packages(
+    layers: dict, build_info, root: Path, max_files: int,
+) -> None:
+    """
+    Merge packages discovered by the build parser into the layer map.
+
+    If a build-discovered package path isn't already covered by an
+    existing layer, scan it and add its modules to the closest layer
+    (or create a 'build_modules' layer).
+    """
+    from .ripgrep import (
+        list_files,
+        extract_definitions,
+        extract_imports,
+        extract_summary_hints,
+        rg_available,
+    )
+
+    # Collect all paths already covered by existing layers
+    covered_paths: set[str] = set()
+    for layer_data in layers.values():
+        layer_path = layer_data.get("path", "")
+        covered_paths.add(layer_path)
+        for mod in layer_data.get("modules", []):
+            # Module paths are relative, add their directory
+            mod_path = mod.get("path", "")
+            if "/" in mod_path:
+                covered_paths.add("/".join(mod_path.split("/")[:-1]))
+
+    # Find packages not covered by any layer
+    uncovered: list[str] = []
+    for pkg in build_info.packages:
+        pkg_normalized = pkg.rstrip("/")
+        is_covered = False
+        for covered in covered_paths:
+            if pkg_normalized.startswith(covered) or covered.startswith(pkg_normalized):
+                is_covered = True
+                break
+        if not is_covered:
+            uncovered.append(pkg_normalized)
+
+    if not uncovered:
+        return
+
+    # Scan uncovered packages and add them to a 'build_modules' layer
+    # or to the 'main' layer if it exists
+    target_layer = "main" if "main" in layers else "build_modules"
+    if target_layer not in layers:
+        layers[target_layer] = {"path": ".", "modules": []}
+
+    existing_module_paths = {
+        m["path"] for m in layers[target_layer].get("modules", [])
+    }
+
+    for pkg_path in uncovered:
+        full_path = root / pkg_path
+        if not full_path.exists():
+            continue
+
+        new_modules = _scan_layer(full_path, root, max_files)
+        for mod in new_modules:
+            if mod["path"] not in existing_module_paths:
+                layers[target_layer]["modules"].append(mod)
+                existing_module_paths.add(mod["path"])
+
+    logger.debug(
+        "Build parser added %d uncovered packages to '%s' layer",
+        len(uncovered), target_layer,
+    )
 
 
 # ---------------------------------------------------------------------------
