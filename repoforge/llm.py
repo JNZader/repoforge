@@ -4,7 +4,7 @@ llm.py - Single LLM abstraction over LiteLLM.
 Supports any provider LiteLLM supports:
   - Anthropic   (claude-haiku-3-5, claude-sonnet-4-5, ...)
   - OpenAI      (gpt-4o-mini, gpt-4o, ...)
-  - GitHub Models (same models, different base_url + token)
+  - GitHub Models (all models on models.inference.ai.azure.com)
   - Groq        (llama-3.1-70b-versatile, ...)
   - Ollama      (qwen2.5-coder:14b, llama3.2, deepseek-coder-v2, ...)
   - Google      (gemini-1.5-flash, ...)
@@ -16,6 +16,8 @@ Usage:
     llm = build_llm("claude-haiku-3-5")        # explicit model
     llm = build_llm("ollama/qwen2.5-coder:14b")  # local
     llm = build_llm("groq/llama-3.1-70b-versatile")
+    llm = build_llm("github/DeepSeek-R1")      # GitHub Models (any model)
+    llm = build_llm("github/gpt-4o-mini")      # GitHub Models (OpenAI)
 
     response = llm.complete("Your prompt here")
     # or streaming:
@@ -54,7 +56,7 @@ PROVIDER_PRESETS = {
     "o1": {
         "api_key_env": "OPENAI_API_KEY",
         "max_tokens": 4096,
-        "temperature": 1,  # o1 doesn't support 0
+        "temperature": 1.0,  # reasoning models reject 0; also enforced by _is_reasoning_model()
     },
     "gemini": {
         "api_key_env": "GEMINI_API_KEY",
@@ -198,11 +200,18 @@ def build_llm(
     resolved_base = api_base or preset.get("api_base")
     if prefix == "ollama" and not resolved_base:
         resolved_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    if prefix == "github" and not resolved_base:
-        resolved_base = "https://models.inference.ai.azure.com"
-        # GitHub Models uses openai/ prefix in litellm
-        if not model.startswith("openai/") and not model.startswith("github/"):
-            model = f"openai/{model.split('/', 1)[-1]}"
+
+    # GitHub Models: all models use the same OpenAI-compatible endpoint.
+    # litellm recognizes "github/" as a provider and routes to OpenAI-compatible,
+    # setting api_base to models.inference.ai.azure.com automatically.
+    if prefix == "github":
+        resolved_base = resolved_base or "https://models.inference.ai.azure.com"
+
+    # Reasoning models (o1, o3, DeepSeek-R1, etc.) reject temperature=0.
+    # Auto-set to 1.0 unless the caller explicitly provided a temperature.
+    model_name = model.split("/", 1)[-1] if "/" in model else model
+    if temperature is None and _is_reasoning_model(model_name):
+        temperature = 1.0
 
     return LLM(
         model=model,
@@ -219,6 +228,19 @@ def _auto_detect_model() -> str:
             return model
     # Last resort: try ollama
     return "ollama/qwen2.5-coder:14b"
+
+
+# Patterns that identify reasoning / "thinking" models (temperature=0 unsupported)
+_REASONING_MODEL_PATTERNS = {"o1", "o3", "deepseek-r1"}
+
+
+def _is_reasoning_model(model_name: str) -> bool:
+    """Return True if the model is a reasoning model that rejects temperature=0."""
+    name_lower = model_name.lower()
+    for pattern in _REASONING_MODEL_PATTERNS:
+        if pattern in name_lower:
+            return True
+    return False
 
 
 def _find_preset(prefix: str) -> dict:

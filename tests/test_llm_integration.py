@@ -16,9 +16,10 @@ from repoforge.llm import (
     build_llm,
     _auto_detect_model,
     _find_preset,
-    PROVIDER_PRESETS,
+    _is_reasoning_model,
+    PROVIDER_PRESETS,  # noqa: F401
     AUTO_DETECT_ORDER,
-    DEFAULT_MODEL,
+    DEFAULT_MODEL,  # noqa: F401
 )
 
 
@@ -350,7 +351,7 @@ class TestBuildLLM:
 
     def test_o1_model_temperature(self):
         preset = _find_preset("o1")
-        assert preset["temperature"] == 1  # o1 doesn't support 0
+        assert preset["temperature"] == 1.0  # reasoning models reject 0
 
 
 # ---------------------------------------------------------------------------
@@ -382,3 +383,144 @@ class TestErrorHandling:
         llm = LLM(model="test-model")
         with pytest.raises(TimeoutError):
             llm.complete("Hello")
+
+
+# ---------------------------------------------------------------------------
+# _is_reasoning_model
+# ---------------------------------------------------------------------------
+
+class TestIsReasoningModel:
+    def test_deepseek_r1(self):
+        assert _is_reasoning_model("DeepSeek-R1") is True
+
+    def test_deepseek_r1_lowercase(self):
+        assert _is_reasoning_model("deepseek-r1") is True
+
+    def test_o1_model(self):
+        assert _is_reasoning_model("o1") is True
+
+    def test_o1_mini(self):
+        assert _is_reasoning_model("o1-mini") is True
+
+    def test_o3_model(self):
+        assert _is_reasoning_model("o3") is True
+
+    def test_o3_mini(self):
+        assert _is_reasoning_model("o3-mini") is True
+
+    def test_gpt4o_is_not_reasoning(self):
+        assert _is_reasoning_model("gpt-4o") is False
+
+    def test_llama_is_not_reasoning(self):
+        assert _is_reasoning_model("Meta-Llama-3.1-405B-Instruct") is False
+
+    def test_phi4_is_not_reasoning(self):
+        assert _is_reasoning_model("Phi-4") is False
+
+
+# ---------------------------------------------------------------------------
+# GitHub Models — all 6 models
+# ---------------------------------------------------------------------------
+
+class TestGitHubModels:
+    """Verify build_llm resolves all GitHub Models correctly."""
+
+    GITHUB_MODELS = [
+        "github/gpt-4o",
+        "github/gpt-4o-mini",
+        "github/DeepSeek-R1",
+        "github/Meta-Llama-3.1-405B-Instruct",
+        "github/Phi-4",
+        "github/Meta-Llama-3.1-8B-Instruct",
+    ]
+
+    @pytest.mark.parametrize("model", GITHUB_MODELS)
+    def test_github_model_resolves_api_base(self, model):
+        llm = build_llm(model=model, api_key="ghp_test")
+        assert llm.api_base == "https://models.inference.ai.azure.com"
+
+    @pytest.mark.parametrize("model", GITHUB_MODELS)
+    def test_github_model_preserves_model_string(self, model):
+        llm = build_llm(model=model, api_key="ghp_test")
+        assert llm.model == model
+
+    @pytest.mark.parametrize("model", GITHUB_MODELS)
+    def test_github_model_resolves_api_key_from_env(self, model):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "ghp_env_token"}):
+            llm = build_llm(model=model)
+            assert llm.api_key == "ghp_env_token"
+
+    def test_deepseek_r1_gets_reasoning_temperature(self):
+        llm = build_llm(model="github/DeepSeek-R1", api_key="ghp_test")
+        assert llm.temperature == 1.0
+
+    def test_gpt4o_gets_default_temperature(self):
+        llm = build_llm(model="github/gpt-4o", api_key="ghp_test")
+        assert llm.temperature == 0.0
+
+    def test_llama_gets_default_temperature(self):
+        llm = build_llm(model="github/Meta-Llama-3.1-405B-Instruct", api_key="ghp_test")
+        assert llm.temperature == 0.0
+
+    def test_phi4_gets_default_temperature(self):
+        llm = build_llm(model="github/Phi-4", api_key="ghp_test")
+        assert llm.temperature == 0.0
+
+    def test_explicit_temperature_overrides_reasoning_default(self):
+        llm = build_llm(model="github/DeepSeek-R1", api_key="ghp_test", temperature=0.5)
+        assert llm.temperature == 0.5
+
+    @patch("repoforge.llm.litellm.completion")
+    def test_github_deepseek_r1_calls_litellm_correctly(self, mock_completion):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "ok"
+        mock_completion.return_value = mock_response
+
+        llm = build_llm(model="github/DeepSeek-R1", api_key="ghp_test")
+        llm.complete("say ok")
+
+        call_kwargs = mock_completion.call_args.kwargs
+        assert call_kwargs["model"] == "github/DeepSeek-R1"
+        assert call_kwargs["api_base"] == "https://models.inference.ai.azure.com"
+        assert call_kwargs["api_key"] == "ghp_test"
+        assert call_kwargs["temperature"] == 1.0
+
+    @patch("repoforge.llm.litellm.completion")
+    def test_github_phi4_calls_litellm_correctly(self, mock_completion):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "ok"
+        mock_completion.return_value = mock_response
+
+        llm = build_llm(model="github/Phi-4", api_key="ghp_test")
+        llm.complete("say ok")
+
+        call_kwargs = mock_completion.call_args.kwargs
+        assert call_kwargs["model"] == "github/Phi-4"
+        assert call_kwargs["api_base"] == "https://models.inference.ai.azure.com"
+        assert call_kwargs["temperature"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Reasoning model temperature — cross-provider
+# ---------------------------------------------------------------------------
+
+class TestReasoningModelTemperature:
+    """Reasoning models get temperature=1.0 automatically across providers."""
+
+    def test_o1_via_build_llm(self):
+        llm = build_llm(model="o1", api_key="sk-test")
+        assert llm.temperature == 1.0
+
+    def test_o1_mini_via_build_llm(self):
+        llm = build_llm(model="o1-mini", api_key="sk-test")
+        assert llm.temperature == 1.0
+
+    def test_o3_mini_via_build_llm(self):
+        llm = build_llm(model="o3-mini", api_key="sk-test")
+        assert llm.temperature == 1.0
+
+    def test_explicit_temperature_not_overridden(self):
+        llm = build_llm(model="o1", api_key="sk-test", temperature=0.7)
+        assert llm.temperature == 0.7
