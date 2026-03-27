@@ -30,6 +30,15 @@ from .extractor_registry import (  # noqa: F401
     ast_extract_schemas,
 )
 
+# PageRank scoring (always available — no tree-sitter needed)
+from .ranker import pagerank, rank_files  # noqa: F401
+
+# Token-budgeted context selection (always available)
+from .budget import select_context, ContextItem  # noqa: F401
+
+# Source code compression (tree-sitter for full, fallback for basic)
+from .compressor import compress_file, compression_stats  # noqa: F401
+
 __all__ = [
     "INTELLIGENCE_AVAILABLE",
     "BuildInfo",
@@ -40,4 +49,10 @@ __all__ = [
     "ast_extract_symbols",
     "ast_extract_endpoints",
     "ast_extract_schemas",
+    "pagerank",
+    "rank_files",
+    "select_context",
+    "ContextItem",
+    "compress_file",
+    "compression_stats",
 ]
