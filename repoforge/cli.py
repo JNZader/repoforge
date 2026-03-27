@@ -255,9 +255,12 @@ SUPPORTED_LANGUAGES = [
     help="Port for --serve mode.")
 @click.option("--serve-only", is_flag=True, default=False,
     help="Skip generation, only serve existing docs in output-dir.")
+@click.option("--chunked", is_flag=True, default=False,
+    help="Use chunked doc generation (pre-digested per-chapter data). Default: full-context mode.")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
-         output_dir, language, project_name, complexity, theme, do_serve, port, serve_only):
+         output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
+         chunked):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -301,6 +304,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             verbose=not quiet,
             dry_run=dry_run,
             complexity=complexity,
+            chunked=chunked,
         )
 
     if do_serve or serve_only:

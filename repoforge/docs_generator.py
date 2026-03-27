@@ -47,6 +47,7 @@ def generate_docs(
     verbose: bool = True,
     dry_run: bool = False,
     complexity: str = "auto",
+    chunked: bool = False,
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -171,57 +172,61 @@ def generate_docs(
 
     # ------------------------------------------------------------------
     # 3d. Build pre-digested chunks for focused chapter generation
+    #      (only when --chunked flag is set)
     # ------------------------------------------------------------------
     doc_chunks = {}
-    try:
-        from .intelligence.doc_chunks import (
-            chunk_endpoints,
-            chunk_data_models,
-            chunk_mcp_tools,
-            chunk_cli_commands,
-            chunk_architecture,
-            chunk_module_summary,
-            build_all_ast_symbols,
-        )
-        log(f"🧩 Building documentation chunks...")
+    if chunked:
+        try:
+            from .intelligence.doc_chunks import (
+                chunk_endpoints,
+                chunk_data_models,
+                chunk_mcp_tools,
+                chunk_cli_commands,
+                chunk_architecture,
+                chunk_module_summary,
+                build_all_ast_symbols,
+            )
+            log(f"🧩 Building documentation chunks (chunked mode)...")
 
-        # Extract AST symbols once for all files
-        ast_symbols = build_all_ast_symbols(str(root), all_files)
-        if ast_symbols:
-            log(f"   ✅ AST symbols: {sum(len(v) for v in ast_symbols.values())} symbols from {len(ast_symbols)} files")
+            # Extract AST symbols once for all files
+            ast_symbols = build_all_ast_symbols(str(root), all_files)
+            if ast_symbols:
+                log(f"   ✅ AST symbols: {sum(len(v) for v in ast_symbols.values())} symbols from {len(ast_symbols)} files")
 
-        # Build per-chapter chunks
-        _facts_list = _facts if '_facts' in dir() else []
-        _build_info = repo_map.get("build_info", {})
+            # Build per-chapter chunks
+            _facts_list = _facts if '_facts' in dir() else []
+            _build_info = repo_map.get("build_info", {})
 
-        endpoints_chunk = chunk_endpoints(_facts_list, ast_symbols)
-        models_chunk = chunk_data_models(_facts_list, ast_symbols)
-        mcp_chunk = chunk_mcp_tools(ast_symbols, _facts_list)
-        cli_chunk = chunk_cli_commands(_facts_list, ast_symbols)
-        arch_chunk = chunk_architecture(graph_ctx, _build_info)
+            endpoints_chunk = chunk_endpoints(_facts_list, ast_symbols)
+            models_chunk = chunk_data_models(_facts_list, ast_symbols)
+            mcp_chunk = chunk_mcp_tools(ast_symbols, _facts_list)
+            cli_chunk = chunk_cli_commands(_facts_list, ast_symbols)
+            arch_chunk = chunk_architecture(graph_ctx, _build_info)
 
-        # Module summaries for overview — cap at 8 most important files
-        # to avoid blowing token budgets on small models
-        module_summaries = []
-        for file_path, symbols in list(ast_symbols.items())[:8]:
-            summary = chunk_module_summary(file_path, symbols, max_lines=10)
-            if summary:
-                module_summaries.append(summary)
-        modules_chunk = "\n\n".join(module_summaries) if module_summaries else ""
+            # Module summaries for overview — cap at 8 most important files
+            # to avoid blowing token budgets on small models
+            module_summaries = []
+            for file_path, symbols in list(ast_symbols.items())[:8]:
+                summary = chunk_module_summary(file_path, symbols, max_lines=10)
+                if summary:
+                    module_summaries.append(summary)
+            modules_chunk = "\n\n".join(module_summaries) if module_summaries else ""
 
-        doc_chunks = {
-            "endpoints": endpoints_chunk,
-            "data_models": models_chunk,
-            "mcp_tools": mcp_chunk,
-            "cli_commands": cli_chunk,
-            "architecture": arch_chunk,
-            "module_summaries": modules_chunk,
-        }
+            doc_chunks = {
+                "endpoints": endpoints_chunk,
+                "data_models": models_chunk,
+                "mcp_tools": mcp_chunk,
+                "cli_commands": cli_chunk,
+                "architecture": arch_chunk,
+                "module_summaries": modules_chunk,
+            }
 
-        non_empty = sum(1 for v in doc_chunks.values() if v)
-        log(f"   ✅ Chunks: {non_empty}/{len(doc_chunks)} non-empty")
-    except Exception as e:
-        log(f"   ⚠️  Doc chunks skipped: {e}")
+            non_empty = sum(1 for v in doc_chunks.values() if v)
+            log(f"   ✅ Chunks: {non_empty}/{len(doc_chunks)} non-empty")
+        except Exception as e:
+            log(f"   ⚠️  Doc chunks skipped: {e}")
+    else:
+        log(f"📄 Full-context mode (default). Use --chunked for per-chapter chunks.")
 
     # ------------------------------------------------------------------
     # 4. Get chapter list (trimmed by complexity)
