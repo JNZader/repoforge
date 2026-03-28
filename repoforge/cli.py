@@ -29,6 +29,8 @@ Quick usage:
   repoforge skills --model github/gpt-4o-mini          # GitHub Copilot
 """
 
+import logging
+
 import click
 
 
@@ -69,7 +71,8 @@ def _common_options(f):
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(package_name="repoforge-ai")
-def main():
+@click.option("-v", "--verbose", count=True, help="Increase verbosity (-v INFO, -vv DEBUG).")
+def main(verbose):
     """
     RepoForge — AI-powered code analysis tool.
 
@@ -100,7 +103,16 @@ def main():
       repoforge graph -w . --format mermaid
       repoforge graph -w . --blast-radius src/auth.py
     """
-    pass
+    level = logging.WARNING
+    if verbose >= 2:
+        level = logging.DEBUG
+    elif verbose == 1:
+        level = logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(levelname)s %(name)s: %(message)s",
+        force=True,
+    )
 
 
 # ---------------------------------------------------------------------------
