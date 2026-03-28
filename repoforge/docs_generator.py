@@ -33,6 +33,7 @@ from .graph_context import (
     build_semantic_context,
     build_facts_only_context,
     build_facts_only_context_for_chapter,
+    filter_facts_for_chapter,
     format_api_surface,
     format_facts_section,
 )
@@ -294,9 +295,11 @@ def generate_docs(
                     api_surface_ctx, _fo_compressed, _fo_build_info,
                 )
 
-            # Architecture chapter: short graph + facts only (no API surface, no sigs)
-            # Keeps token budget under 7K total for system + user prompt.
-            _arch_fo_parts = [p for p in [short_graph_ctx, facts_ctx] if p]
+            # Architecture chapter: short graph + FILTERED facts only (no API surface, no sigs)
+            # Must use filter_facts_for_chapter to avoid sending all 400+ facts.
+            _arch_filtered_facts = filter_facts_for_chapter("03-architecture.md", _fo_facts)
+            _arch_facts_ctx = format_facts_section(_arch_filtered_facts)
+            _arch_fo_parts = [p for p in [short_graph_ctx, _arch_facts_ctx] if p]
             _fo_context_by_chapter["03-architecture.md"] = "\n".join(_arch_fo_parts).strip()
 
             # Index.md: navigation hub — needs almost ZERO context

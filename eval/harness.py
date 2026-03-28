@@ -245,14 +245,25 @@ def score_trigger_precision(output: str, module: dict) -> ScoreResult:
     """
     result = ScoreResult(dimension="trigger_precision")
 
-    # Extract triggers from YAML frontmatter
+    # Extract triggers: try YAML triggers: list first, then Trigger: inside description
     triggers = re.findall(r"triggers:\s*\n((?:\s+-[^\n]+\n?)+)", output)
-    if not triggers:
-        result.failed.append("No triggers block found in frontmatter")
+    if triggers:
+        trigger_lines = re.findall(r"-\s*(.+)", triggers[0])
+    else:
+        # Fallback: extract Trigger: line from description block
+        trigger_match = re.search(r"Trigger:\s*(.+?)(?:\n|$)", output)
+        # Also look for "## When to Use" section items as triggers
+        when_section = re.search(r"## When to Use(.*?)(?=##|\Z)", output, re.DOTALL)
+        trigger_lines = []
+        if trigger_match:
+            trigger_lines.append(trigger_match.group(1).strip())
+        if when_section:
+            trigger_lines.extend(re.findall(r"-\s*(.+)", when_section.group(1)))
+
+    if not trigger_lines:
+        result.failed.append("No triggers found (neither triggers: block nor Trigger:/When to Use)")
         result.score = 0.0
         return result
-
-    trigger_lines = re.findall(r"-\s*(.+)", triggers[0])
     if len(trigger_lines) < 3:
         result.failed.append(f"Only {len(trigger_lines)} triggers, expected ≥3")
 
@@ -312,14 +323,16 @@ def score_code_concreteness(output: str, module: dict) -> ScoreResult:
     else:
         result.failed.append(f"Missing module path reference: {module_path}")
 
-    # Check that exports appear in examples or key files sections
+    # Check that exports appear in examples, how-to, or critical patterns sections
     exports = module.get("exports", [])
     if exports:
         examples_section = re.search(r"## Examples(.*?)(?=##|\Z)", output, re.DOTALL)
         examples_text = examples_section.group(1) if examples_section else ""
         howto_section = re.search(r"## How to apply it(.*?)(?=##|\Z)", output, re.DOTALL)
         howto_text = howto_section.group(1) if howto_section else ""
-        combined = examples_text + howto_text
+        patterns_section = re.search(r"## Critical Patterns(.*?)(?=\n## [A-Z]|\Z)", output, re.DOTALL)
+        patterns_text = patterns_section.group(1) if patterns_section else ""
+        combined = examples_text + howto_text + patterns_text
 
         exports_found = [e for e in exports[:6] if e in combined]
         if len(exports_found) >= min(2, len(exports)):
@@ -365,16 +378,16 @@ def score_pattern_detection(output: str, module: dict, repo_map: dict) -> ScoreR
     else:
         result.failed.append(f"Doesn't mention tech stack. Expected: {tech_stack}")
 
-    # Check pitfalls section exists and is non-trivial
-    pitfalls = re.search(r"## Pitfalls(.*?)(?=##|\Z)", output, re.DOTALL)
+    # Check pitfalls/anti-patterns section exists and is non-trivial
+    pitfalls = re.search(r"## (?:Pitfalls|Anti-Patterns)(.*?)(?=##|\Z)", output, re.DOTALL)
     if pitfalls:
         pitfalls_text = pitfalls.group(1).strip()
         if len(pitfalls_text) > 100:
-            result.passed.append("Pitfalls section is substantive")
+            result.passed.append("Pitfalls/Anti-Patterns section is substantive")
         else:
-            result.failed.append("Pitfalls section is too brief (<100 chars)")
+            result.failed.append("Pitfalls/Anti-Patterns section is too brief (<100 chars)")
     else:
-        result.failed.append("No Pitfalls section")
+        result.failed.append("No Pitfalls or Anti-Patterns section")
 
     # Check conventions or patterns section
     conventions = re.search(r"## (Conventions|Patterns|Notes)(.*?)(?=##|\Z)", output, re.DOTALL)
