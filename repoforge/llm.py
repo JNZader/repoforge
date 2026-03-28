@@ -9,6 +9,7 @@ Supports any provider LiteLLM supports:
   - Ollama      (qwen2.5-coder:14b, llama3.2, deepseek-coder-v2, ...)
   - Google      (gemini-1.5-flash, ...)
   - Mistral     (mistral-small, ...)
+  - LLM Gateway (mcp-llm-bridge — centralized credential routing)
   - Any OpenAI-compatible endpoint
 
 Usage:
@@ -18,6 +19,8 @@ Usage:
     llm = build_llm("groq/llama-3.1-70b-versatile")
     llm = build_llm("github/DeepSeek-R1")      # GitHub Models (any model)
     llm = build_llm("github/gpt-4o-mini")      # GitHub Models (OpenAI)
+    llm = build_llm("gateway/claude-sonnet-4-20250514")  # via mcp-llm-bridge
+    llm = build_llm("gateway/gpt-4o")           # any model through the gateway
 
     response = llm.complete("Your prompt here")
     # or streaming:
@@ -85,12 +88,26 @@ PROVIDER_PRESETS = {
         "max_tokens": 4096,
         "temperature": 0.0,
     },
+    "gateway": {
+        "api_key_env": "LLM_GATEWAY_AUTH_TOKEN",
+        "api_base_env": "LLM_GATEWAY_URL",
+        "api_base": "http://localhost:3456/v1",
+        "max_tokens": 4096,
+        "temperature": 0.0,
+        # Routes through mcp-llm-bridge (OpenAI-compatible).
+        # The gateway handles provider selection, fallback, and credentials.
+        # Model string is passed as-is; the gateway resolves it.
+        "litellm_prefix": "openai",
+    },
 }
 
 # Default model if nothing is configured
 DEFAULT_MODEL = "claude-haiku-3-5"
 
-# Auto-detection order from env vars
+# Auto-detection order from env vars.
+# GitHub Models is the default provider (free tier with GITHUB_TOKEN).
+# LLM Gateway is opt-in: set LLM_GATEWAY_AUTH_TOKEN to route through
+# mcp-llm-bridge for centralized credential management and fallback.
 AUTO_DETECT_ORDER = [
     ("ANTHROPIC_API_KEY", "claude-haiku-3-5"),
     ("ANTHROPIC_AUTH_TOKEN", "claude-haiku-3-5"),
@@ -99,6 +116,7 @@ AUTO_DETECT_ORDER = [
     ("GITHUB_TOKEN", "github/gpt-4o-mini"),
     ("GEMINI_API_KEY", "gemini/gemini-1.5-flash"),
     ("MISTRAL_API_KEY", "mistral/mistral-small"),
+    ("LLM_GATEWAY_AUTH_TOKEN", "gateway/claude-sonnet-4-20250514"),
 ]
 
 
@@ -196,8 +214,12 @@ def build_llm(
     if not resolved_key and preset.get("fallback_api_key_env"):
         resolved_key = os.getenv(preset["fallback_api_key_env"])
 
-    # Resolve API base
-    resolved_base = api_base or preset.get("api_base")
+    # Resolve API base (check env override first, then preset default)
+    resolved_base = api_base
+    if not resolved_base and preset.get("api_base_env"):
+        resolved_base = os.getenv(preset["api_base_env"])
+    if not resolved_base:
+        resolved_base = preset.get("api_base")
     if prefix == "ollama" and not resolved_base:
         resolved_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
@@ -206,6 +228,18 @@ def build_llm(
     # setting api_base to models.inference.ai.azure.com automatically.
     if prefix == "github":
         resolved_base = resolved_base or "https://models.inference.ai.azure.com"
+
+    # LLM Gateway (mcp-llm-bridge): rewrite model for LiteLLM.
+    # "gateway/claude-sonnet-4" -> "openai/claude-sonnet-4" with gateway base_url.
+    # The gateway's /v1/chat/completions endpoint is OpenAI-compatible,
+    # so LiteLLM routes it correctly. The gateway resolves the actual provider.
+    extra = {}
+    if prefix == "gateway":
+        litellm_prefix = preset.get("litellm_prefix", "openai")
+        model_name = model.split("/", 1)[-1] if "/" in model else model
+        model = f"{litellm_prefix}/{model_name}"
+        # Send X-Project header for per-project credential scoping.
+        extra["extra_headers"] = {"X-Project": "repoforge"}
 
     # Reasoning models (o1, o3, DeepSeek-R1, etc.) reject temperature=0.
     # Auto-set to 1.0 unless the caller explicitly provided a temperature.
@@ -219,6 +253,7 @@ def build_llm(
         api_base=resolved_base,
         max_tokens=max_tokens or preset.get("max_tokens", 4096),
         temperature=temperature if temperature is not None else preset.get("temperature", 0.0),
+        extra_kwargs=extra,
     )
 
 
