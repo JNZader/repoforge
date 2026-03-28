@@ -202,6 +202,7 @@ def scan_repo(
 
     root = Path(working_dir).resolve()
     config = config or _load_config(root)
+    repoignore = _load_repoignore(root)
 
     # Resolve max files: CLI flag > config > default
     effective_max = max_files_per_layer or config.get(
@@ -218,11 +219,11 @@ def scan_repo(
     if build_info.language:
         _enrich_tech_stack(tech_stack, build_info)
 
-    layers = _detect_layers(root, config, effective_max)
+    layers = _detect_layers(root, config, effective_max, extra_ignore=repoignore or None)
 
     # Merge build-discovered packages into layers as additional modules
     if build_info.packages:
-        _merge_build_packages(layers, build_info, root, effective_max)
+        _merge_build_packages(layers, build_info, root, effective_max, extra_ignore=repoignore or None)
 
     entry_points = _find_entry_points(root)
 
@@ -280,6 +281,20 @@ def _load_config(root: Path) -> dict:
     return {}
 
 
+def _load_repoignore(root: Path) -> set[str]:
+    """Load custom ignore patterns from .repoignore (gitignore-style)."""
+    p = root / ".repoignore"
+    if not p.exists():
+        return set()
+    patterns: set[str] = set()
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        patterns.add(line.rstrip("/"))
+    return patterns
+
+
 # ---------------------------------------------------------------------------
 # Build info integration helpers
 # ---------------------------------------------------------------------------
@@ -303,6 +318,7 @@ def _enrich_tech_stack(tech_stack: list, build_info) -> None:
 
 def _merge_build_packages(
     layers: dict, build_info, root: Path, max_files: int,
+    extra_ignore: Optional[set[str]] = None,
 ) -> None:
     """
     Merge packages discovered by the build parser into the layer map.
@@ -360,7 +376,7 @@ def _merge_build_packages(
         if not full_path.exists():
             continue
 
-        new_modules = _scan_layer(full_path, root, max_files)
+        new_modules = _scan_layer(full_path, root, max_files, extra_ignore=extra_ignore)
         for mod in new_modules:
             if mod["path"] not in existing_module_paths:
                 layers[target_layer]["modules"].append(mod)
@@ -476,6 +492,7 @@ def _detect_tech_stack(root: Path) -> list:
 
 def _detect_layers(
     root: Path, config: dict, max_files: int = DEFAULT_MAX_FILES_PER_LAYER,
+    extra_ignore: Optional[set[str]] = None,
 ) -> dict:
     # Allow full override from config
     layer_map = config.get("layers", {})
@@ -505,7 +522,7 @@ def _detect_layers(
     for layer_name, layer_path in layer_map.items():
         p = Path(layer_path) if Path(layer_path).is_absolute() else root / layer_path
         if p.exists():
-            modules = _scan_layer(p, root, max_files)
+            modules = _scan_layer(p, root, max_files, extra_ignore=extra_ignore)
             result[layer_name] = {
                 "path": str(p.relative_to(root)),
                 "modules": modules,
@@ -515,7 +532,10 @@ def _detect_layers(
 
 
 def _scan_layer(
-    layer_path: Path, root: Path, max_files: int = DEFAULT_MAX_FILES_PER_LAYER,
+    layer_path: Path,
+    root: Path,
+    max_files: int = DEFAULT_MAX_FILES_PER_LAYER,
+    extra_ignore: Optional[set[str]] = None,
 ) -> list:
     from .ripgrep import (
         list_files,
@@ -526,7 +546,7 @@ def _scan_layer(
     )
 
     # 1. Discover files (rg respects .gitignore; fallback uses rglob)
-    all_files = list_files(layer_path, max_size_kb=MAX_FILE_SIZE // 1024)
+    all_files = list_files(layer_path, max_size_kb=MAX_FILE_SIZE // 1024, extra_ignore=extra_ignore)
     files = all_files[:max_files]
 
     if len(all_files) > max_files:

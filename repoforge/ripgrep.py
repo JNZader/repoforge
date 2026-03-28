@@ -331,20 +331,32 @@ _MAX_FILES_PER_RG_CALL = 200
 # File discovery
 # ---------------------------------------------------------------------------
 
-def list_files(directory: Path, max_size_kb: int = 100) -> list[Path]:
+def list_files(
+    directory: Path,
+    max_size_kb: int = 100,
+    extra_ignore: Optional[set[str]] = None,
+) -> list[Path]:
     """
     Return all source files under `directory`, respecting .gitignore.
     Uses ripgrep if available, falls back to Python rglob.
+
+    Args:
+        extra_ignore: Additional patterns to exclude (from .repoignore).
     """
     rg = _find_rg()
     if rg:
-        result = _rg_list_files(rg, directory, max_size_kb)
+        result = _rg_list_files(rg, directory, max_size_kb, extra_ignore)
         if result is not None:
             return result
-    return _fallback_list_files(directory, max_size_kb)
+    return _fallback_list_files(directory, max_size_kb, extra_ignore)
 
 
-def _rg_list_files(rg: str, directory: Path, max_size_kb: int) -> Optional[list[Path]]:
+def _rg_list_files(
+    rg: str,
+    directory: Path,
+    max_size_kb: int,
+    extra_ignore: Optional[set[str]] = None,
+) -> Optional[list[Path]]:
     """Use `rg --files` for fast, .gitignore-aware file discovery."""
     cmd = [
         rg, "--files",
@@ -357,6 +369,8 @@ def _rg_list_files(rg: str, directory: Path, max_size_kb: int) -> Optional[list[
         cmd.extend(["--glob", f"!{d}"])
         cmd.extend(["--glob", f"!{d}/**"])
         cmd.extend(["--glob", f"!**/{d}/**"])
+    for pattern in extra_ignore or ():
+        cmd.extend(["--glob", f"!{pattern}"])
 
     cmd.append(str(directory))
 
@@ -386,9 +400,14 @@ def _rg_list_files(rg: str, directory: Path, max_size_kb: int) -> Optional[list[
         return None
 
 
-def _fallback_list_files(directory: Path, max_size_kb: int) -> list[Path]:
+def _fallback_list_files(
+    directory: Path,
+    max_size_kb: int,
+    extra_ignore: Optional[set[str]] = None,
+) -> list[Path]:
     """Pure Python fallback using rglob."""
     max_bytes = max_size_kb * 1024
+    ignore_dirs = set(EXTRA_IGNORE_DIRS) | (extra_ignore or set())
     result = []
     try:
         for entry in sorted(directory.rglob("*")):
@@ -396,7 +415,7 @@ def _fallback_list_files(directory: Path, max_size_kb: int) -> list[Path]:
                 rel_parts = entry.relative_to(directory).parts
             except ValueError:
                 continue
-            if any(part in EXTRA_IGNORE_DIRS for part in rel_parts):
+            if any(part in ignore_dirs for part in rel_parts):
                 continue
             if not entry.is_file():
                 continue
