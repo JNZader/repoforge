@@ -31,6 +31,7 @@ class TestFactPatternsCoverage:
         expected = {
             "endpoint", "port", "version", "db_table", "cli_command", "env_var",
             "mcp_tool", "fts_ddl", "struct_field", "go_version", "db_engine",
+            "dedup_mechanism", "ui_framework", "sync_format",
         }
         assert expected == set(FACT_PATTERNS.keys())
 
@@ -458,6 +459,9 @@ class TestFtsDdlFacts:
         facts = extract_facts(str(tmp_path), ["schema.py"])
         fts = [f for f in facts if f.fact_type == "fts_ddl"]
         assert len(fts) >= 1
+        # Value must include FTS version (Gap 3)
+        assert any("fts5" in f.value.lower() for f in fts)
+        assert any("notes_fts" in f.value for f in fts)
 
     def test_fts4_create(self, tmp_path):
         _write(tmp_path, "schema.py", """\
@@ -466,6 +470,8 @@ class TestFtsDdlFacts:
         facts = extract_facts(str(tmp_path), ["schema.py"])
         fts = [f for f in facts if f.fact_type == "fts_ddl"]
         assert len(fts) >= 1
+        # Value must include FTS version (Gap 3)
+        assert any("fts4" in f.value.lower() for f in fts)
 
     def test_negative_regular_table(self, tmp_path):
         _write(tmp_path, "schema.py", """\
@@ -717,3 +723,151 @@ class TestDbEngineFacts:
         facts = extract_facts(str(tmp_path), ["main.go"])
         engines = [f for f in facts if f.fact_type == "db_engine"]
         assert len(engines) == 0
+
+
+# ---------------------------------------------------------------------------
+# Dedup mechanism extraction
+# ---------------------------------------------------------------------------
+
+class TestDedupMechanismFacts:
+    """Extract deduplication mechanism facts."""
+
+    def test_go_normalized_hash(self, tmp_path):
+        _write(tmp_path, "dedup.go", """\
+            package store
+
+            func (o *Observation) NormalizedHash() string {
+                return hash(o.Content)
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["dedup.go"])
+        dedup = [f for f in facts if f.fact_type == "dedup_mechanism"]
+        assert len(dedup) >= 1
+
+    def test_python_normalized_hash(self, tmp_path):
+        _write(tmp_path, "models.py", """\
+            class Observation:
+                normalized_hash = Column(String, unique=True)
+        """)
+        facts = extract_facts(str(tmp_path), ["models.py"])
+        dedup = [f for f in facts if f.fact_type == "dedup_mechanism"]
+        assert len(dedup) >= 1
+
+    def test_python_unique_together(self, tmp_path):
+        _write(tmp_path, "models.py", """\
+            class Meta:
+                unique_together = [("project", "hash")]
+        """)
+        facts = extract_facts(str(tmp_path), ["models.py"])
+        dedup = [f for f in facts if f.fact_type == "dedup_mechanism"]
+        assert len(dedup) >= 1
+
+    def test_content_hash_universal(self, tmp_path):
+        _write(tmp_path, "hash.py", """\
+            content_hash = hashlib.sha256(data).hexdigest()
+        """)
+        facts = extract_facts(str(tmp_path), ["hash.py"])
+        dedup = [f for f in facts if f.fact_type == "dedup_mechanism"]
+        assert len(dedup) >= 1
+
+    def test_negative_no_dedup(self, tmp_path):
+        _write(tmp_path, "main.go", """\
+            package main
+
+            func main() {
+                fmt.Println("hello")
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["main.go"])
+        dedup = [f for f in facts if f.fact_type == "dedup_mechanism"]
+        assert len(dedup) == 0
+
+
+# ---------------------------------------------------------------------------
+# UI framework extraction
+# ---------------------------------------------------------------------------
+
+class TestUiFrameworkFacts:
+    """Extract UI framework facts."""
+
+    def test_go_bubbletea(self, tmp_path):
+        _write(tmp_path, "tui.go", """\
+            package main
+
+            import tea "github.com/charmbracelet/bubbletea"
+        """)
+        facts = extract_facts(str(tmp_path), ["tui.go"])
+        ui = [f for f in facts if f.fact_type == "ui_framework"]
+        assert len(ui) >= 1
+
+    def test_python_streamlit(self, tmp_path):
+        _write(tmp_path, "app.py", """\
+            import streamlit as st
+
+            st.title("Dashboard")
+        """)
+        facts = extract_facts(str(tmp_path), ["app.py"])
+        ui = [f for f in facts if f.fact_type == "ui_framework"]
+        assert len(ui) >= 1
+
+    def test_typescript_ink(self, tmp_path):
+        _write(tmp_path, "cli.tsx", """\
+            import { render } from 'ink';
+        """)
+        facts = extract_facts(str(tmp_path), ["cli.tsx"])
+        ui = [f for f in facts if f.fact_type == "ui_framework"]
+        assert len(ui) >= 1
+
+    def test_negative_no_ui(self, tmp_path):
+        _write(tmp_path, "main.go", """\
+            package main
+
+            func main() {}
+        """)
+        facts = extract_facts(str(tmp_path), ["main.go"])
+        ui = [f for f in facts if f.fact_type == "ui_framework"]
+        assert len(ui) == 0
+
+
+# ---------------------------------------------------------------------------
+# Sync format extraction
+# ---------------------------------------------------------------------------
+
+class TestSyncFormatFacts:
+    """Extract sync format facts."""
+
+    def test_go_jsonl_gz(self, tmp_path):
+        _write(tmp_path, "sync.go", """\
+            package sync
+
+            const exportFile = "data.jsonl.gz"
+        """)
+        facts = extract_facts(str(tmp_path), ["sync.go"])
+        sf = [f for f in facts if f.fact_type == "sync_format"]
+        assert len(sf) >= 1
+
+    def test_python_jsonl(self, tmp_path):
+        _write(tmp_path, "export.py", """\
+            with open("output.jsonl", "w") as f:
+                pass
+        """)
+        facts = extract_facts(str(tmp_path), ["export.py"])
+        sf = [f for f in facts if f.fact_type == "sync_format"]
+        assert len(sf) >= 1
+
+    def test_ndjson_format(self, tmp_path):
+        _write(tmp_path, "parser.py", """\
+            # Parse .ndjson files for streaming
+        """)
+        facts = extract_facts(str(tmp_path), ["parser.py"])
+        sf = [f for f in facts if f.fact_type == "sync_format"]
+        assert len(sf) >= 1
+
+    def test_negative_regular_json(self, tmp_path):
+        _write(tmp_path, "config.py", """\
+            import json
+            data = json.loads(text)
+        """)
+        facts = extract_facts(str(tmp_path), ["config.py"])
+        sf = [f for f in facts if f.fact_type == "sync_format"]
+        assert len(sf) == 0

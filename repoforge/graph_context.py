@@ -575,6 +575,9 @@ _FACT_TYPE_LABELS: dict[str, str] = {
     "struct_field": "Struct Fields",
     "go_version": "Go Version",
     "db_engine": "Database Engine",
+    "dedup_mechanism": "Deduplication",
+    "ui_framework": "UI Framework",
+    "sync_format": "Sync Format",
 }
 
 
@@ -805,11 +808,11 @@ def build_facts_only_context(
 
 CHAPTER_FACT_TYPES: dict[str, set[str]] = {
     "index.md": set(),  # No facts needed for nav hub
-    "01-overview.md": {"version", "go_version", "port", "db_engine"},
+    "01-overview.md": {"version", "go_version", "port", "db_engine", "ui_framework"},
     "02-quickstart.md": {"port", "env_var", "cli_command", "go_version", "db_engine"},
-    "03-architecture.md": {"endpoint", "port", "env_var", "mcp_tool", "db_engine"},
-    "04-core-mechanisms.md": {"mcp_tool", "struct_field", "env_var"},
-    "05-data-models.md": {"db_table", "struct_field", "fts_ddl", "db_engine"},
+    "03-architecture.md": {"endpoint", "port", "env_var", "mcp_tool", "db_engine", "ui_framework", "sync_format"},
+    "04-core-mechanisms.md": {"mcp_tool", "struct_field", "env_var", "dedup_mechanism", "sync_format"},
+    "05-data-models.md": {"db_table", "struct_field", "fts_ddl", "db_engine", "dedup_mechanism"},
     "06-api-reference.md": {"endpoint", "mcp_tool", "cli_command", "port"},
     "07-dev-guide.md": {"env_var", "cli_command", "go_version", "version"},
 }

@@ -125,7 +125,7 @@ IMPORT_PATTERNS = {
 @dataclass(frozen=True, slots=True)
 class FactItem:
     """A single semantic fact extracted from source code."""
-    fact_type: str   # 'endpoint', 'port', 'version', 'db_table', 'cli_command', 'env_var', 'mcp_tool', 'fts_ddl', 'struct_field', 'go_version', 'db_engine'
+    fact_type: str   # 'endpoint', 'port', 'version', 'db_table', 'cli_command', 'env_var', 'mcp_tool', 'fts_ddl', 'struct_field', 'go_version', 'db_engine', 'dedup_mechanism', 'ui_framework', 'sync_format'
     value: str       # the extracted value (e.g., "GET /health", "7437", "v1.2.3")
     file: str        # source file path (relative)
     line: int        # line number (1-based)
@@ -229,7 +229,7 @@ FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
     },
     "fts_ddl": {
         "*": [
-            (r'(?i)CREATE\s+VIRTUAL\s+TABLE.*USING\s+fts', "fts_virtual_table"),
+            (r'(?i)CREATE\s+VIRTUAL\s+TABLE\s+(\w+\s+USING\s+fts\d?)', "fts_virtual_table"),
         ],
     },
     "struct_field": {
@@ -240,6 +240,53 @@ FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
     "go_version": {
         "*": [
             (r'^go\s+1\.\d+', "go_mod_version"),
+        ],
+    },
+    "dedup_mechanism": {
+        "*": [
+            (r'normalized_hash', "normalized_hash"),
+            (r'content_hash', "content_hash"),
+            (r'dedup(?:licate)?', "dedup"),
+        ],
+        "Go": [
+            (r'NormalizedHash', "go_normalized_hash"),
+            (r'ContentHash', "go_content_hash"),
+        ],
+        "Python": [
+            (r'unique_together', "unique_together"),
+            (r'unique\s*=\s*True', "unique_field"),
+        ],
+    },
+    "ui_framework": {
+        "Go": [
+            (r'bubbletea', "bubbletea"),
+            (r'charmbracelet', "charmbracelet"),
+            (r'tview', "tview"),
+            (r'termui', "termui"),
+        ],
+        "Python": [
+            (r'tkinter', "tkinter"),
+            (r'PyQt', "pyqt"),
+            (r'streamlit', "streamlit"),
+            (r'gradio', "gradio"),
+            (r'\brich\b', "rich"),
+        ],
+        "TypeScript": [
+            (r'\bink\b', "ink"),
+            (r'blessed', "blessed"),
+        ],
+    },
+    "sync_format": {
+        "*": [
+            (r'\.jsonl', "jsonl"),
+            (r'\.ndjson', "ndjson"),
+            (r'jsonlines', "jsonlines"),
+            (r'json\s+lines', "json_lines"),
+        ],
+        "Go": [
+            (r'jsonl\.gz', "jsonl_gz"),
+            (r'gzip.*json', "gzip_json"),
+            (r'json.*gzip', "json_gzip"),
         ],
     },
     "db_engine": {

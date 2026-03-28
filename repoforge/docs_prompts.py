@@ -62,6 +62,7 @@ Use ONLY technologies in "Tech stack". Output Markdown only, start with `#` head
 NEVER write code blocks with fabricated function implementations. You may ONLY include code
 that appears verbatim in the Compressed Signatures or API Surface sections. To show code
 structure, use prose descriptions or pseudocode clearly marked as `<!-- pseudocode -->`.
+When Extracted Facts contain multiple items of the same type (e.g., multiple MCP tools, endpoints, CLI commands), state the TOTAL COUNT explicitly (e.g., '14 MCP tools including mem_save, mem_search...').
 """
 
 
