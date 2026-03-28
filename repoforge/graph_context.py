@@ -816,19 +816,19 @@ CHAPTER_FACT_TYPES: dict[str, set[str]] = {
 CHAPTER_TOKEN_BUDGETS: dict[str, int] = {
     "01-overview.md": 400,
     "02-quickstart.md": 500,
-    "04-core-mechanisms.md": 300,
-    "05-data-models.md": 300,
+    "04-core-mechanisms.md": 0,   # facts alone are sufficient
+    "05-data-models.md": 0,       # facts alone are sufficient
     "06-api-reference.md": 700,
-    "07-dev-guide.md": 200,
+    "07-dev-guide.md": 0,         # facts alone are sufficient
 }
 
 _CHAPTER_SIG_LIMITS: dict[str, int] = {
     "01-overview.md": 3,
     "02-quickstart.md": 3,
-    "04-core-mechanisms.md": 2,
-    "05-data-models.md": 2,
+    "04-core-mechanisms.md": 0,   # no compressed sigs — saves ~300 tokens
+    "05-data-models.md": 0,       # no compressed sigs — saves ~300 tokens
     "06-api-reference.md": 5,
-    "07-dev-guide.md": 2,
+    "07-dev-guide.md": 0,         # no compressed sigs — saves ~200 tokens
 }
 _DEFAULT_SIG_LIMIT = 3
 
@@ -903,11 +903,11 @@ def build_facts_only_context_for_chapter(
     # Token budget for compressed sigs
     max_tokens = CHAPTER_TOKEN_BUDGETS.get(chapter_file, 500)
 
-    # API surface: include for overview, data-models, api-reference; skip otherwise
+    # API surface: include only for chapters that need function signatures.
+    # ch05 (data-models) relies on facts (db_table, struct_field, fts_ddl) instead.
     chapter_api_surface = ""
     if chapter_file in (
         "01-overview.md",
-        "05-data-models.md",
         "06-api-reference.md",
     ):
         chapter_api_surface = api_surface

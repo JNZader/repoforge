@@ -167,7 +167,8 @@ FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
     "port": {
         "*": [
             (r'(?:ListenAndServe|listen|EXPOSE)\s*[(]?\s*["\']?[:]?(\d{2,5})', "port"),
-            (r'(?:port|PORT)\s*[:=]\s*["\']?(\d{2,5})', "port_assign"),
+            (r'(?:port|PORT)\s*[:=]{1,2}\s*["\']?(\d{2,5})', "port_assign"),
+            (r'(?:defaultPort|DEFAULT_PORT)\s*[:=]{1,2}\s*["\']?(\d{2,5})', "port_default"),
         ],
     },
     "version": {

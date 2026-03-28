@@ -56,17 +56,9 @@ CRITICAL RULES:
 
 def _base_system_facts_only(language: str) -> str:
     return f"""\
-You are a senior technical writer generating documentation from EXTRACTED FACTS and COMPRESSED SIGNATURES (not full source code). Document only what EXISTS in the provided facts.
-
-RULES:
-1. Write EVERYTHING in **{language}**.
-2. NEVER invent information not present in the facts. Omit or mark as undocumented.
-3. Use EXACT values from Extracted Facts (ports, endpoints, env vars, CLI commands, versions).
-4. Use EXACT signatures from API Surface (real AST-extracted names, types, parameters).
-5. Compressed Signatures show module structure — they are abbreviated, not full code.
-6. Use Markdown: headers, code blocks, tables, bullet lists. Mermaid only from facts.
-7. Use ONLY technologies listed in "Tech stack". Do NOT infer from function names.
-8. Output ONLY Markdown. Start with the `#` heading. No preamble.
+Technical writer. Generate docs in **{language}** from EXTRACTED FACTS only.
+NEVER invent info. Use EXACT values from facts (ports, endpoints, env vars, signatures).
+Use ONLY technologies in "Tech stack". Output Markdown only, start with `#` heading.
 """
 
 
@@ -265,16 +257,13 @@ def _repo_context_light(repo_map: dict, graph_context: str = "") -> str:
 def _repo_context_facts_only(repo_map: dict, graph_context: str = "") -> str:
     """Ultra-light repo context for facts-only mode — NO tree, NO modules.
 
-    Used when extracted facts and compressed signatures already provide
-    structural information.  Only emits: tech stack, entry points,
-    config files, and layer summary.  Saves ~60-80% tokens vs _repo_context.
+    Only emits tech stack, entry points, and layer summary.
+    Config files omitted — facts carry that info.
     """
     ctx = f"""
 ## Repo context
-
 - **Tech stack**: {_format_stack(repo_map.get("tech_stack", []))}
 - **Entry points**: {_format_entry_points(repo_map.get("entry_points", []))}
-- **Config files**: {_format_config_files(repo_map.get("config_files", []))}
 
 ### Layers
 {_format_layers(repo_map.get("layers", {}))}
@@ -537,28 +526,16 @@ def core_mechanisms_prompt(repo_map: dict, language: str, project_name: str,
 {modules_detail}
 """
 
-    user = f"""Generate **04-core-mechanisms.md** — the Core Mechanisms deep-dive for **{project_name}**.
+    user = f"""Generate **04-core-mechanisms.md** for **{project_name}**.
 
 {ctx}
 {modules_block}
 {focused_section}
-
-## What this document must contain
-1. `# Core Mechanisms` heading
-2. **Introduction** — what are the 2-4 most important workflows/flows in this system?
-   (infer from entry points, key exports, and module names)
-3. **For each core mechanism** — create a subsection `## Mechanism N: [Name]` with:
-   a. **What it does** — 2-3 sentences
-   b. **Key components** — which modules/files are involved (use actual paths)
-   c. **Flow diagram** — Mermaid sequence or flowchart diagram
-   d. **Key code pattern** — show the pattern used (e.g. how auth works, how a request is handled)
-      Use a code block with the LANGUAGE of that file, showing a representative pattern.
-      Base it on the actual exports and imports — don't invent function bodies.
-   e. **Integration points** — what other modules does this interact with
-4. **Cross-cutting concerns** — error handling, logging, config patterns observed across modules.
-
-Focus on depth over breadth. 2-3 mechanisms analyzed well > 6 mechanisms analyzed superficially.
-Language: {language}
+## Structure
+`# Core Mechanisms` → identify 2-3 key workflows from entry points and facts.
+Per mechanism: `## Name` with purpose, key files (actual paths), Mermaid flow diagram, code pattern (from real exports — no invented bodies), integration points.
+End with cross-cutting concerns (error handling, logging, config).
+Depth > breadth. Language: {language}
 """
     return _base_system(language), user
 
@@ -630,24 +607,16 @@ that are not in this extracted data.
 {modules_text}
 """
 
-    user = f"""Generate **05-data-models.md** — the Data Models chapter for **{project_name}**.
+    user = f"""Generate **05-data-models.md** for **{project_name}**.
 
 {ctx}
 {modules_block}
 {focused_section}
-## What this document must contain
-1. `# Data Models` heading
-2. **Overview** — what data modeling approach is used (Pydantic, SQLAlchemy, Prisma, TypeScript interfaces, etc.)
-   Infer from imports detected in model modules.
-3. **For each key model/schema** — create `## ModelName` subsections with:
-   a. **Purpose** — what this model represents in the domain
-   b. **Fields** — table with columns: Field | Type | Description (infer from exports and context)
-   c. **Relationships** — how it relates to other models (if detectable)
-4. **Data flow diagram** — a simple Mermaid ER diagram or class diagram if multiple models exist.
-5. **Validation rules** — any validation patterns detected (Pydantic validators, Zod schemas, etc.)
-
-If no clear models are detected, document the key data structures used in the main modules.
-Be honest: mark fields as "inferred" if not explicitly visible in exports.
+## Structure
+`# Data Models` → overview of modeling approach (infer from imports).
+Per model: `## ModelName` with purpose, fields table (Field|Type|Description), relationships.
+Add Mermaid ER diagram if multiple models. Note validation patterns.
+If no models detected, document key data structures. Mark inferred fields.
 Language: {language}
 """
     return _base_system(language), user
@@ -736,33 +705,15 @@ def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
     ctx_fn = _repo_context_facts_only if facts_only else _repo_context
     ctx = ctx_fn(repo_map, graph_context=graph_context)
 
-    user = f"""Generate **07-dev-guide.md** — the Developer Guide for **{project_name}**.
+    layer_hint = "which layer to modify and how layers interact" if len(layers) > 1 else "file structure to follow"
+
+    user = f"""Generate **07-dev-guide.md** for **{project_name}**.
 
 {ctx}
 
-## What this document must contain
-1. `# Developer Guide` heading
-2. **Development setup** — how to set up a dev environment (different from prod quickstart if applicable).
-   Include: hot reload, debug mode, test runner.
-3. **Project conventions** — naming conventions, file organization patterns observed in the codebase.
-   Infer from actual module names, directory structure, export patterns.
-4. **How to add a new feature** — step-by-step guide for the most common task.
-   Make it specific to this project's structure:
-   {"- For a monorepo: explain which layer to modify and how layers interact" if len(layers) > 1 else "- For a single-layer project: explain the file structure to follow"}
-   Example: "To add a new API endpoint: 1) Create file in X directory 2) Export handler function 3) Register in Y"
-5. **Testing** — how to run tests, test file naming conventions, key test patterns detected.
-   Infer test runner from config files (pytest, jest, go test, etc.)
-6. **Common tasks** — cheat sheet of frequent dev commands:
-   | Task | Command |
-   |------|---------|
-   | Run dev server | ... |
-   | Run tests | ... |
-   | Build | ... |
-   | Lint | ... |
-7. **Code style** — any linting/formatting tools detected (ruff, eslint, prettier, etc.).
-
-Be concrete and specific to THIS project. No generic advice.
-Language: {language}
+## Structure
+`# Developer Guide` → dev setup (hot reload, debug, test runner), project conventions (from actual names/paths), how to add a feature ({layer_hint}), testing (runner, patterns), common tasks table (dev server, tests, build, lint), code style tools.
+Be specific to THIS project. Language: {language}
 """
     return _base_system(language), user
 

@@ -288,6 +288,34 @@ class TestPortFacts:
         assert "8080" in values
         assert "3000" in values
 
+    def test_go_short_variable_port(self, tmp_path):
+        """Go short variable declaration: port := 7437"""
+        _write(tmp_path, "main.go", """\
+            package main
+
+            func main() {
+                port := 7437
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["main.go"])
+        ports = [f for f in facts if f.fact_type == "port"]
+        values = {f.value for f in ports}
+        assert "7437" in values
+
+    def test_default_port_assignment(self, tmp_path):
+        """Captures defaultPort and DEFAULT_PORT patterns."""
+        _write(tmp_path, "config.go", """\
+            package config
+
+            const defaultPort = 9090
+            const DEFAULT_PORT = 3001
+        """)
+        facts = extract_facts(str(tmp_path), ["config.go"])
+        ports = [f for f in facts if f.fact_type == "port"]
+        values = {f.value for f in ports}
+        assert "9090" in values
+        assert "3001" in values
+
 
 # ---------------------------------------------------------------------------
 # Edge cases
