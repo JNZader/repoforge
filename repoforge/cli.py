@@ -27,6 +27,7 @@ Quick usage:
   repoforge compress -w /my/repo --aggressive --dry-run
   repoforge skills --model ollama/qwen2.5-coder:14b   # free local
   repoforge skills --model github/gpt-4o-mini          # GitHub Copilot
+  repoforge skills --model gateway/claude-sonnet-4     # via mcp-llm-bridge
 """
 
 import logging
