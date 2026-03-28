@@ -37,7 +37,7 @@ from .ranker import pagerank, rank_files  # noqa: F401
 from .budget import select_context, ContextItem  # noqa: F401
 
 # Source code compression (tree-sitter for full, fallback for basic)
-from .compressor import compress_file, compression_stats  # noqa: F401
+from .compressor import compress_file, compress_batch, compression_stats  # noqa: F401
 
 # Pre-digested documentation chunks (always available)
 from .doc_chunks import (  # noqa: F401
@@ -65,6 +65,7 @@ __all__ = [
     "select_context",
     "ContextItem",
     "compress_file",
+    "compress_batch",
     "compression_stats",
     "chunk_endpoints",
     "chunk_data_models",

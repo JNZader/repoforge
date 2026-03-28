@@ -570,6 +570,10 @@ _FACT_TYPE_LABELS: dict[str, str] = {
     "db_table": "Database Tables",
     "cli_command": "CLI Commands",
     "env_var": "Environment Variables",
+    "mcp_tool": "MCP Tools",
+    "fts_ddl": "FTS Virtual Tables",
+    "struct_field": "Struct Fields",
+    "go_version": "Go Version",
 }
 
 
@@ -734,6 +738,143 @@ def build_module_facts_context(root_dir: str, module_path: str, files: list[str]
     except Exception:
         logger.debug("Failed to extract module facts for %s", module_path, exc_info=True)
         return ""
+
+
+def build_facts_only_context(
+    root_dir: str,
+    files: list[str],
+    facts: list[FactItem],
+    api_surface: str,
+    compressed_sigs: dict[str, str],
+    build_info: dict | None = None,
+    max_tokens: int = 1500,
+) -> str:
+    """Build a facts-only markdown context — no graph, no raw code snippets.
+
+    Assembles sections in order:
+      1. Extracted Facts (via format_facts_section)
+      2. API Surface (pre-formatted string from caller)
+      3. Compressed Signatures (code blocks per file, token-budgeted)
+      4. Build Info (module path, Go version, dependency count)
+
+    Sections with empty/None data are skipped gracefully.
+
+    Args:
+        root_dir: Absolute path to the project root (unused, reserved).
+        files: List of relative file paths (unused, reserved for filtering).
+        facts: List of FactItem extracted from the codebase.
+        api_surface: Pre-formatted API surface markdown string.
+        compressed_sigs: Mapping of relative file path → compressed signature text.
+        build_info: Optional dict with keys like module_path, go_version, dependencies.
+        max_tokens: Token budget for the compressed signatures section.
+
+    Returns:
+        Combined markdown string with all non-empty sections.
+    """
+    sections: list[str] = []
+
+    # 1. Extracted Facts
+    if facts:
+        facts_section = format_facts_section(facts)
+        if facts_section:
+            sections.append(facts_section)
+
+    # 2. API Surface
+    if api_surface:
+        sections.append(api_surface)
+
+    # 3. Compressed Signatures (token-budgeted)
+    if compressed_sigs:
+        sig_section = _format_compressed_sigs(compressed_sigs, max_tokens)
+        if sig_section:
+            sections.append(sig_section)
+
+    # 4. Build Info
+    if build_info:
+        build_section = _format_build_info(build_info)
+        if build_section:
+            sections.append(build_section)
+
+    return "\n".join(sections)
+
+
+def _format_compressed_sigs(
+    compressed_sigs: dict[str, str],
+    max_tokens: int,
+) -> str:
+    """Format compressed signatures as code blocks per file within a token budget.
+
+    Files are ordered alphabetically.  Stops adding files once the token
+    budget is exhausted (tokens estimated at ~4 chars/token).
+    """
+    if not compressed_sigs:
+        return ""
+
+    # Language detection from extension for code fences
+    lang_map = {
+        ".py": "python", ".go": "go", ".ts": "typescript", ".tsx": "typescript",
+        ".js": "javascript", ".jsx": "javascript", ".rs": "rust", ".java": "java",
+        ".rb": "ruby", ".cs": "csharp", ".cpp": "cpp", ".c": "c",
+    }
+
+    sorted_files = sorted(compressed_sigs.keys())
+
+    lines = ["## Compressed Signatures\n"]
+    token_used = _estimate_tokens(lines[0])
+
+    for file_path in sorted_files:
+        sig_text = compressed_sigs[file_path]
+        if not sig_text:
+            continue
+
+        ext = Path(file_path).suffix.lower()
+        lang = lang_map.get(ext, "")
+
+        block = f"### {file_path}\n```{lang}\n{sig_text}\n```\n"
+        block_tokens = _estimate_tokens(block)
+
+        if token_used + block_tokens > max_tokens:
+            break
+
+        lines.append(block)
+        token_used += block_tokens
+
+    # Only return if we added at least one file beyond the header
+    if len(lines) <= 1:
+        return ""
+
+    return "".join(lines)
+
+
+def _format_build_info(build_info: dict) -> str:
+    """Format build metadata into a markdown section.
+
+    Recognises keys: module_path, go_version, dependencies (count or list).
+    Returns empty string if no recognised keys are present.
+    """
+    if not build_info:
+        return ""
+
+    lines = ["## Build Info\n"]
+    has_content = False
+
+    if "module_path" in build_info:
+        lines.append(f"- **Module**: {build_info['module_path']}\n")
+        has_content = True
+
+    if "go_version" in build_info:
+        lines.append(f"- **Go version**: {build_info['go_version']}\n")
+        has_content = True
+
+    if "dependencies" in build_info:
+        deps = build_info["dependencies"]
+        if isinstance(deps, (list, tuple)):
+            lines.append(f"- **Dependencies**: {len(deps)}\n")
+        else:
+            lines.append(f"- **Dependencies**: {deps}\n")
+        has_content = True
+
+    return "".join(lines) if has_content else ""
 
 
 def _detect_entry_points(graph: CodeGraph) -> set[str]:

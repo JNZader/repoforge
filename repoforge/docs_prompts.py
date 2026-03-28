@@ -54,6 +54,39 @@ CRITICAL RULES:
 """
 
 
+def _base_system_facts_only(language: str) -> str:
+    return f"""\
+You are a senior technical writer generating professional documentation for a software project.
+
+You are receiving EXTRACTED FACTS and COMPRESSED SIGNATURES, not full source code.
+Your job is to document what EXISTS based on the facts provided — nothing more.
+
+CRITICAL RULES:
+1. Write EVERYTHING in **{language}**. Titles, body text, code comments, diagram labels — all in {language}.
+2. NEVER invent code examples, function names, or API details not present in the provided facts.
+   If a fact is not provided, DO NOT guess — omit it or explicitly state it is undocumented.
+3. EXTRACTED FACTS — STRICT RULE: Use the EXACT values from the "Extracted Facts" section for
+   port numbers, endpoints, environment variables, database tables, CLI commands, and version
+   strings. Do NOT guess or fabricate these values. If the facts say port 7437, write 7437 —
+   not 8080, not 3000. If the facts list specific endpoints, use those exact paths.
+4. API SURFACE — STRICT RULE: Use the EXACT function signatures from the "API Surface" section.
+   These are REAL signatures extracted via AST parsing. Use these exact function names, parameter
+   types, and return types. Do NOT invent function names or signatures not listed in the API Surface.
+5. COMPRESSED SIGNATURES — Use them to understand module structure, relationships, and the
+   overall shape of the codebase. They are abbreviated representations, not full code.
+6. Use Markdown formatting: headers, code blocks, tables, bullet lists.
+7. Include Mermaid diagrams where they add clarity — but base them ONLY on the provided facts,
+   not on imagination or assumptions.
+8. Be concise — describe what EXISTS based on facts, do not speculate about what might exist.
+9. Output ONLY the Markdown content. No preamble, no "here is your document".
+10. Start directly with the `#` heading of the document.
+11. TECH STACK — STRICT RULE: Use ONLY the technologies explicitly listed in the "Tech stack"
+    field. Do NOT infer technologies from function names, variable names, or export names.
+    If a function is named `make_fastapi_example()` that does NOT mean FastAPI is in the stack.
+    If stack says ["Python"], document ONLY Python.
+"""
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -1279,7 +1312,8 @@ Language: {language}"""
 def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                         graph_context: str = "",
                         short_graph_context: str = "",
-                        doc_chunks: dict | None = None) -> list[dict]:
+                        doc_chunks: dict | None = None,
+                        facts_only_context: str = "") -> list[dict]:
     """
     Return the adaptive list of chapters to generate with their prompts.
 
@@ -1291,6 +1325,10 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
         short_graph_context: Short summary for other chapters.
         doc_chunks: Pre-digested context chunks from doc_chunks.py.
             Keys: endpoints, data_models, mcp_tools, cli_commands, architecture, module_summaries.
+        facts_only_context: Pre-digested facts context for non-architecture chapters.
+            When provided, non-architecture chapters use _base_system_facts_only and
+            this context instead of short_graph_context. Architecture chapter (03-architecture.md)
+            always keeps full graph context and the regular system prompt.
     """
     project_type = classify_project(repo_map)
     chunks = doc_chunks or {}
@@ -1310,13 +1348,29 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
     # Build prompts for each chapter
     result = []
     for chapter in all_chapters:
+        is_architecture = chapter["file"] == "03-architecture.md"
+
         # Architecture chapter gets full graph context, others get short
-        ch_graph = graph_context if chapter["file"] == "03-architecture.md" else short_graph_context
+        # When facts_only_context is provided, non-architecture chapters use it
+        # instead of short_graph_context (hybrid routing)
+        if is_architecture:
+            ch_graph = graph_context
+        elif facts_only_context:
+            ch_graph = facts_only_context
+        else:
+            ch_graph = short_graph_context
+
         system, user = _dispatch_prompt(
             chapter["file"], repo_map, language, project_name,
             project_type, all_chapters, graph_context=ch_graph,
             doc_chunks=chunks,
         )
+
+        # When facts_only_context is active, non-architecture chapters get
+        # the facts-only system prompt (stricter hallucination rules)
+        if facts_only_context and not is_architecture:
+            system = _base_system_facts_only(language)
+
         result.append({
             "file":        chapter["file"],
             "title":       chapter["title"],
@@ -1707,7 +1761,8 @@ _original_get_chapter_prompts = get_chapter_prompts
 def get_chapter_prompts(repo_map: dict, language: str, project_name: str,  # noqa: F811
                         graph_context: str = "",
                         short_graph_context: str = "",
-                        doc_chunks: dict | None = None) -> list[dict]:
+                        doc_chunks: dict | None = None,
+                        facts_only_context: str = "") -> list[dict]:
     """
     Main entry point. Routes monorepos through hierarchical generation,
     single projects through the original adaptive path.
@@ -1721,6 +1776,9 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,  # noq
         graph_context: Full dependency analysis for architecture chapters.
         short_graph_context: Short summary for other chapters.
         doc_chunks: Pre-digested context chunks from doc_chunks.py.
+        facts_only_context: Pre-digested facts context for non-architecture chapters.
+            When provided, non-architecture chapters use _base_system_facts_only and
+            this context instead of short_graph_context. Architecture chapter is unchanged.
     """
     # Allow repoforge.yaml to force the project type
     cfg_type = repo_map.get("repoforge_config", {}).get("project_type")
@@ -1735,6 +1793,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,  # noq
         graph_context=graph_context,
         short_graph_context=short_graph_context,
         doc_chunks=doc_chunks,
+        facts_only_context=facts_only_context,
     )
     for ch in chapters:
         ch.setdefault("subdir", None)

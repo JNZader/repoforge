@@ -1,8 +1,9 @@
 """Tests for tree-sitter source code compression (repoforge.intelligence.compressor)."""
 
 import pytest
+from unittest.mock import patch
 
-from repoforge.intelligence.compressor import compress_file, compression_stats
+from repoforge.intelligence.compressor import compress_file, compress_batch, compression_stats
 
 
 # ---------------------------------------------------------------------------
@@ -309,3 +310,81 @@ class TestCompressionStats:
         stats = compression_stats("hello world", "")
         assert stats["compressed_tokens"] == 0
         assert stats["reduction_pct"] == pytest.approx(100.0)
+
+
+# ---------------------------------------------------------------------------
+# compress_batch
+# ---------------------------------------------------------------------------
+
+
+class TestCompressBatch:
+    """Tests for compress_batch(): batch compression of multiple files."""
+
+    def test_basic_operation_returns_same_keys(self):
+        """Given dict of {path: content}, returns dict with same keys."""
+        contents = {
+            "app.py": "import os\n\ndef main():\n    print('hello')\n",
+            "utils.py": "def helper():\n    return 42\n",
+        }
+        result = compress_batch(contents)
+        assert set(result.keys()) == set(contents.keys())
+        # Each value should be a non-empty string
+        for key in contents:
+            assert isinstance(result[key], str)
+
+    def test_empty_input_returns_empty_dict(self):
+        """Empty dict → empty dict."""
+        result = compress_batch({})
+        assert result == {}
+
+    def test_fallback_on_failure_preserves_original(self):
+        """If compress_file raises for one file, that file's original content is preserved."""
+        contents = {
+            "good.py": "def hello(): pass\n",
+            "bad.py": "def world(): pass\n",
+        }
+        with patch(
+            "repoforge.intelligence.compressor.compress_file",
+            side_effect=lambda content, path: (
+                (_ for _ in ()).throw(RuntimeError("boom"))
+                if path == "bad.py"
+                else "compressed"
+            ),
+        ):
+            result = compress_batch(contents)
+        assert result["good.py"] == "compressed"
+        # bad.py should fall back to original content
+        assert result["bad.py"] == contents["bad.py"]
+
+    def test_fallback_on_failure_others_still_compressed(self):
+        """When one file fails, other files are still compressed normally."""
+        contents = {
+            "ok.py": "import os\ndef main():\n    x = 1\n    y = 2\n    return x + y\n",
+            "fail.py": "def broken(): pass\n",
+            "also_ok.py": "class Foo:\n    def bar(self): return 1\n",
+        }
+
+        def mock_compress(content, path):
+            if path == "fail.py":
+                raise ValueError("parse error")
+            return f"compressed({path})"
+
+        with patch("repoforge.intelligence.compressor.compress_file", side_effect=mock_compress):
+            result = compress_batch(contents)
+
+        assert result["ok.py"] == "compressed(ok.py)"
+        assert result["also_ok.py"] == "compressed(also_ok.py)"
+        assert result["fail.py"] == contents["fail.py"]
+
+    def test_unsupported_extension_falls_back(self):
+        """Files with unknown extensions get fallback content (not crash)."""
+        contents = {
+            "config.toml": "key = 'value'\nother = 42",
+            "data.yaml": "name: test\nversion: 1",
+        }
+        result = compress_batch(contents)
+        # These use fallback (short files returned as-is)
+        assert set(result.keys()) == {"config.toml", "data.yaml"}
+        # Short files under fallback limit are unchanged
+        assert result["config.toml"] == contents["config.toml"]
+        assert result["data.yaml"] == contents["data.yaml"]

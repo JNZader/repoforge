@@ -31,6 +31,7 @@ from .graph_context import (
     build_graph_context_from_graph,
     build_short_graph_context,
     build_semantic_context,
+    build_facts_only_context,
     format_api_surface,
     format_facts_section,
 )
@@ -51,6 +52,7 @@ def generate_docs(
     verify: bool = True,
     verify_model: Optional[str] = None,
     no_verify_docs: bool = False,
+    facts_only: bool = False,
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -232,6 +234,63 @@ def generate_docs(
         log(f"📄 Full-context mode (default). Use --chunked for per-chapter chunks.")
 
     # ------------------------------------------------------------------
+    # 3e. Build facts-only context when facts_only mode is active
+    # ------------------------------------------------------------------
+    _fo_context = ""
+    if facts_only:
+        try:
+            from .intelligence.compressor import compress_batch
+            from .graph_context import _compute_ranks
+            from .graph import is_test_file
+
+            log(f"🔬 Facts-only mode: compressing top file signatures...")
+            _fo_facts = _facts if '_facts' in dir() else []
+            _fo_build_info = repo_map.get("build_info", {})
+
+            # Pick top files by PageRank (or connection count) — cap at 15
+            _top_files: list[str] = []
+            if _graph is not None:
+                ranks = _compute_ranks(_graph)
+                module_ids = [
+                    n.id for n in _graph.nodes
+                    if n.node_type == "module" and not is_test_file(n.id)
+                ]
+                if ranks:
+                    _top_files = sorted(module_ids, key=lambda f: ranks.get(f, 0), reverse=True)[:15]
+                else:
+                    # Fallback: connection count
+                    connections: dict[str, int] = {}
+                    for e in _graph.edges:
+                        if e.edge_type in ("imports", "depends_on"):
+                            connections[e.source] = connections.get(e.source, 0) + 1
+                            connections[e.target] = connections.get(e.target, 0) + 1
+                    _top_files = sorted(module_ids, key=lambda f: connections.get(f, 0), reverse=True)[:15]
+            if not _top_files:
+                _top_files = all_files[:15]
+
+            # Read file contents for compression
+            _contents: dict[str, str] = {}
+            for fpath in _top_files:
+                full_path = root / fpath
+                if full_path.is_file():
+                    try:
+                        _contents[fpath] = full_path.read_text(encoding="utf-8", errors="replace")
+                    except Exception:
+                        pass
+            compressed_sigs = compress_batch(_contents) if _contents else {}
+            if compressed_sigs:
+                log(f"   ✅ Compressed {len(compressed_sigs)} file signatures")
+
+            _fo_context = build_facts_only_context(
+                str(root), all_files, _fo_facts,
+                api_surface_ctx, compressed_sigs, _fo_build_info,
+            )
+            if _fo_context:
+                log(f"   ✅ Facts-only context built ({len(_fo_context)} chars)")
+        except Exception as e:
+            log(f"   ⚠️  Facts-only context skipped: {e}")
+
+    # ------------------------------------------------------------------
     # 4. Get chapter list (trimmed by complexity)
     # ------------------------------------------------------------------
     # Architecture chapter gets FULL semantic context (graph + facts + snippets)
@@ -245,6 +304,7 @@ def generate_docs(
         graph_context=_arch_context,
         short_graph_context=_other_context,
         doc_chunks=doc_chunks,
+        facts_only_context=_fo_context,
     )
     max_ch = cx["max_chapters"]
     if len(all_chapters) > max_ch:

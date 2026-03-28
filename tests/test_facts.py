@@ -28,7 +28,10 @@ class TestFactPatternsCoverage:
     """Verify that FACT_PATTERNS covers the expected fact types."""
 
     def test_has_all_expected_types(self):
-        expected = {"endpoint", "port", "version", "db_table", "cli_command", "env_var"}
+        expected = {
+            "endpoint", "port", "version", "db_table", "cli_command", "env_var",
+            "mcp_tool", "fts_ddl", "struct_field", "go_version",
+        }
         assert expected == set(FACT_PATTERNS.keys())
 
     def test_endpoint_has_go_patterns(self):
@@ -320,3 +323,213 @@ class TestEdgeCases:
         f = FactItem("endpoint", "/health", "server.go", 10, "Go")
         with pytest.raises(AttributeError):
             f.value = "/new"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# MCP tool registration extraction
+# ---------------------------------------------------------------------------
+
+class TestMcpToolFacts:
+    """Extract MCP tool registration facts from Go, Python, and TypeScript."""
+
+    def test_go_mcp_new_tool(self, tmp_path):
+        _write(tmp_path, "tools.go", """\
+            package main
+
+            func setup() {
+                mcp.NewTool("search")
+                server.AddTool("query", handler)
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["tools.go"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        values = {f.value for f in tools}
+        assert "search" in values
+        assert "query" in values
+
+    def test_python_mcp_decorator(self, tmp_path):
+        _write(tmp_path, "tools.py", """\
+            from mcp import server
+
+            @mcp.tool
+            def search_docs(query: str):
+                pass
+        """)
+        facts = extract_facts(str(tmp_path), ["tools.py"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        assert len(tools) >= 1
+
+    def test_python_mcp_tool_init(self, tmp_path):
+        _write(tmp_path, "tools.py", """\
+            tool = Tool(name="search_index", handler=fn)
+        """)
+        facts = extract_facts(str(tmp_path), ["tools.py"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        values = {f.value for f in tools}
+        assert "search_index" in values
+
+    def test_python_server_add_tool(self, tmp_path):
+        _write(tmp_path, "setup.py", """\
+            server.add_tool(search_handler)
+        """)
+        facts = extract_facts(str(tmp_path), ["setup.py"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        assert len(tools) >= 1
+
+    def test_typescript_server_tool(self, tmp_path):
+        _write(tmp_path, "tools.ts", """\
+            server.tool("search", async (params) => {
+                return results;
+            });
+        """)
+        facts = extract_facts(str(tmp_path), ["tools.ts"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        values = {f.value for f in tools}
+        assert "search" in values
+
+    def test_typescript_new_mcp_tool(self, tmp_path):
+        _write(tmp_path, "tools.ts", """\
+            const tool = new McpTool("search");
+        """)
+        facts = extract_facts(str(tmp_path), ["tools.ts"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        assert len(tools) >= 1
+
+    def test_negative_comment_not_matched(self, tmp_path):
+        _write(tmp_path, "main.go", """\
+            package main
+            // mcp tool comment about something
+            mcpToolName = "foo"
+        """)
+        facts = extract_facts(str(tmp_path), ["main.go"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        assert len(tools) == 0
+
+    def test_negative_variable_name_python(self, tmp_path):
+        _write(tmp_path, "config.py", """\
+            mcp_tool_name = "search"
+        """)
+        facts = extract_facts(str(tmp_path), ["config.py"])
+        tools = [f for f in facts if f.fact_type == "mcp_tool"]
+        assert len(tools) == 0
+
+
+# ---------------------------------------------------------------------------
+# FTS DDL extraction
+# ---------------------------------------------------------------------------
+
+class TestFtsDdlFacts:
+    """Extract FTS virtual table creation facts."""
+
+    def test_fts5_create(self, tmp_path):
+        _write(tmp_path, "schema.py", """\
+            SQL = "CREATE VIRTUAL TABLE notes_fts USING fts5(title, body)"
+        """)
+        facts = extract_facts(str(tmp_path), ["schema.py"])
+        fts = [f for f in facts if f.fact_type == "fts_ddl"]
+        assert len(fts) >= 1
+
+    def test_fts4_create(self, tmp_path):
+        _write(tmp_path, "schema.py", """\
+            SQL = "create virtual table search using fts4(name, content)"
+        """)
+        facts = extract_facts(str(tmp_path), ["schema.py"])
+        fts = [f for f in facts if f.fact_type == "fts_ddl"]
+        assert len(fts) >= 1
+
+    def test_negative_regular_table(self, tmp_path):
+        _write(tmp_path, "schema.py", """\
+            SQL = "CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)"
+        """)
+        facts = extract_facts(str(tmp_path), ["schema.py"])
+        fts = [f for f in facts if f.fact_type == "fts_ddl"]
+        assert len(fts) == 0
+
+
+# ---------------------------------------------------------------------------
+# Go exported struct field extraction
+# ---------------------------------------------------------------------------
+
+class TestStructFieldFacts:
+    """Extract Go exported struct fields."""
+
+    def test_exported_fields(self, tmp_path):
+        _write(tmp_path, "config.go", """\
+            package config
+
+            type ServerConfig struct {
+                Name string
+                Port int
+                Config *Config
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["config.go"])
+        fields = [f for f in facts if f.fact_type == "struct_field"]
+        assert len(fields) >= 3
+
+    def test_negative_unexported_field(self, tmp_path):
+        _write(tmp_path, "config.go", """\
+            package config
+
+            type internal struct {
+                name string
+                port int
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["config.go"])
+        fields = [f for f in facts if f.fact_type == "struct_field"]
+        assert len(fields) == 0
+
+    def test_negative_function_not_field(self, tmp_path):
+        _write(tmp_path, "handler.go", """\
+            package handler
+
+            func Name() string {
+                return "handler"
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["handler.go"])
+        fields = [f for f in facts if f.fact_type == "struct_field"]
+        assert len(fields) == 0
+
+
+# ---------------------------------------------------------------------------
+# Go version from go.mod extraction
+# ---------------------------------------------------------------------------
+
+class TestGoVersionFacts:
+    """Extract Go version from go.mod-style content."""
+
+    def test_go_version_simple(self, tmp_path):
+        _write(tmp_path, "go.mod.go", """\
+            go 1.22
+        """)
+        facts = extract_facts(str(tmp_path), ["go.mod.go"])
+        gv = [f for f in facts if f.fact_type == "go_version"]
+        assert len(gv) >= 1
+
+    def test_go_version_patch(self, tmp_path):
+        _write(tmp_path, "go.mod.go", """\
+            go 1.23.1
+        """)
+        facts = extract_facts(str(tmp_path), ["go.mod.go"])
+        gv = [f for f in facts if f.fact_type == "go_version"]
+        assert len(gv) >= 1
+
+    def test_negative_no_space(self, tmp_path):
+        _write(tmp_path, "ref.go", """\
+            package main
+            // requires go1.22
+        """)
+        facts = extract_facts(str(tmp_path), ["ref.go"])
+        gv = [f for f in facts if f.fact_type == "go_version"]
+        assert len(gv) == 0
+
+    def test_negative_golang_prefix(self, tmp_path):
+        _write(tmp_path, "docs.go", """\
+            package main
+            // golang 1.22 is required
+        """)
+        facts = extract_facts(str(tmp_path), ["docs.go"])
+        gv = [f for f in facts if f.fact_type == "go_version"]
+        assert len(gv) == 0

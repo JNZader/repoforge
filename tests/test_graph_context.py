@@ -27,6 +27,7 @@ from repoforge.graph_context import (
     format_facts_section,
     format_snippets_section,
     build_module_facts_context,
+    build_facts_only_context,
 )
 from repoforge.facts import FactItem
 
@@ -508,3 +509,151 @@ class TestSemanticContextFallback:
         from repoforge.prompts import SKILL_SYSTEM, LAYER_SKILL_SYSTEM
         assert "Extracted Facts" in SKILL_SYSTEM
         assert "Extracted Facts" in LAYER_SKILL_SYSTEM
+
+
+# ---------------------------------------------------------------------------
+# build_facts_only_context
+# ---------------------------------------------------------------------------
+
+class TestBuildFactsOnlyContext:
+    """Tests for build_facts_only_context(): assembles facts-only markdown context."""
+
+    def test_sections_present_when_all_inputs_provided(self):
+        """Given facts + api_surface + compressed_sigs + build_info → all sections present."""
+        facts = [
+            FactItem(fact_type="endpoint", value="GET /health", file="server.go", line=42, language="Go"),
+            FactItem(fact_type="port", value="7437", file="server.go", line=75, language="Go"),
+        ]
+        api_surface = "## API Surface\n\n- func New() *Server\n- func (s *Server) Start() error\n"
+        compressed_sigs = {
+            "server.go": "package server\nfunc New(host string, port int) *Server\nfunc (s *Server) Start() error",
+        }
+        build_info = {
+            "module_path": "github.com/example/project",
+            "go_version": "1.22",
+            "dependencies": ["github.com/gorilla/mux", "github.com/lib/pq"],
+        }
+
+        result = build_facts_only_context(
+            root_dir="/fake/project",
+            files=["server.go"],
+            facts=facts,
+            api_surface=api_surface,
+            compressed_sigs=compressed_sigs,
+            build_info=build_info,
+        )
+
+        assert "## Extracted Facts" in result
+        assert "## API Surface" in result
+        assert "## Compressed Signatures" in result
+        assert "## Build Info" in result
+
+    def test_no_raw_source_code_in_output(self):
+        """Output should NOT contain raw source code — only facts, signatures, and compressed representations."""
+        facts = [
+            FactItem(fact_type="endpoint", value="GET /api/users", file="handler.go", line=10, language="Go"),
+        ]
+        compressed_sigs = {
+            "handler.go": "func HandleUsers(w http.ResponseWriter, r *http.Request)",
+        }
+
+        result = build_facts_only_context(
+            root_dir="/fake",
+            files=["handler.go"],
+            facts=facts,
+            api_surface="## API Surface\n- HandleUsers\n",
+            compressed_sigs=compressed_sigs,
+        )
+
+        # Should contain compressed signatures (that's expected)
+        assert "HandleUsers" in result
+        # Should NOT contain implementation details
+        assert "for item in items" not in result
+        assert "return result" not in result
+
+    def test_token_budget_limits_compressed_sigs(self):
+        """When compressed_sigs has many files, output should respect max_tokens cap."""
+        # Create many files with substantial content
+        compressed_sigs = {
+            f"pkg/module_{i:03d}.go": f"package module{i}\n" + "\n".join(
+                f"func Func{j}() error" for j in range(20)
+            )
+            for i in range(50)
+        }
+
+        result_small = build_facts_only_context(
+            root_dir="/fake",
+            files=list(compressed_sigs.keys()),
+            facts=[],
+            api_surface="",
+            compressed_sigs=compressed_sigs,
+            max_tokens=100,  # very small budget
+        )
+
+        result_large = build_facts_only_context(
+            root_dir="/fake",
+            files=list(compressed_sigs.keys()),
+            facts=[],
+            api_surface="",
+            compressed_sigs=compressed_sigs,
+            max_tokens=10000,  # large budget
+        )
+
+        # Small budget should produce shorter output than large budget
+        assert len(result_small) < len(result_large)
+
+    def test_empty_inputs_returns_empty_gracefully(self):
+        """When facts=[], api_surface="", compressed_sigs={} → returns minimal/empty string."""
+        result = build_facts_only_context(
+            root_dir="/fake",
+            files=[],
+            facts=[],
+            api_surface="",
+            compressed_sigs={},
+            build_info=None,
+        )
+        assert result == ""
+
+    def test_build_info_formatting(self):
+        """When build_info has module_path, go_version, dependencies → all rendered."""
+        build_info = {
+            "module_path": "github.com/example/myapp",
+            "go_version": "1.22",
+            "dependencies": ["dep1", "dep2", "dep3"],
+        }
+
+        result = build_facts_only_context(
+            root_dir="/fake",
+            files=[],
+            facts=[],
+            api_surface="",
+            compressed_sigs={},
+            build_info=build_info,
+        )
+
+        assert "## Build Info" in result
+        assert "github.com/example/myapp" in result
+        assert "1.22" in result
+        assert "3" in result  # dependency count
+
+    def test_partial_inputs_skip_empty_sections(self):
+        """Sections with empty data are skipped gracefully."""
+        facts = [
+            FactItem(fact_type="version", value="2.0.0", file="version.go", line=5, language="Go"),
+        ]
+
+        result = build_facts_only_context(
+            root_dir="/fake",
+            files=["version.go"],
+            facts=facts,
+            api_surface="",
+            compressed_sigs={},
+            build_info=None,
+        )
+
+        assert "## Extracted Facts" in result
+        assert "2.0.0" in result
+        # Empty sections should NOT appear
+        assert "## API Surface" not in result
+        assert "## Compressed Signatures" not in result
+        assert "## Build Info" not in result

@@ -263,10 +263,12 @@ SUPPORTED_LANGUAGES = [
     help="Model for verification. Default: github/Phi-4 (or gpt-4o-mini if generator is Phi-4).")
 @click.option("--no-verify-docs", is_flag=True, default=False,
     help="Disable BOTH deterministic corrections (Stage D) and LLM verification (Stage C).")
+@click.option("--facts-only/--no-facts-only", default=False, show_default=True,
+    help="Generate only the factual extraction (no LLM prose). Outputs structured facts per chapter.")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
-         chunked, do_verify, verify_model, no_verify_docs):
+         chunked, do_verify, verify_model, no_verify_docs, facts_only):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -314,6 +316,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             verify=do_verify,
             verify_model=verify_model,
             no_verify_docs=no_verify_docs,
+            facts_only=facts_only,
         )
 
     if do_serve or serve_only:

@@ -74,6 +74,29 @@ def compress_file(content: str, file_path: str) -> str:
     return _fallback_compress(content)
 
 
+def compress_batch(contents: dict[str, str]) -> dict[str, str]:
+    """Compress multiple source files to their API surfaces.
+
+    Iterates over all entries calling :func:`compress_file` for each one.
+    If compression fails for a file (unsupported extension, parse error, etc.)
+    the original content is used as fallback.
+
+    Args:
+        contents: Mapping of relative file path to source content.
+
+    Returns:
+        Mapping with the same keys; values are compressed content.
+    """
+    result: dict[str, str] = {}
+    for path, content in contents.items():
+        try:
+            result[path] = compress_file(content, path)
+        except Exception:
+            logger.warning("Compression failed for %s, using original content", path)
+            result[path] = content
+    return result
+
+
 def compression_stats(original: str, compressed: str) -> dict[str, int | float]:
     """Compute compression statistics.
 

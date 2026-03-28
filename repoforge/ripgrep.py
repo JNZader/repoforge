@@ -125,7 +125,7 @@ IMPORT_PATTERNS = {
 @dataclass(frozen=True, slots=True)
 class FactItem:
     """A single semantic fact extracted from source code."""
-    fact_type: str   # 'endpoint', 'port', 'version', 'db_table', 'cli_command', 'env_var'
+    fact_type: str   # 'endpoint', 'port', 'version', 'db_table', 'cli_command', 'env_var', 'mcp_tool', 'fts_ddl', 'struct_field', 'go_version'
     value: str       # the extracted value (e.g., "GET /health", "7437", "v1.2.3")
     file: str        # source file path (relative)
     line: int        # line number (1-based)
@@ -205,6 +205,37 @@ FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
             (r'os\.environ(?:\.get)?\s*[\[(]\s*["\']([A-Z][A-Z0-9_]+)', "python_env"),
             (r'process\.env\.([A-Z][A-Z0-9_]+)', "node_env"),
             (r'os\.getenv\s*\(\s*["\']([A-Z][A-Z0-9_]+)', "python_getenv"),
+        ],
+    },
+    "mcp_tool": {
+        "Go": [
+            (r'mcp\.NewTool\s*\(\s*"([^"]+)"', "mcp_new_tool"),
+            (r'server\.AddTool\s*\(\s*"([^"]+)"', "mcp_add_tool"),
+            (r'tool\.NewTool\s*\(', "mcp_tool_new"),
+        ],
+        "Python": [
+            (r'@mcp\.tool', "mcp_decorator"),
+            (r'server\.add_tool', "mcp_add_tool"),
+            (r'Tool\s*\(\s*name\s*=\s*"([^"]+)"', "mcp_tool_init"),
+        ],
+        "TypeScript": [
+            (r'server\.tool\s*\(\s*"([^"]+)"', "mcp_server_tool"),
+            (r'new\s+McpTool\s*\(', "mcp_tool_new"),
+        ],
+    },
+    "fts_ddl": {
+        "*": [
+            (r'(?i)CREATE\s+VIRTUAL\s+TABLE.*USING\s+fts', "fts_virtual_table"),
+        ],
+    },
+    "struct_field": {
+        "Go": [
+            (r'^\s+[A-Z]\w+\s+\S+', "exported_field"),
+        ],
+    },
+    "go_version": {
+        "*": [
+            (r'^go\s+1\.\d+', "go_mod_version"),
         ],
     },
 }
