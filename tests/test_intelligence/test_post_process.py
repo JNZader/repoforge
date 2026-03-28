@@ -517,3 +517,117 @@ class TestNoOp:
         result, corrections = post_process_chapter(content, [], None, None)
         assert result == content
         assert len(corrections) == 0
+
+
+# ---------------------------------------------------------------------------
+# 7. Code block validation
+# ---------------------------------------------------------------------------
+
+def _sym(name: str, kind: str = "function", file: str = "main.go") -> ASTSymbol:
+    return ASTSymbol(name=name, kind=kind, file=file, line=1, signature=f"func {name}()")
+
+
+class TestCodeBlockValidation:
+    def test_flags_fabricated_go_func(self):
+        """A func definition not in AST symbols should be flagged."""
+        content = (
+            "Example usage:\n"
+            "```go\n"
+            "func mem_save(data string) {\n"
+            "    // saves data\n"
+            "}\n"
+            "```\n"
+        )
+        ast = {"main.go": [_sym("realFunc"), _sym("anotherReal")]}
+        result, corrections = post_process_chapter(content, [], None, ast)
+        assert "UNVERIFIED CODE: mem_save" in result
+        code_corrections = [c for c in corrections if "Code block" in c.reason or "fabricated" in c.reason]
+        assert len(code_corrections) >= 1
+
+    def test_does_not_flag_real_func(self):
+        """A func definition that IS in AST symbols should NOT be flagged."""
+        content = (
+            "```go\n"
+            "func realFunc() {\n"
+            "    return\n"
+            "}\n"
+            "```\n"
+        )
+        ast = {"main.go": [_sym("realFunc")]}
+        result, corrections = post_process_chapter(content, [], None, ast)
+        assert "UNVERIFIED CODE" not in result
+        code_corrections = [c for c in corrections if "fabricated" in c.reason]
+        assert len(code_corrections) == 0
+
+    def test_flags_fabricated_python_def(self):
+        """Python def not in symbols should be flagged."""
+        content = (
+            "```python\n"
+            "def updateSyncState(state):\n"
+            "    pass\n"
+            "```\n"
+        )
+        ast = {"app.py": [_sym("real_handler", file="app.py")]}
+        result, corrections = post_process_chapter(content, [], None, ast)
+        assert "UNVERIFIED CODE: updateSyncState" in result
+
+    def test_flags_fabricated_js_function(self):
+        """JS function keyword definition not in symbols should be flagged."""
+        content = (
+            "```javascript\n"
+            "function setupDataDir(path) {\n"
+            "    return path;\n"
+            "}\n"
+            "```\n"
+        )
+        ast = {"index.js": [_sym("handleRequest", file="index.js")]}
+        result, corrections = post_process_chapter(content, [], None, ast)
+        assert "UNVERIFIED CODE: setupDataDir" in result
+
+    def test_skips_main_and_init(self):
+        """Common generic names (main, init) should NOT be flagged."""
+        content = (
+            "```go\n"
+            "func main() {\n"
+            "    // entry point\n"
+            "}\n"
+            "func init() {\n"
+            "    // setup\n"
+            "}\n"
+            "```\n"
+        )
+        ast = {"server.go": [_sym("handleRequest")]}
+        result, corrections = post_process_chapter(content, [], None, ast)
+        assert "UNVERIFIED CODE" not in result
+
+    def test_no_validation_without_ast_or_facts(self):
+        """No AST symbols and no facts → skip code block validation entirely."""
+        content = (
+            "```go\n"
+            "func fabricatedFunc() {}\n"
+            "```\n"
+        )
+        result, corrections = post_process_chapter(content, [], None, None)
+        assert "UNVERIFIED CODE" not in result
+
+    def test_func_known_via_facts(self):
+        """A function name present in facts (not AST) should NOT be flagged."""
+        content = (
+            "```go\n"
+            "func handleObservation(w http.ResponseWriter) {\n"
+            "}\n"
+            "```\n"
+        )
+        facts = [_fact("endpoint", "POST /observations handleObservation")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        assert "UNVERIFIED CODE" not in result
+
+    def test_text_outside_code_blocks_not_checked(self):
+        """Function-like patterns outside code blocks must NOT be flagged."""
+        content = (
+            "The `func fabricatedFunc()` is mentioned in docs.\n"
+            "No code blocks here.\n"
+        )
+        ast = {"main.go": [_sym("realFunc")]}
+        result, corrections = post_process_chapter(content, [], None, ast)
+        assert "UNVERIFIED CODE" not in result

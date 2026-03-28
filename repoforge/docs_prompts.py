@@ -59,6 +59,9 @@ def _base_system_facts_only(language: str) -> str:
 Technical writer. Generate docs in **{language}** from EXTRACTED FACTS only.
 NEVER invent info. Use EXACT values from facts (ports, endpoints, env vars, signatures).
 Use ONLY technologies in "Tech stack". Output Markdown only, start with `#` heading.
+NEVER write code blocks with fabricated function implementations. You may ONLY include code
+that appears verbatim in the Compressed Signatures or API Surface sections. To show code
+structure, use prose descriptions or pseudocode clearly marked as `<!-- pseudocode -->`.
 """
 
 
@@ -289,27 +292,18 @@ def index_prompt(repo_map: dict, language: str, project_name: str, chapters: lis
     )
 
     if facts_only:
-        # Ultra-compact index: just chapter list + stack, no tree/modules/graph
-        user = f"""Generate **index.md** — home page for **{project_name}** docs.
+        # Ultra-minimal index: navigation hub needs almost zero context.
+        stack_line = _format_stack(repo_map.get("tech_stack", []))
+        system = f"Generate a markdown navigation page in **{language}**. Start with `#` heading."
+        user = f"""**index.md** for **{project_name}** ({stack_line}).
 
-- **Tech stack**: {_format_stack(repo_map.get("tech_stack", []))}
-- **Entry points**: {_format_entry_points(repo_map.get("entry_points", []))}
-{graph_context}
-
-## Chapters
 | Chapter | Description |
 |---------|-------------|
 {nav_table}
 
-## Required
-1. `# {project_name}` heading + 2-sentence description.
-2. Tech stack badges: `Python` `FastAPI` etc.
-3. Navigation table linking all chapters.
-4. One quick-start command.
-
-Under 60 lines. Language: {language}
+Create: `# {project_name}` heading, brief description, navigation table linking all chapters. Under 50 lines.
 """
-        return _base_system_facts_only(language), user
+        return system, user
 
     user = f"""Generate the **index.md** (home page) for the documentation of **{project_name}**.
 
@@ -457,24 +451,14 @@ def architecture_prompt(repo_map: dict, language: str, project_name: str,
     is_monorepo = len(layers) > 1
 
     if facts_only:
-        # Compact prompt: ultra-light context, no Mermaid requirement, shorter instructions.
-        # graph_context here is already short_graph + facts + API surface from the caller.
-        user = f"""Generate **03-architecture.md** — Architecture chapter for **{project_name}**.
+        # Ultra-compact: short graph + facts only (no API surface, no sigs).
+        # Total system+user must stay under 7K tokens.
+        layer_hint = "Monorepo: " + ", ".join(layer_names) if is_monorepo else (layer_names[0] if layer_names else "main")
+        user = f"""**03-architecture.md** for **{project_name}** ({layer_hint}, {len(layers)} layer(s)).
 
-{_repo_context_facts_only(repo_map, graph_context=graph_context)}
+{graph_context}
 
-### Hints
-- {"Monorepo: " + ", ".join(layer_names) if is_monorepo else "Single-layer: " + (layer_names[0] if layer_names else "main")}
-- {len(layers)} layer(s)
-
-## Required sections
-1. `# Architecture` heading
-2. **Overview** — 3-5 sentences on the design pattern.
-3. **Layer breakdown** — per layer: purpose, responsibilities, tech.
-4. **Data flow** — how a request flows end-to-end (text description, no diagram required).
-5. **Key design decisions** — bullet list of choices and rationale.
-
-Base on detected layers only. Don't invent services.
+Describe the project architecture: layers, data flow, key design decisions. Use facts provided. No Mermaid.
 Language: {language}
 """
         return _base_system_facts_only(language), user

@@ -9,6 +9,7 @@ Applies rule-based corrections that don't need an LLM:
   4. Endpoint validation (flag endpoints not in facts)
   5. Missing fact injection (append missing endpoints/tables)
   6. Dependency validation (flag deps not in build files)
+  7. Code block validation (flag fabricated function definitions)
 
 All corrections are logged for audit.
 """
@@ -45,13 +46,14 @@ def post_process_chapter(
 ) -> tuple[str, list[Correction]]:
     """Apply deterministic corrections to a generated documentation chapter.
 
-    Runs six correction passes in order:
+    Runs seven correction passes in order:
       1. Port replacement
       2. Version replacement
       3. URL placeholder cleanup
       4. Endpoint validation (comments only, no removal)
       5. Missing fact injection (api-reference / data-models chapters)
       6. Dependency validation (flag deps not in build files)
+      7. Code block validation (flag fabricated function definitions)
 
     Args:
         content: The raw LLM-generated chapter markdown.
@@ -71,6 +73,7 @@ def post_process_chapter(
     content = _validate_endpoints(content, facts, corrections)
     content = _inject_missing_facts(content, facts, ast_symbols, chapter_file, corrections)
     content = _fix_dependencies(content, build_info, corrections)
+    content = _validate_code_blocks(content, ast_symbols, facts, corrections)
 
     return content, corrections
 
@@ -647,3 +650,110 @@ def _is_stdlib(dep: str, language: str) -> bool:
     # which are unlikely to be stdlib.
     # Node stdlib (fs, path, http) won't match our patterns.
     return False
+
+
+# ---------------------------------------------------------------------------
+# 7. Code block validation — flag fabricated function definitions
+# ---------------------------------------------------------------------------
+
+# Patterns that match function/method DEFINITIONS inside code blocks.
+# Only definitions (not calls) — conservative to avoid false positives.
+_CODE_BLOCK_FUNC_DEF_PATTERNS = [
+    re.compile(r'\bfunc\s+(?:\([^)]*\)\s+)?(\w+)\s*\('),   # Go: func Name( or func (r *R) Name(
+    re.compile(r'\bdef\s+(\w+)\s*\('),                       # Python: def name(
+    re.compile(r'\bfunction\s+(\w+)\s*\('),                   # JS/TS: function name(
+    re.compile(r'\b(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{'),    # JS/TS: name() { or async name() {
+]
+
+
+def _build_known_symbols(
+    ast_symbols: dict[str, list[ASTSymbol]] | None,
+    facts: list[FactItem],
+) -> set[str]:
+    """Collect all known function/method names from AST symbols and facts."""
+    known: set[str] = set()
+    if ast_symbols:
+        for symbols in ast_symbols.values():
+            for sym in symbols:
+                known.add(sym.name)
+    for fact in facts:
+        # Fact values may contain function names in various formats
+        val = fact.value.strip()
+        if val:
+            # Extract last word-like token as potential function name
+            parts = re.split(r'[\s/\.:]+', val)
+            for part in parts:
+                if re.match(r'^[a-zA-Z_]\w*$', part):
+                    known.add(part)
+    return known
+
+
+def _validate_code_blocks(
+    content: str,
+    ast_symbols: dict[str, list[ASTSymbol]] | None,
+    facts: list[FactItem],
+    corrections: list[Correction],
+) -> str:
+    """Flag function definitions in code blocks that don't exist in the codebase.
+
+    Only checks function DEFINITIONS (not calls) inside fenced code blocks.
+    Appends an HTML comment after the code block for each unverified function.
+    """
+    if not ast_symbols and not facts:
+        return content
+
+    known = _build_known_symbols(ast_symbols, facts)
+    if not known:
+        return content
+
+    # Split content into code-block and non-code-block segments
+    # Pattern matches fenced code blocks: ```...```
+    _fence_pattern = re.compile(r'^```[^\n]*\n(.*?)^```', re.MULTILINE | re.DOTALL)
+
+    result_parts: list[str] = []
+    last_end = 0
+
+    for match in _fence_pattern.finditer(content):
+        # Add text before this code block
+        result_parts.append(content[last_end:match.start()])
+
+        block_code = match.group(1)
+        block_full = match.group(0)
+
+        # Extract function definitions from this code block
+        unverified: list[str] = []
+        for pattern in _CODE_BLOCK_FUNC_DEF_PATTERNS:
+            for func_match in pattern.finditer(block_code):
+                func_name = func_match.group(1)
+                # Skip very common/generic names that are likely fine
+                if func_name in ("main", "init", "setup", "test", "run", "new", "New"):
+                    continue
+                if func_name not in known:
+                    unverified.append(func_name)
+
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique_unverified: list[str] = []
+        for name in unverified:
+            if name not in seen:
+                seen.add(name)
+                unique_unverified.append(name)
+
+        result_parts.append(block_full)
+        for func_name in unique_unverified:
+            corrections.append(Correction(
+                original=func_name,
+                corrected=func_name,
+                reason=f"Code block function '{func_name}' not found in codebase — may be fabricated",
+                line=None,
+            ))
+            result_parts.append(
+                f"\n<!-- UNVERIFIED CODE: {func_name} not found in codebase -->"
+            )
+
+        last_end = match.end()
+
+    # Add remaining content after last code block
+    result_parts.append(content[last_end:])
+
+    return "".join(result_parts)
