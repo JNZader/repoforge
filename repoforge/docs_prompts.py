@@ -1313,7 +1313,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                         graph_context: str = "",
                         short_graph_context: str = "",
                         doc_chunks: dict | None = None,
-                        facts_only_context: str = "") -> list[dict]:
+                        facts_only_context_by_chapter: dict[str, str] | None = None) -> list[dict]:
     """
     Return the adaptive list of chapters to generate with their prompts.
 
@@ -1325,10 +1325,13 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
         short_graph_context: Short summary for other chapters.
         doc_chunks: Pre-digested context chunks from doc_chunks.py.
             Keys: endpoints, data_models, mcp_tools, cli_commands, architecture, module_summaries.
-        facts_only_context: Pre-digested facts context for non-architecture chapters.
-            When provided, non-architecture chapters use _base_system_facts_only and
-            this context instead of short_graph_context. Architecture chapter (03-architecture.md)
-            always keeps full graph context and the regular system prompt.
+        facts_only_context_by_chapter: Per-chapter facts-only context dict.
+            Keys are chapter file names (e.g. "01-overview.md"); a "_default" key
+            is used as fallback.  When provided, non-architecture chapters use
+            _base_system_facts_only and the matching context string instead of
+            short_graph_context.  Architecture chapter (03-architecture.md) always
+            keeps full graph context and the regular system prompt.
+            None means no facts-only mode (original behaviour).
     """
     project_type = classify_project(repo_map)
     chunks = doc_chunks or {}
@@ -1350,26 +1353,32 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
     for chapter in all_chapters:
         is_architecture = chapter["file"] == "03-architecture.md"
 
-        # Architecture chapter gets full graph context, others get short
-        # When facts_only_context is provided, non-architecture chapters use it
-        # instead of short_graph_context (hybrid routing)
+        # Architecture chapter gets full graph context, others get short.
+        # When facts_only_context_by_chapter is provided, non-architecture
+        # chapters look up their per-chapter context (with "_default" fallback).
+        chapter_file = chapter["file"]
         if is_architecture:
             ch_graph = graph_context
-        elif facts_only_context:
-            ch_graph = facts_only_context
+            ch_system_override = None
+        elif facts_only_context_by_chapter is not None:
+            ch_graph = facts_only_context_by_chapter.get(
+                chapter_file,
+                facts_only_context_by_chapter.get("_default", ""),
+            )
+            ch_system_override = _base_system_facts_only(language)
         else:
             ch_graph = short_graph_context
+            ch_system_override = None
 
         system, user = _dispatch_prompt(
-            chapter["file"], repo_map, language, project_name,
+            chapter_file, repo_map, language, project_name,
             project_type, all_chapters, graph_context=ch_graph,
             doc_chunks=chunks,
         )
 
-        # When facts_only_context is active, non-architecture chapters get
-        # the facts-only system prompt (stricter hallucination rules)
-        if facts_only_context and not is_architecture:
-            system = _base_system_facts_only(language)
+        # Override system prompt when using facts-only mode
+        if ch_system_override is not None:
+            system = ch_system_override
 
         result.append({
             "file":        chapter["file"],
@@ -1762,7 +1771,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,  # noq
                         graph_context: str = "",
                         short_graph_context: str = "",
                         doc_chunks: dict | None = None,
-                        facts_only_context: str = "") -> list[dict]:
+                        facts_only_context_by_chapter: dict[str, str] | None = None) -> list[dict]:
     """
     Main entry point. Routes monorepos through hierarchical generation,
     single projects through the original adaptive path.
@@ -1776,9 +1785,11 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,  # noq
         graph_context: Full dependency analysis for architecture chapters.
         short_graph_context: Short summary for other chapters.
         doc_chunks: Pre-digested context chunks from doc_chunks.py.
-        facts_only_context: Pre-digested facts context for non-architecture chapters.
-            When provided, non-architecture chapters use _base_system_facts_only and
-            this context instead of short_graph_context. Architecture chapter is unchanged.
+        facts_only_context_by_chapter: Per-chapter facts-only context dict.
+            Keys are chapter file names (e.g. "01-overview.md"); "_default" as
+            fallback.  Non-architecture chapters use _base_system_facts_only and
+            the matching context.  Architecture chapter is unchanged.
+            None means no facts-only mode.
     """
     # Allow repoforge.yaml to force the project type
     cfg_type = repo_map.get("repoforge_config", {}).get("project_type")
@@ -1793,7 +1804,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,  # noq
         graph_context=graph_context,
         short_graph_context=short_graph_context,
         doc_chunks=doc_chunks,
-        facts_only_context=facts_only_context,
+        facts_only_context_by_chapter=facts_only_context_by_chapter,
     )
     for ch in chapters:
         ch.setdefault("subdir", None)

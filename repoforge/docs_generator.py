@@ -32,6 +32,7 @@ from .graph_context import (
     build_short_graph_context,
     build_semantic_context,
     build_facts_only_context,
+    build_facts_only_context_for_chapter,
     format_api_surface,
     format_facts_section,
 )
@@ -236,7 +237,7 @@ def generate_docs(
     # ------------------------------------------------------------------
     # 3e. Build facts-only context when facts_only mode is active
     # ------------------------------------------------------------------
-    _fo_context = ""
+    _fo_context_by_chapter: dict[str, str] | None = None
     if facts_only:
         try:
             from .intelligence.compressor import compress_batch
@@ -277,16 +278,30 @@ def generate_docs(
                         _contents[fpath] = full_path.read_text(encoding="utf-8", errors="replace")
                     except Exception:
                         pass
-            compressed_sigs = compress_batch(_contents) if _contents else {}
-            if compressed_sigs:
-                log(f"   ✅ Compressed {len(compressed_sigs)} file signatures")
+            _fo_compressed = compress_batch(_contents) if _contents else {}
+            if _fo_compressed:
+                log(f"   ✅ Compressed {len(_fo_compressed)} file signatures")
 
-            _fo_context = build_facts_only_context(
+            # Build per-chapter facts-only context instead of single monolithic context
+            _fo_context_by_chapter = {}
+            _known_chapters = [
+                "01-overview.md", "02-quickstart.md", "04-core-mechanisms.md",
+                "05-data-models.md", "06-api-reference.md", "07-dev-guide.md",
+            ]
+            for _ch_file in _known_chapters:
+                _fo_context_by_chapter[_ch_file] = build_facts_only_context_for_chapter(
+                    _ch_file, str(root), all_files, _fo_facts,
+                    api_surface_ctx, _fo_compressed, _fo_build_info,
+                )
+
+            # Default context for unknown/adaptive chapters (uses all facts)
+            _fo_context_by_chapter["_default"] = build_facts_only_context(
                 str(root), all_files, _fo_facts,
-                api_surface_ctx, compressed_sigs, _fo_build_info,
+                api_surface_ctx, _fo_compressed, _fo_build_info,
             )
-            if _fo_context:
-                log(f"   ✅ Facts-only context built ({len(_fo_context)} chars)")
+
+            _total_chars = sum(len(v) for v in _fo_context_by_chapter.values())
+            log(f"   ✅ Per-chapter facts-only context built ({len(_fo_context_by_chapter)} chapters, {_total_chars} total chars)")
         except Exception as e:
             log(f"   ⚠️  Facts-only context skipped: {e}")
 
@@ -304,7 +319,7 @@ def generate_docs(
         graph_context=_arch_context,
         short_graph_context=_other_context,
         doc_chunks=doc_chunks,
-        facts_only_context=_fo_context,
+        facts_only_context_by_chapter=_fo_context_by_chapter,
     )
     max_ch = cx["max_chapters"]
     if len(all_chapters) > max_ch:

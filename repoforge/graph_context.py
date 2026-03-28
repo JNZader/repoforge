@@ -798,6 +798,128 @@ def build_facts_only_context(
     return "\n".join(sections)
 
 
+# ---------------------------------------------------------------------------
+# Per-chapter fact filtering for facts-only mode
+# ---------------------------------------------------------------------------
+
+CHAPTER_FACT_TYPES: dict[str, set[str]] = {
+    "index.md": set(),  # No facts needed for nav hub
+    "01-overview.md": {"version", "go_version", "port"},
+    "02-quickstart.md": {"port", "env_var", "cli_command", "go_version"},
+    # 03-architecture excluded (uses full graph context)
+    "04-core-mechanisms.md": {"mcp_tool", "struct_field", "env_var"},
+    "05-data-models.md": {"db_table", "struct_field", "fts_ddl"},
+    "06-api-reference.md": {"endpoint", "mcp_tool", "cli_command", "port"},
+    "07-dev-guide.md": {"env_var", "cli_command", "go_version", "version"},
+}
+
+CHAPTER_TOKEN_BUDGETS: dict[str, int] = {
+    "01-overview.md": 400,
+    "02-quickstart.md": 500,
+    "04-core-mechanisms.md": 600,
+    "05-data-models.md": 500,
+    "06-api-reference.md": 700,
+    "07-dev-guide.md": 400,
+}
+
+_CHAPTER_SIG_LIMITS: dict[str, int] = {
+    "01-overview.md": 3,
+    "02-quickstart.md": 3,
+    "06-api-reference.md": 5,
+}
+_DEFAULT_SIG_LIMIT = 3
+
+
+def filter_facts_for_chapter(
+    chapter_file: str,
+    facts: list[FactItem],
+) -> list[FactItem]:
+    """Filter facts to only those relevant for a given chapter.
+
+    Looks up allowed fact types from CHAPTER_FACT_TYPES.
+    If the chapter is not in the mapping (adaptive/project-specific chapters),
+    returns all facts as a safe fallback.
+
+    Args:
+        chapter_file: Chapter filename (e.g. "05-data-models.md").
+        facts: Full list of FactItem extracted from the codebase.
+
+    Returns:
+        Filtered list of FactItem matching the chapter's allowed types,
+        or the full list if the chapter is unknown.
+    """
+    if chapter_file not in CHAPTER_FACT_TYPES:
+        return facts
+
+    allowed = CHAPTER_FACT_TYPES[chapter_file]
+    if not allowed:
+        return []
+
+    return [f for f in facts if f.fact_type in allowed]
+
+
+def build_facts_only_context_for_chapter(
+    chapter_file: str,
+    root_dir: str,
+    files: list[str],
+    facts: list[FactItem],
+    api_surface: str,
+    compressed_sigs: dict[str, str],
+    build_info: dict | None = None,
+) -> str:
+    """Build a facts-only context tailored for a specific chapter.
+
+    Wraps build_facts_only_context() with per-chapter filtering:
+      - Facts are filtered to types relevant for the chapter.
+      - Compressed signatures are capped to a per-chapter file limit.
+      - Token budget is looked up from CHAPTER_TOKEN_BUDGETS.
+      - API surface is included only for chapters that need it.
+
+    Args:
+        chapter_file: Chapter filename (e.g. "06-api-reference.md").
+        root_dir: Absolute path to the project root.
+        files: List of relative file paths.
+        facts: Full list of FactItem from the codebase.
+        api_surface: Pre-formatted API surface markdown string.
+        compressed_sigs: Mapping of relative file path -> compressed signature text.
+        build_info: Optional build metadata dict.
+
+    Returns:
+        Combined markdown string with chapter-relevant sections.
+    """
+    # Filter facts to chapter-relevant types
+    filtered_facts = filter_facts_for_chapter(chapter_file, facts)
+
+    # Cap compressed sigs to per-chapter file limit
+    sig_limit = _CHAPTER_SIG_LIMITS.get(chapter_file, _DEFAULT_SIG_LIMIT)
+    if compressed_sigs:
+        limited_sigs = dict(list(sorted(compressed_sigs.items()))[:sig_limit])
+    else:
+        limited_sigs = {}
+
+    # Token budget for compressed sigs
+    max_tokens = CHAPTER_TOKEN_BUDGETS.get(chapter_file, 500)
+
+    # API surface: include for overview, data-models, api-reference; skip otherwise
+    chapter_api_surface = ""
+    if chapter_file in (
+        "01-overview.md",
+        "05-data-models.md",
+        "06-api-reference.md",
+    ):
+        chapter_api_surface = api_surface
+
+    return build_facts_only_context(
+        root_dir=root_dir,
+        files=files,
+        facts=filtered_facts,
+        api_surface=chapter_api_surface,
+        compressed_sigs=limited_sigs,
+        build_info=build_info,
+        max_tokens=max_tokens,
+    )
+
+
 def _format_compressed_sigs(
     compressed_sigs: dict[str, str],
     max_tokens: int,
