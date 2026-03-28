@@ -493,3 +493,88 @@ def _collect_model_symbols(
                 models.append(sym)
 
     return models
+
+
+# ---------------------------------------------------------------------------
+# Cross-file type relationships (uses SymbolLinker)
+# ---------------------------------------------------------------------------
+
+
+def chunk_type_relationships(
+    ast_symbols: dict[str, list[ASTSymbol]],
+    max_lines: int = 40,
+) -> str:
+    """Pre-digest cross-file type relationships for architecture/data-models chapters.
+
+    Shows inheritance chains, interface implementations, and key type usages
+    across files. Returns empty string if no relationships found or if
+    symbol_linker is not available.
+    """
+    try:
+        from .symbol_linker import SymbolLinker
+    except ImportError:
+        return ""
+
+    if not ast_symbols:
+        return ""
+
+    linker = SymbolLinker(ast_symbols)
+    lines: list[str] = []
+
+    # Collect all type symbols
+    type_kinds = ("class", "struct", "interface", "type", "enum", "trait")
+    type_symbols = [
+        sym for syms in ast_symbols.values()
+        for sym in syms if sym.kind in type_kinds
+    ]
+
+    if not type_symbols:
+        return ""
+
+    lines.append("## Type Relationships (cross-file analysis)\n")
+
+    # 1. Inheritance chains
+    inheritance_found = []
+    for sym in type_symbols:
+        parents = linker.get_parents(sym.name)
+        if parents:
+            inheritance_found.append((sym, parents))
+
+    if inheritance_found:
+        lines.append("### Inheritance")
+        for sym, parents in inheritance_found:
+            if len(lines) >= max_lines:
+                break
+            parent_str = ", ".join(parents)
+            lines.append(f"- `{sym.name}` ({sym.file}) ← {parent_str}")
+
+    # 2. Interface implementations
+    interfaces = [s for s in type_symbols if s.kind in ("interface", "trait")]
+    if interfaces and len(lines) < max_lines:
+        impl_section = []
+        for iface in interfaces:
+            impls = linker.get_implementors(iface.name)
+            if impls:
+                impl_names = ", ".join(f"`{s.name}`" for s in impls[:5])
+                impl_section.append(f"- `{iface.name}` ({iface.file}) → {impl_names}")
+        if impl_section:
+            lines.append("\n### Implementations")
+            lines.extend(impl_section[:max_lines - len(lines)])
+
+    # 3. Most-referenced types (hub types)
+    if len(lines) < max_lines:
+        usage_counts = []
+        for sym in type_symbols[:20]:  # cap to avoid O(n²) on huge projects
+            usages = linker.get_usages(sym.name)
+            if len(usages) >= 2:
+                usage_counts.append((sym, len(usages)))
+        usage_counts.sort(key=lambda x: x[1], reverse=True)
+
+        if usage_counts:
+            lines.append("\n### Hub Types (most referenced)")
+            for sym, count in usage_counts[:8]:
+                if len(lines) >= max_lines:
+                    break
+                lines.append(f"- `{sym.name}` ({sym.file}) — used by {count} symbols")
+
+    return "\n".join(lines) if len(lines) > 1 else ""
