@@ -816,16 +816,19 @@ CHAPTER_FACT_TYPES: dict[str, set[str]] = {
 CHAPTER_TOKEN_BUDGETS: dict[str, int] = {
     "01-overview.md": 400,
     "02-quickstart.md": 500,
-    "04-core-mechanisms.md": 600,
-    "05-data-models.md": 500,
+    "04-core-mechanisms.md": 300,
+    "05-data-models.md": 300,
     "06-api-reference.md": 700,
-    "07-dev-guide.md": 400,
+    "07-dev-guide.md": 200,
 }
 
 _CHAPTER_SIG_LIMITS: dict[str, int] = {
     "01-overview.md": 3,
     "02-quickstart.md": 3,
+    "04-core-mechanisms.md": 2,
+    "05-data-models.md": 2,
     "06-api-reference.md": 5,
+    "07-dev-guide.md": 2,
 }
 _DEFAULT_SIG_LIMIT = 3
 

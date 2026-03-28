@@ -56,34 +56,17 @@ CRITICAL RULES:
 
 def _base_system_facts_only(language: str) -> str:
     return f"""\
-You are a senior technical writer generating professional documentation for a software project.
+You are a senior technical writer generating documentation from EXTRACTED FACTS and COMPRESSED SIGNATURES (not full source code). Document only what EXISTS in the provided facts.
 
-You are receiving EXTRACTED FACTS and COMPRESSED SIGNATURES, not full source code.
-Your job is to document what EXISTS based on the facts provided — nothing more.
-
-CRITICAL RULES:
-1. Write EVERYTHING in **{language}**. Titles, body text, code comments, diagram labels — all in {language}.
-2. NEVER invent code examples, function names, or API details not present in the provided facts.
-   If a fact is not provided, DO NOT guess — omit it or explicitly state it is undocumented.
-3. EXTRACTED FACTS — STRICT RULE: Use the EXACT values from the "Extracted Facts" section for
-   port numbers, endpoints, environment variables, database tables, CLI commands, and version
-   strings. Do NOT guess or fabricate these values. If the facts say port 7437, write 7437 —
-   not 8080, not 3000. If the facts list specific endpoints, use those exact paths.
-4. API SURFACE — STRICT RULE: Use the EXACT function signatures from the "API Surface" section.
-   These are REAL signatures extracted via AST parsing. Use these exact function names, parameter
-   types, and return types. Do NOT invent function names or signatures not listed in the API Surface.
-5. COMPRESSED SIGNATURES — Use them to understand module structure, relationships, and the
-   overall shape of the codebase. They are abbreviated representations, not full code.
-6. Use Markdown formatting: headers, code blocks, tables, bullet lists.
-7. Include Mermaid diagrams where they add clarity — but base them ONLY on the provided facts,
-   not on imagination or assumptions.
-8. Be concise — describe what EXISTS based on facts, do not speculate about what might exist.
-9. Output ONLY the Markdown content. No preamble, no "here is your document".
-10. Start directly with the `#` heading of the document.
-11. TECH STACK — STRICT RULE: Use ONLY the technologies explicitly listed in the "Tech stack"
-    field. Do NOT infer technologies from function names, variable names, or export names.
-    If a function is named `make_fastapi_example()` that does NOT mean FastAPI is in the stack.
-    If stack says ["Python"], document ONLY Python.
+RULES:
+1. Write EVERYTHING in **{language}**.
+2. NEVER invent information not present in the facts. Omit or mark as undocumented.
+3. Use EXACT values from Extracted Facts (ports, endpoints, env vars, CLI commands, versions).
+4. Use EXACT signatures from API Surface (real AST-extracted names, types, parameters).
+5. Compressed Signatures show module structure — they are abbreviated, not full code.
+6. Use Markdown: headers, code blocks, tables, bullet lists. Mermaid only from facts.
+7. Use ONLY technologies listed in "Tech stack". Do NOT infer from function names.
+8. Output ONLY Markdown. Start with the `#` heading. No preamble.
 """
 
 
@@ -272,6 +255,28 @@ def _repo_context_light(repo_map: dict, graph_context: str = "") -> str:
 {_build_directory_tree(repo_map)}
 
 ### Layers detected
+{_format_layers(repo_map.get("layers", {}))}
+"""
+    if graph_context:
+        ctx += f"\n{graph_context}\n"
+    return ctx
+
+
+def _repo_context_facts_only(repo_map: dict, graph_context: str = "") -> str:
+    """Ultra-light repo context for facts-only mode — NO tree, NO modules.
+
+    Used when extracted facts and compressed signatures already provide
+    structural information.  Only emits: tech stack, entry points,
+    config files, and layer summary.  Saves ~60-80% tokens vs _repo_context.
+    """
+    ctx = f"""
+## Repo context
+
+- **Tech stack**: {_format_stack(repo_map.get("tech_stack", []))}
+- **Entry points**: {_format_entry_points(repo_map.get("entry_points", []))}
+- **Config files**: {_format_config_files(repo_map.get("config_files", []))}
+
+### Layers
 {_format_layers(repo_map.get("layers", {}))}
 """
     if graph_context:
@@ -486,22 +491,27 @@ Language: {language}
 
 def core_mechanisms_prompt(repo_map: dict, language: str, project_name: str,
                            graph_context: str = "",
-                           doc_chunks: dict | None = None) -> tuple[str, str]:
-    # Pick the most interesting modules across all layers
-    top_modules = []
-    for layer_name, layer_data in repo_map.get("layers", {}).items():
-        modules = layer_data.get("modules", [])
-        # Take top 3 per layer that have exports
-        interesting = [m for m in modules if m.get("exports")][:3]
-        for m in interesting:
-            top_modules.append((layer_name, m))
+                           doc_chunks: dict | None = None,
+                           facts_only: bool = False) -> tuple[str, str]:
+    # In facts-only mode, skip the per-module detail — facts carry this info
+    if facts_only:
+        modules_detail = ""
+    else:
+        # Pick the most interesting modules across all layers
+        top_modules = []
+        for layer_name, layer_data in repo_map.get("layers", {}).items():
+            modules = layer_data.get("modules", [])
+            # Take top 3 per layer that have exports
+            interesting = [m for m in modules if m.get("exports")][:3]
+            for m in interesting:
+                top_modules.append((layer_name, m))
 
-    modules_detail = ""
-    for layer_name, m in top_modules[:8]:
-        exports = ", ".join(m.get("exports", [])[:8])
-        imports = ", ".join(m.get("imports", [])[:5])
-        hint = m.get("summary_hint", "")
-        modules_detail += f"""
+        modules_detail = ""
+        for layer_name, m in top_modules[:8]:
+            exports = ", ".join(m.get("exports", [])[:8])
+            imports = ", ".join(m.get("imports", [])[:5])
+            hint = m.get("summary_hint", "")
+            modules_detail += f"""
   - `{m['path']}` [{layer_name}] ({m['language']})
     Summary: {hint or "no docstring"}
     Exports: {exports or "none"}
@@ -516,13 +526,21 @@ def core_mechanisms_prompt(repo_map: dict, language: str, project_name: str,
             focused_parts.append(chunk)
     focused_section = "\n\n".join(focused_parts) if focused_parts else ""
 
+    # Use ultra-light repo context in facts-only mode
+    ctx_fn = _repo_context_facts_only if facts_only else _repo_context
+    ctx = ctx_fn(repo_map, graph_context=graph_context)
+
+    modules_block = ""
+    if modules_detail:
+        modules_block = f"""
+### Most interesting modules (analyze these in depth)
+{modules_detail}
+"""
+
     user = f"""Generate **04-core-mechanisms.md** — the Core Mechanisms deep-dive for **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
-
-### Most interesting modules (analyze these in depth)
-{modules_detail or "  (use modules from repo context above)"}
-
+{ctx}
+{modules_block}
 {focused_section}
 
 ## What this document must contain
@@ -551,37 +569,42 @@ Language: {language}
 
 def data_models_prompt(repo_map: dict, language: str, project_name: str,
                        graph_context: str = "",
-                       doc_chunks: dict | None = None) -> tuple[str, str]:
-    # Find modules that likely define models
-    model_modules = []
-    for layer_name, layer_data in repo_map.get("layers", {}).items():
-        for m in layer_data.get("modules", []):
-            name_lower = m["name"].lower()
-            path_lower = m["path"].lower()
-            imports_lower = [i.lower() for i in m.get("imports", [])]
-            exports = m.get("exports", [])
-
-            is_model = (
-                any(kw in name_lower for kw in ("model", "schema", "entity", "type", "interface"))
-                or any(kw in path_lower for kw in ("/models/", "/schemas/", "/entities/", "/types/"))
-                or any(kw in imports_lower for kw in ("pydantic", "sqlalchemy", "prisma", "typeorm", "mongoose", "zod"))
-                or any(e[0].isupper() for e in exports)  # PascalCase = likely classes/types
-            )
-            if is_model:
-                model_modules.append((layer_name, m))
-
-    if not model_modules:
-        # Fall back to any modules with PascalCase exports
+                       doc_chunks: dict | None = None,
+                       facts_only: bool = False) -> tuple[str, str]:
+    # In facts-only mode, skip the per-module scan — facts carry model info
+    if facts_only:
+        modules_text = ""
+    else:
+        # Find modules that likely define models
+        model_modules = []
         for layer_name, layer_data in repo_map.get("layers", {}).items():
             for m in layer_data.get("modules", []):
-                if any(e[0].isupper() for e in m.get("exports", [])):
+                name_lower = m["name"].lower()
+                path_lower = m["path"].lower()
+                imports_lower = [i.lower() for i in m.get("imports", [])]
+                exports = m.get("exports", [])
+
+                is_model = (
+                    any(kw in name_lower for kw in ("model", "schema", "entity", "type", "interface"))
+                    or any(kw in path_lower for kw in ("/models/", "/schemas/", "/entities/", "/types/"))
+                    or any(kw in imports_lower for kw in ("pydantic", "sqlalchemy", "prisma", "typeorm", "mongoose", "zod"))
+                    or any(e[0].isupper() for e in exports)  # PascalCase = likely classes/types
+                )
+                if is_model:
                     model_modules.append((layer_name, m))
 
-    modules_text = ""
-    for layer_name, m in model_modules[:8]:
-        exports = ", ".join(m.get("exports", [])[:10])
-        imports = ", ".join(m.get("imports", [])[:5])
-        modules_text += f"\n  - `{m['path']}` [{layer_name}]: exports={exports}, uses={imports}"
+        if not model_modules:
+            # Fall back to any modules with PascalCase exports
+            for layer_name, layer_data in repo_map.get("layers", {}).items():
+                for m in layer_data.get("modules", []):
+                    if any(e[0].isupper() for e in m.get("exports", [])):
+                        model_modules.append((layer_name, m))
+
+        modules_text = ""
+        for layer_name, m in model_modules[:8]:
+            exports = ", ".join(m.get("exports", [])[:10])
+            imports = ", ".join(m.get("imports", [])[:5])
+            modules_text += f"\n  - `{m['path']}` [{layer_name}]: exports={exports}, uses={imports}"
 
     # Focused context: pre-digested data models
     chunks = doc_chunks or {}
@@ -596,12 +619,21 @@ CRITICAL: Use ONLY the tables, types, and fields listed above. Do NOT invent fie
 that are not in this extracted data.
 """
 
+    # Use ultra-light repo context in facts-only mode
+    ctx_fn = _repo_context_facts_only if facts_only else _repo_context
+    ctx = ctx_fn(repo_map, graph_context=graph_context)
+
+    modules_block = ""
+    if modules_text:
+        modules_block = f"""
+### Modules likely containing data models/schemas
+{modules_text}
+"""
+
     user = f"""Generate **05-data-models.md** — the Data Models chapter for **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
-
-### Modules likely containing data models/schemas
-{modules_text or "  (infer from modules with PascalCase exports or ORM imports)"}
+{ctx}
+{modules_block}
 {focused_section}
 ## What this document must contain
 1. `# Data Models` heading
@@ -696,12 +728,17 @@ Language: {language}
 
 def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
                      graph_context: str = "",
-                     doc_chunks: dict | None = None) -> tuple[str, str]:
+                     doc_chunks: dict | None = None,
+                     facts_only: bool = False) -> tuple[str, str]:
     layers = repo_map.get("layers", {})
+
+    # Use ultra-light repo context in facts-only mode
+    ctx_fn = _repo_context_facts_only if facts_only else _repo_context
+    ctx = ctx_fn(repo_map, graph_context=graph_context)
 
     user = f"""Generate **07-dev-guide.md** — the Developer Guide for **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
+{ctx}
 
 ## What this document must contain
 1. `# Developer Guide` heading
@@ -965,7 +1002,8 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                      project_name: str, project_type: str,
                      active_chapters: list[dict],
                      graph_context: str = "",
-                     doc_chunks: dict | None = None) -> tuple[str, str]:
+                     doc_chunks: dict | None = None,
+                     facts_only: bool = False) -> tuple[str, str]:
     """Route a chapter file to its prompt function."""
     chunks = doc_chunks or {}
 
@@ -984,16 +1022,16 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                                     doc_chunks=chunks)
     if chapter_file == "04-core-mechanisms.md":
         return core_mechanisms_prompt(repo_map, language, project_name, graph_context=graph_context,
-                                       doc_chunks=chunks)
+                                       doc_chunks=chunks, facts_only=facts_only)
     if chapter_file == "05-data-models.md":
         return data_models_prompt(repo_map, language, project_name, graph_context=graph_context,
-                                   doc_chunks=chunks)
+                                   doc_chunks=chunks, facts_only=facts_only)
     if chapter_file == "06-api-reference.md":
         return api_reference_prompt(repo_map, language, project_name, graph_context=graph_context,
                                      doc_chunks=chunks)
     if chapter_file == "07-dev-guide.md":
         return dev_guide_prompt(repo_map, language, project_name, graph_context=graph_context,
-                                 doc_chunks=chunks)
+                                 doc_chunks=chunks, facts_only=facts_only)
 
     # Adaptive chapter prompts
     return _adaptive_prompt(chapter_file, repo_map, language, project_name, project_type,
@@ -1370,10 +1408,12 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
             ch_graph = short_graph_context
             ch_system_override = None
 
+        is_facts_only = ch_system_override is not None
+
         system, user = _dispatch_prompt(
             chapter_file, repo_map, language, project_name,
             project_type, all_chapters, graph_context=ch_graph,
-            doc_chunks=chunks,
+            doc_chunks=chunks, facts_only=is_facts_only,
         )
 
         # Override system prompt when using facts-only mode

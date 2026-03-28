@@ -73,6 +73,7 @@ class TestGoFacts:
 
         assert len(endpoints) >= 2
         values = {f.value for f in endpoints}
+        # http.HandleFunc has no method prefix in its syntax
         assert "/health" in values
         assert "/api/v1/users" in values
 
@@ -91,8 +92,8 @@ class TestGoFacts:
         facts = extract_facts(str(tmp_path), ["echo.go"])
         endpoints = [f for f in facts if f.fact_type == "endpoint"]
         values = {f.value for f in endpoints}
-        assert "/ping" in values
-        assert "/items" in values
+        assert "GET /ping" in values
+        assert "POST /items" in values
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +120,8 @@ class TestPythonFacts:
         facts = extract_facts(str(tmp_path), ["routes.py"])
         endpoints = [f for f in facts if f.fact_type == "endpoint"]
         values = {f.value for f in endpoints}
-        assert "/users" in values
+        assert "GET /users" in values
+        assert "POST /users" in values
 
     def test_django_path(self, tmp_path):
         _write(tmp_path, "urls.py", """\
@@ -165,8 +167,8 @@ class TestTypeScriptFacts:
         facts = extract_facts(str(tmp_path), ["app.ts"])
         endpoints = [f for f in facts if f.fact_type == "endpoint"]
         values = {f.value for f in endpoints}
-        assert "/api/health" in values
-        assert "/api/items" in values
+        assert "GET /api/health" in values
+        assert "POST /api/items" in values
 
 
 # ---------------------------------------------------------------------------

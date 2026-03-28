@@ -137,27 +137,30 @@ class FactItem:
 FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
     "endpoint": {
         "Go": [
-            (r'\.(?:Get|Post|Put|Delete|Patch|Handle(?:Func)?)\s*\(\s*"(/[^"]*)"', "route"),
+            (r'\.(Get|Post|Put|Delete|Patch)\s*\(\s*"(/[^"]*)"', "route"),
+            (r'\.Handle(?:Func)?\s*\(\s*"(/[^"]*)"', "handle"),
             (r'(?:http\.Handle|mux\.Handle)\s*\(\s*"(/[^"]*)"', "handle"),
-            (r'\.Handle(?:Func)?\s*\(\s*"(?:GET|POST|PUT|DELETE|PATCH)\s+(/[^"]*)"', "go122_route"),
-            (r'e\.(?:GET|POST|PUT|DELETE|PATCH)\s*\(\s*"(/[^"]*)"', "echo"),
+            (r'\.Handle(?:Func)?\s*\(\s*"((?:GET|POST|PUT|DELETE|PATCH)\s+/[^"]*)"', "go122_route"),
+            (r'e\.(GET|POST|PUT|DELETE|PATCH)\s*\(\s*"(/[^"]*)"', "echo"),
         ],
         "Python": [
-            (r'@(?:app|router|api)\.(?:get|post|put|delete|patch|route)\s*\(\s*["\'](/[^"\']*)', "decorator"),
+            (r'@(?:app|router|api)\.(get|post|put|delete|patch)\s*\(\s*["\'](/[^"\']*)', "decorator"),
+            (r'@(?:app|router|api)\.route\s*\(\s*["\'](/[^"\']*)', "decorator"),
             (r'path\s*\(\s*["\']([^"\']+)', "django_path"),
         ],
         "TypeScript": [
-            (r'\.(?:get|post|put|delete|patch)\s*\(\s*["\'](/[^"\']*)', "route"),
+            (r'\.(get|post|put|delete|patch)\s*\(\s*["\'](/[^"\']*)', "route"),
             (r'server\.route\s*\(\s*["\'](/[^"\']*)', "route"),
         ],
         "JavaScript": [
-            (r'\.(?:get|post|put|delete|patch)\s*\(\s*["\'](/[^"\']*)', "route"),
+            (r'\.(get|post|put|delete|patch)\s*\(\s*["\'](/[^"\']*)', "route"),
         ],
         "Java": [
-            (r'@(?:Get|Post|Put|Delete|Patch|Request)Mapping\s*\(\s*["\']?(/[^"\')\s]*)', "annotation"),
+            (r'@(Get|Post|Put|Delete|Patch)Mapping\s*\(\s*["\']?(/[^"\')\s]*)', "annotation"),
+            (r'@RequestMapping\s*\([^)]*value\s*=\s*["\']?(/[^"\')\s]*)', "annotation"),
         ],
         "Rust": [
-            (r'#\[(?:get|post|put|delete|patch)\s*\(\s*"(/[^"]*)"', "macro"),
+            (r'#\[(get|post|put|delete|patch)\s*\(\s*"(/[^"]*)"', "macro"),
             (r'\.route\s*\(\s*"(/[^"]*)"', "route"),
         ],
     },
@@ -726,6 +729,25 @@ def _rg_extract_facts(
     return _deduplicate_facts(facts)
 
 
+def _extract_endpoint_value(m: re.Match[str], fallback: str) -> str:
+    """Build fact value from regex match groups.
+
+    For endpoint patterns with two capture groups the first group is the HTTP
+    method (e.g. ``Get``, ``post``, ``GET``) and the second is the URL path.
+    The method is upper-cased and prepended to the path so the final value
+    looks like ``"GET /health"``.
+
+    Single-group matches (no method available) return group(1) as-is.
+    """
+    if m.lastindex and m.lastindex >= 2:
+        method = m.group(1).upper()
+        path = m.group(2).strip()
+        return f"{method} {path}"
+    if m.lastindex and m.lastindex >= 1:
+        return m.group(1).strip()
+    return fallback.strip()
+
+
 def _parse_rg_facts(
     stdout: str,
     patterns: list[tuple[str, str, str]],
@@ -755,10 +777,10 @@ def _parse_rg_facts(
         for pattern, label, fact_type in patterns:
             m = re.search(pattern, match_text)
             if m:
-                value = m.group(1) if m.lastindex and m.lastindex >= 1 else match_text.strip()
+                value = _extract_endpoint_value(m, match_text)
                 facts.append(FactItem(
                     fact_type=fact_type,
-                    value=value.strip(),
+                    value=value,
                     file=rel,
                     line=line_number,
                     language=lang,
@@ -795,10 +817,10 @@ def _fallback_facts_batch(
             for pattern, label, fact_type in patterns:
                 m = re.search(pattern, line)
                 if m:
-                    value = m.group(1) if m.lastindex and m.lastindex >= 1 else line.strip()
+                    value = _extract_endpoint_value(m, line)
                     facts.append(FactItem(
                         fact_type=fact_type,
-                        value=value.strip(),
+                        value=value,
                         file=rel,
                         line=line_num,
                         language=lang,
