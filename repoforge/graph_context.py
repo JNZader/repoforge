@@ -807,7 +807,7 @@ CHAPTER_FACT_TYPES: dict[str, set[str]] = {
     "index.md": set(),  # No facts needed for nav hub
     "01-overview.md": {"version", "go_version", "port", "db_engine"},
     "02-quickstart.md": {"port", "env_var", "cli_command", "go_version", "db_engine"},
-    # 03-architecture excluded (uses full graph context)
+    "03-architecture.md": {"endpoint", "port", "env_var", "mcp_tool", "db_engine"},
     "04-core-mechanisms.md": {"mcp_tool", "struct_field", "env_var"},
     "05-data-models.md": {"db_table", "struct_field", "fts_ddl", "db_engine"},
     "06-api-reference.md": {"endpoint", "mcp_tool", "cli_command", "port"},
