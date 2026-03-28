@@ -73,5 +73,7 @@ __all__ = [
     "chunk_cli_commands",
     "chunk_architecture",
     "chunk_module_summary",
+    "chunk_type_relationships",
     "build_all_ast_symbols",
+    "SymbolLinker",
 ]
