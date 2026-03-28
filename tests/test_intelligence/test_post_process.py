@@ -50,6 +50,32 @@ class TestPortReplacement:
         assert "localhost:7437/api/health" in result
         assert "ENGRAM_PORT" not in result
 
+    def test_engram_port_env_var_not_corrupted(self):
+        """Regression: ENGRAM_PORT as env var name must NOT be replaced with the port number."""
+        content = (
+            "export ENGRAM_PORT=8080\n"
+            "The server listens on port 8080\n"
+            "port := 8080\n"
+        )
+        facts = [_fact("port", "7437")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        # Env var name must survive intact
+        assert "ENGRAM_PORT=7437" in result, f"Expected env var value replaced, got: {result}"
+        assert "export ENGRAM_PORT=" in result, f"Env var name was corrupted: {result}"
+        assert "export 7437" not in result, f"ENGRAM_PORT name was replaced with port number: {result}"
+        # Port numbers in other contexts should still be replaced
+        assert "port 7437" in result
+        assert "port := 7437" in result
+        assert "8080" not in result
+
+    def test_engram_port_in_dollar_variable_not_corrupted(self):
+        """$ENGRAM_PORT and ${ENGRAM_PORT} should not be touched."""
+        content = "curl http://localhost:$ENGRAM_PORT/health\nexport ENGRAM_PORT=3000\n"
+        facts = [_fact("port", "7437")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        assert "$ENGRAM_PORT" in result
+        assert "ENGRAM_PORT=7437" in result
+
     def test_no_replacement_when_port_matches(self):
         content = "The server runs on `localhost:7437` by default."
         facts = [_fact("port", "7437")]

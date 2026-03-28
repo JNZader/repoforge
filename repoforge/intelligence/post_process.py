@@ -92,10 +92,12 @@ def _fix_ports(
 
     real_port = port_facts[0].value
 
-    # Replace ENGRAM_PORT placeholder in curl examples
-    if "ENGRAM_PORT" in content:
+    # Replace ENGRAM_PORT placeholder ONLY in URL/port contexts (e.g. :ENGRAM_PORT)
+    # NOT when it appears as an env var name (e.g. export ENGRAM_PORT=...)
+    _engram_port_pattern = re.compile(r'(?<=:)ENGRAM_PORT\b')
+    if _engram_port_pattern.search(content):
         old = content
-        content = content.replace("ENGRAM_PORT", real_port)
+        content = _engram_port_pattern.sub(real_port, content)
         if content != old:
             corrections.append(Correction(
                 original="ENGRAM_PORT",
@@ -108,9 +110,9 @@ def _fix_ports(
     for wrong_port in _COMMON_WRONG_PORTS:
         if wrong_port == real_port:
             continue
-        # Match port in URL-like contexts: :PORT, port PORT, localhost:PORT
+        # Match port in URL-like contexts: :PORT, port PORT, localhost:PORT, VAR=PORT
         pattern = re.compile(
-            r'(?<=[:\s])' + re.escape(wrong_port) + r'(?=[/\s\)\]\}\"`\'$,]|$)',
+            r'(?<=[:\s=])' + re.escape(wrong_port) + r'(?=[/\s\)\]\}\"`\'$,]|$)',
             re.MULTILINE,
         )
         if pattern.search(content):
