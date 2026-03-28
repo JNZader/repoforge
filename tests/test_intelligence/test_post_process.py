@@ -194,6 +194,78 @@ class TestEndpointValidation:
         result, corrections = post_process_chapter(content, [], None, None)
         assert "UNVERIFIED" not in result
 
+    # --- Bare API route detection ---
+
+    def test_flags_bare_api_route_not_in_facts(self):
+        """Bare /api/memory route (no HTTP method) should be flagged when not a real endpoint."""
+        content = "The system persists data via `/api/memory` and `/api/sync`."
+        facts = [
+            _fact("endpoint", "GET /observations"),
+            _fact("endpoint", "POST /sessions"),
+            _fact("endpoint", "GET /sync/status"),
+        ]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        assert "UNVERIFIED ENDPOINT" in result
+        ep_corrections = [c for c in corrections if "Endpoint" in c.reason]
+        flagged = {c.original for c in ep_corrections}
+        assert "/api/memory" in flagged
+        assert "/api/sync" in flagged
+
+    def test_does_not_flag_bare_route_matching_fact(self):
+        """/api/observations should NOT be flagged when /observations is a real endpoint."""
+        content = "Query observations via `/api/observations`."
+        facts = [_fact("endpoint", "GET /observations"), _fact("endpoint", "POST /observations")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        ep_corrections = [c for c in corrections if "Endpoint" in c.reason]
+        assert len(ep_corrections) == 0, f"Should not flag /api/observations: {ep_corrections}"
+
+    def test_does_not_flag_file_paths(self):
+        """File paths like /internal/store/store.go must NOT be flagged."""
+        content = (
+            "See the implementation in `/internal/store/store.go`.\n"
+            "The command lives at `/cmd/engram/main.go`.\n"
+        )
+        facts = [_fact("endpoint", "GET /health")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        ep_corrections = [c for c in corrections if "Endpoint" in c.reason]
+        assert len(ep_corrections) == 0, f"File paths should not be flagged: {ep_corrections}"
+
+    def test_does_not_flag_directory_paths(self):
+        """Directory references like /internal/store/ should NOT be flagged."""
+        content = "The storage layer is in `/internal/store/` directory."
+        facts = [_fact("endpoint", "GET /health")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        ep_corrections = [c for c in corrections if "Endpoint" in c.reason]
+        assert len(ep_corrections) == 0
+
+    def test_flags_v1_route_not_in_facts(self):
+        """/v1/users should be flagged as an API route when not in facts."""
+        content = "The new API exposes `/v1/users` and `/v2/accounts`."
+        facts = [_fact("endpoint", "GET /health")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        ep_corrections = [c for c in corrections if "Endpoint" in c.reason]
+        flagged = {c.original for c in ep_corrections}
+        assert "/v1/users" in flagged
+        assert "/v2/accounts" in flagged
+
+    def test_endpoint_with_path_params_matches_fact(self):
+        """Route with {id} path param should match fact with :id or {id}."""
+        content = "End a session via `POST /sessions/{id}/end`."
+        facts = [_fact("endpoint", "POST /sessions/:id/end")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        ep_corrections = [c for c in corrections if "Endpoint" in c.reason]
+        assert len(ep_corrections) == 0
+
+    def test_already_flagged_line_not_double_flagged(self):
+        """Lines with existing UNVERIFIED comment should not get a second one."""
+        content = (
+            "Uses `/api/fake` for data.\n"
+            "<!-- UNVERIFIED ENDPOINT: /api/fake not found in extracted endpoints -->"
+        )
+        facts = [_fact("endpoint", "GET /health")]
+        result, corrections = post_process_chapter(content, facts, None, None)
+        assert result.count("UNVERIFIED ENDPOINT") == 2  # original + new for first line
+
 
 # ---------------------------------------------------------------------------
 # 5. Missing fact injection

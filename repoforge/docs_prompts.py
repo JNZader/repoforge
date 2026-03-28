@@ -278,7 +278,8 @@ def _repo_context_facts_only(repo_map: dict, graph_context: str = "") -> str:
 # ---------------------------------------------------------------------------
 
 def index_prompt(repo_map: dict, language: str, project_name: str, chapters: list[dict],
-                 graph_context: str = "") -> tuple[str, str]:
+                 graph_context: str = "",
+                 facts_only: bool = False) -> tuple[str, str]:
     """
     chapters: [{"file": "01-overview.md", "title": "Overview", "description": "..."}, ...]
     """
@@ -286,6 +287,29 @@ def index_prompt(repo_map: dict, language: str, project_name: str, chapters: lis
         f"| [{c['title']}]({c['file']}) | {c['description']} |"
         for c in chapters
     )
+
+    if facts_only:
+        # Ultra-compact index: just chapter list + stack, no tree/modules/graph
+        user = f"""Generate **index.md** — home page for **{project_name}** docs.
+
+- **Tech stack**: {_format_stack(repo_map.get("tech_stack", []))}
+- **Entry points**: {_format_entry_points(repo_map.get("entry_points", []))}
+{graph_context}
+
+## Chapters
+| Chapter | Description |
+|---------|-------------|
+{nav_table}
+
+## Required
+1. `# {project_name}` heading + 2-sentence description.
+2. Tech stack badges: `Python` `FastAPI` etc.
+3. Navigation table linking all chapters.
+4. One quick-start command.
+
+Under 60 lines. Language: {language}
+"""
+        return _base_system_facts_only(language), user
 
     user = f"""Generate the **index.md** (home page) for the documentation of **{project_name}**.
 
@@ -425,13 +449,37 @@ Language: {language}
 
 def architecture_prompt(repo_map: dict, language: str, project_name: str,
                         graph_context: str = "",
-                        doc_chunks: dict | None = None) -> tuple[str, str]:
+                        doc_chunks: dict | None = None,
+                        facts_only: bool = False) -> tuple[str, str]:
     chunks = doc_chunks or {}
     layers = repo_map.get("layers", {})
     layer_names = list(layers.keys())
     is_monorepo = len(layers) > 1
 
-    # Focused context: architecture chunk with dependency graph
+    if facts_only:
+        # Compact prompt: ultra-light context, no Mermaid requirement, shorter instructions.
+        # graph_context here is already short_graph + facts + API surface from the caller.
+        user = f"""Generate **03-architecture.md** — Architecture chapter for **{project_name}**.
+
+{_repo_context_facts_only(repo_map, graph_context=graph_context)}
+
+### Hints
+- {"Monorepo: " + ", ".join(layer_names) if is_monorepo else "Single-layer: " + (layer_names[0] if layer_names else "main")}
+- {len(layers)} layer(s)
+
+## Required sections
+1. `# Architecture` heading
+2. **Overview** — 3-5 sentences on the design pattern.
+3. **Layer breakdown** — per layer: purpose, responsibilities, tech.
+4. **Data flow** — how a request flows end-to-end (text description, no diagram required).
+5. **Key design decisions** — bullet list of choices and rationale.
+
+Base on detected layers only. Don't invent services.
+Language: {language}
+"""
+        return _base_system_facts_only(language), user
+
+    # Full prompt: rich context with Mermaid diagrams
     arch_chunk = chunks.get("architecture", "")
     focused_section = ""
     if arch_chunk:
@@ -961,7 +1009,8 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
     # Existing prompts (reused across types)
     if chapter_file == "index.md":
         non_index = [c for c in active_chapters if c["file"] != "index.md"]
-        return index_prompt(repo_map, language, project_name, non_index, graph_context=graph_context)
+        return index_prompt(repo_map, language, project_name, non_index, graph_context=graph_context,
+                            facts_only=facts_only)
     if chapter_file == "01-overview.md":
         return overview_prompt(repo_map, language, project_name, graph_context=graph_context,
                                doc_chunks=chunks)
@@ -970,7 +1019,7 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                                   doc_chunks=chunks)
     if chapter_file == "03-architecture.md":
         return architecture_prompt(repo_map, language, project_name, graph_context=graph_context,
-                                    doc_chunks=chunks)
+                                    doc_chunks=chunks, facts_only=facts_only)
     if chapter_file == "04-core-mechanisms.md":
         return core_mechanisms_prompt(repo_map, language, project_name, graph_context=graph_context,
                                        doc_chunks=chunks, facts_only=facts_only)
@@ -1316,10 +1365,10 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
             Keys: endpoints, data_models, mcp_tools, cli_commands, architecture, module_summaries.
         facts_only_context_by_chapter: Per-chapter facts-only context dict.
             Keys are chapter file names (e.g. "01-overview.md"); a "_default" key
-            is used as fallback.  When provided, non-architecture chapters use
-            _base_system_facts_only and the matching context string instead of
-            short_graph_context.  Architecture chapter (03-architecture.md) always
-            keeps full graph context and the regular system prompt.
+            is used as fallback.  When provided, ALL chapters (including architecture
+            and index) use per-chapter context and _base_system_facts_only.
+            Architecture gets short graph + facts + API surface (no snippets/mermaid).
+            Index gets minimal context (just facts).
             None means no facts-only mode (original behaviour).
     """
     project_type = classify_project(repo_map)
@@ -1342,20 +1391,24 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
     for chapter in all_chapters:
         is_architecture = chapter["file"] == "03-architecture.md"
 
-        # Architecture chapter gets full graph context, others get short.
-        # When facts_only_context_by_chapter is provided, non-architecture
-        # chapters look up their per-chapter context (with "_default" fallback).
+        # When facts_only_context_by_chapter is provided, ALL chapters
+        # (including architecture and index) use per-chapter context.
+        # Architecture gets short graph + facts + API surface (no snippets).
+        # Without facts_only, architecture gets full graph context.
         chapter_file = chapter["file"]
-        if is_architecture:
-            ch_graph = graph_context
-            ch_system_override = None
-        elif facts_only_context_by_chapter is not None:
+        if facts_only_context_by_chapter is not None:
+            # Facts-only mode: ALL chapters use per-chapter context (including arch/index)
             ch_graph = facts_only_context_by_chapter.get(
                 chapter_file,
                 facts_only_context_by_chapter.get("_default", ""),
             )
             ch_system_override = _base_system_facts_only(language)
+        elif is_architecture:
+            # Normal mode: architecture gets full graph context
+            ch_graph = graph_context
+            ch_system_override = None
         else:
+            # Normal mode: other chapters get short graph context
             ch_graph = short_graph_context
             ch_system_override = None
 

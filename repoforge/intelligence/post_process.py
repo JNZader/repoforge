@@ -240,10 +240,87 @@ def _fix_url_placeholders(
 # 4. Endpoint validation
 # ---------------------------------------------------------------------------
 
-_ENDPOINT_MENTION_PATTERN = re.compile(
+# Pattern 1: HTTP method prefix — e.g. "GET /health", "POST /api/observations"
+_ENDPOINT_METHOD_PATTERN = re.compile(
     r'(?:GET|POST|PUT|DELETE|PATCH)\s+(/[a-zA-Z0-9_/\-\{\}:\.]+)',
     re.IGNORECASE,
 )
+
+# Pattern 2: Bare API route — e.g. `/api/memory`, `/v1/users`, `/v2/sync`
+# Only matches paths that start with /api/ or /v followed by a digit.
+# Negative lookbehind avoids matching inside longer paths like file references.
+_BARE_API_ROUTE_PATTERN = re.compile(
+    r'(?<![a-zA-Z0-9_\-\.])(/(?:api|v\d+)/[a-zA-Z0-9_/\-\{\}:\.]+)',
+)
+
+# File-path extensions — if a matched route ends with one of these, skip it.
+_FILE_EXTENSIONS = frozenset({
+    ".go", ".py", ".js", ".ts", ".tsx", ".jsx", ".rs", ".java", ".rb",
+    ".c", ".h", ".cpp", ".hpp", ".css", ".scss", ".html", ".json",
+    ".yaml", ".yml", ".toml", ".xml", ".md", ".txt", ".sh", ".sql",
+    ".proto", ".graphql", ".mod", ".sum", ".lock", ".cfg", ".ini",
+})
+
+
+def _looks_like_file_path(path: str) -> bool:
+    """Return True if the path looks like a file/directory reference, not an API route."""
+    # Has a file extension
+    for ext in _FILE_EXTENSIONS:
+        if path.endswith(ext):
+            return True
+    # Contains typical source directory segments (e.g. /internal/store/, /cmd/engram/)
+    _dir_segments = {"internal", "cmd", "pkg", "src", "lib", "vendor", "node_modules", "dist", "build"}
+    parts = [p for p in path.split("/") if p]
+    if parts and parts[0] in _dir_segments:
+        return True
+    return False
+
+
+def _normalize_fact_paths(endpoint_facts: set[str]) -> set[str]:
+    """Extract and normalize just the path portion from endpoint fact values."""
+    fact_paths: set[str] = set()
+    for ep in endpoint_facts:
+        # Facts may be "GET /health" or just "/health"
+        parts = ep.strip().split()
+        path = parts[-1] if parts else ep
+        fact_paths.add(path.strip())
+    return fact_paths
+
+
+def _path_matches_facts(path: str, fact_paths: set[str]) -> bool:
+    """Check if a path matches any known endpoint, with normalization.
+
+    Handles:
+      - Exact match: /observations == /observations
+      - Trailing slash: /observations/ == /observations
+      - Path params: /sessions/{id}/end matches /sessions/:id/end
+      - Prefix match: /api/observations matches fact /observations
+    """
+    normalized = path.strip().rstrip("/")
+    if not normalized:
+        return False
+
+    # Normalize path params: replace {param} and :param with a placeholder
+    def _normalize_params(p: str) -> str:
+        p = re.sub(r'\{[^}]+\}', ':param', p)
+        p = re.sub(r':([a-zA-Z_]\w*)', ':param', p)
+        return p
+
+    normalized_param = _normalize_params(normalized)
+
+    for fp in fact_paths:
+        fp_clean = fp.rstrip("/")
+        fp_param = _normalize_params(fp_clean)
+        # Exact match (with or without param normalization)
+        if normalized == fp_clean or normalized_param == fp_param:
+            return True
+        # The content path is a sub-path or prefixed variant of a fact path
+        # e.g. content has /api/observations, fact has /observations
+        if fp_clean and normalized.endswith(fp_clean):
+            return True
+        if normalized and fp_clean.endswith(normalized):
+            return True
+    return False
 
 
 def _validate_endpoints(
@@ -253,43 +330,60 @@ def _validate_endpoints(
 ) -> str:
     """Flag endpoint mentions in content that are NOT in the verified facts.
 
+    Catches two patterns:
+      1. HTTP method prefixed routes: GET /health, POST /api/observations
+      2. Bare API routes: /api/memory, /v1/users (only /api/* and /v{N}/* prefixes)
+
     Does NOT remove them (too risky) — adds an HTML comment instead.
+    Skips file paths and directory references.
     """
     endpoint_facts = {f.value for f in facts if f.fact_type == "endpoint"}
     if not endpoint_facts:
         return content
 
-    # Normalize fact endpoints: extract just the path part
-    fact_paths: set[str] = set()
-    for ep in endpoint_facts:
-        # Facts may be "GET /health" or just "/health"
-        parts = ep.strip().split()
-        path = parts[-1] if parts else ep
-        fact_paths.add(path.strip())
+    fact_paths = _normalize_fact_paths(endpoint_facts)
 
     lines = content.split("\n")
     new_lines: list[str] = []
 
     for i, line in enumerate(lines):
-        matches = _ENDPOINT_MENTION_PATTERN.findall(line)
-        flagged = False
-        for endpoint_path in matches:
-            normalized = endpoint_path.strip().rstrip("/")
-            if normalized and normalized not in fact_paths:
-                # Check with different normalizations
-                if not any(normalized == fp.rstrip("/") for fp in fact_paths):
-                    if "<!-- UNVERIFIED" not in line:
-                        corrections.append(Correction(
-                            original=endpoint_path,
-                            corrected=endpoint_path,
-                            reason=f"Endpoint {endpoint_path} not found in verified facts — may be hallucinated",
-                            line=i + 1,
-                        ))
-                        flagged = True
+        if "<!-- UNVERIFIED" in line:
+            new_lines.append(line)
+            continue
+
+        unverified: list[str] = []
+
+        # Pass 1: HTTP method prefixed endpoints
+        for endpoint_path in _ENDPOINT_METHOD_PATTERN.findall(line):
+            if _looks_like_file_path(endpoint_path):
+                continue
+            if not _path_matches_facts(endpoint_path, fact_paths):
+                unverified.append(endpoint_path)
+
+        # Pass 2: Bare API routes (/api/... and /v{N}/...)
+        for endpoint_path in _BARE_API_ROUTE_PATTERN.findall(line):
+            if _looks_like_file_path(endpoint_path):
+                continue
+            # Skip if already caught by method pattern on same line
+            if endpoint_path in unverified:
+                continue
+            if not _path_matches_facts(endpoint_path, fact_paths):
+                unverified.append(endpoint_path)
+
+        for ep in unverified:
+            corrections.append(Correction(
+                original=ep,
+                corrected=ep,
+                reason=f"Endpoint {ep} not found in verified facts — may be hallucinated",
+                line=i + 1,
+            ))
 
         new_lines.append(line)
-        if flagged:
-            new_lines.append(f"<!-- UNVERIFIED ENDPOINT(S) on line above — not found in source code facts -->")
+        if unverified:
+            ep_list = ", ".join(unverified)
+            new_lines.append(
+                f"<!-- UNVERIFIED ENDPOINT: {ep_list} not found in extracted endpoints -->"
+            )
 
     return "\n".join(new_lines)
 

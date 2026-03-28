@@ -30,7 +30,7 @@ class TestFactPatternsCoverage:
     def test_has_all_expected_types(self):
         expected = {
             "endpoint", "port", "version", "db_table", "cli_command", "env_var",
-            "mcp_tool", "fts_ddl", "struct_field", "go_version",
+            "mcp_tool", "fts_ddl", "struct_field", "go_version", "db_engine",
         }
         assert expected == set(FACT_PATTERNS.keys())
 
@@ -563,3 +563,157 @@ class TestGoVersionFacts:
         facts = extract_facts(str(tmp_path), ["docs.go"])
         gv = [f for f in facts if f.fact_type == "go_version"]
         assert len(gv) == 0
+
+
+# ---------------------------------------------------------------------------
+# Database engine detection
+# ---------------------------------------------------------------------------
+
+class TestDbEngineFacts:
+    """Extract database engine facts from imports and dependency files."""
+
+    def test_go_modernc_sqlite_import(self, tmp_path):
+        _write(tmp_path, "db.go", """\
+            package store
+
+            import (
+                "database/sql"
+                _ "modernc.org/sqlite"
+            )
+        """)
+        facts = extract_facts(str(tmp_path), ["db.go"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        values = {f.value for f in engines}
+        assert "modernc.org/sqlite" in values
+
+    def test_go_mattn_sqlite3_import(self, tmp_path):
+        _write(tmp_path, "db.go", """\
+            package store
+
+            import _ "github.com/mattn/go-sqlite3"
+        """)
+        facts = extract_facts(str(tmp_path), ["db.go"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        values = {f.value for f in engines}
+        assert "github.com/mattn/go-sqlite3" in values
+
+    def test_go_lib_pq_import(self, tmp_path):
+        _write(tmp_path, "db.go", """\
+            package store
+
+            import _ "github.com/lib/pq"
+        """)
+        facts = extract_facts(str(tmp_path), ["db.go"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        values = {f.value for f in engines}
+        assert "github.com/lib/pq" in values
+
+    def test_go_pgx_import(self, tmp_path):
+        _write(tmp_path, "db.go", """\
+            package store
+
+            import "github.com/jackc/pgx/v5"
+        """)
+        facts = extract_facts(str(tmp_path), ["db.go"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        values = {f.value for f in engines}
+        assert any("jackc/pgx" in v for v in values)
+
+    def test_go_mysql_driver_import(self, tmp_path):
+        _write(tmp_path, "db.go", """\
+            package store
+
+            import _ "github.com/go-sql-driver/mysql"
+        """)
+        facts = extract_facts(str(tmp_path), ["db.go"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        values = {f.value for f in engines}
+        assert "github.com/go-sql-driver/mysql" in values
+
+    def test_python_sqlite3(self, tmp_path):
+        _write(tmp_path, "db.py", """\
+            import sqlite3
+
+            conn = sqlite3.connect("data.db")
+        """)
+        facts = extract_facts(str(tmp_path), ["db.py"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_python_psycopg2(self, tmp_path):
+        _write(tmp_path, "db.py", """\
+            import psycopg2
+
+            conn = psycopg2.connect(dsn)
+        """)
+        facts = extract_facts(str(tmp_path), ["db.py"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_python_sqlalchemy(self, tmp_path):
+        _write(tmp_path, "db.py", """\
+            from sqlalchemy import create_engine
+
+            engine = create_engine("sqlite:///data.db")
+        """)
+        facts = extract_facts(str(tmp_path), ["db.py"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_python_pymongo(self, tmp_path):
+        _write(tmp_path, "db.py", """\
+            from pymongo import MongoClient
+
+            client = MongoClient("localhost", 27017)
+        """)
+        facts = extract_facts(str(tmp_path), ["db.py"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_typescript_prisma(self, tmp_path):
+        _write(tmp_path, "db.ts", """\
+            import { PrismaClient } from 'prisma';
+
+            const prisma = new PrismaClient();
+        """)
+        facts = extract_facts(str(tmp_path), ["db.ts"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_typescript_drizzle(self, tmp_path):
+        _write(tmp_path, "db.ts", """\
+            import { drizzle } from 'drizzle-orm';
+        """)
+        facts = extract_facts(str(tmp_path), ["db.ts"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_javascript_pg_require(self, tmp_path):
+        _write(tmp_path, "db.js", """\
+            const { Pool } = require('pg');
+        """)
+        facts = extract_facts(str(tmp_path), ["db.js"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_javascript_better_sqlite3(self, tmp_path):
+        _write(tmp_path, "db.js", """\
+            const Database = require('better-sqlite3');
+        """)
+        facts = extract_facts(str(tmp_path), ["db.js"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) >= 1
+
+    def test_negative_no_db_engine(self, tmp_path):
+        _write(tmp_path, "main.go", """\
+            package main
+
+            import "fmt"
+
+            func main() {
+                fmt.Println("hello")
+            }
+        """)
+        facts = extract_facts(str(tmp_path), ["main.go"])
+        engines = [f for f in facts if f.fact_type == "db_engine"]
+        assert len(engines) == 0

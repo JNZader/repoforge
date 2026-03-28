@@ -125,7 +125,7 @@ IMPORT_PATTERNS = {
 @dataclass(frozen=True, slots=True)
 class FactItem:
     """A single semantic fact extracted from source code."""
-    fact_type: str   # 'endpoint', 'port', 'version', 'db_table', 'cli_command', 'env_var', 'mcp_tool', 'fts_ddl', 'struct_field', 'go_version'
+    fact_type: str   # 'endpoint', 'port', 'version', 'db_table', 'cli_command', 'env_var', 'mcp_tool', 'fts_ddl', 'struct_field', 'go_version', 'db_engine'
     value: str       # the extracted value (e.g., "GET /health", "7437", "v1.2.3")
     file: str        # source file path (relative)
     line: int        # line number (1-based)
@@ -240,6 +240,37 @@ FACT_PATTERNS: dict[str, dict[str, list[tuple[str, str]]]] = {
     "go_version": {
         "*": [
             (r'^go\s+1\.\d+', "go_mod_version"),
+        ],
+    },
+    "db_engine": {
+        "Go": [
+            (r'"(modernc\.org/sqlite)"', "modernc_sqlite"),
+            (r'"(github\.com/mattn/go-sqlite3)"', "go_sqlite3"),
+            (r'"(github\.com/lib/pq)"', "lib_pq"),
+            (r'"(github\.com/go-sql-driver/mysql)"', "go_mysql"),
+            (r'"(github\.com/jackc/pgx[^"]*)"', "pgx"),
+        ],
+        "Python": [
+            (r'^import\s+(sqlite3)', "python_sqlite3"),
+            (r'^import\s+(psycopg2)', "python_psycopg2"),
+            (r'^from\s+(psycopg2)', "python_psycopg2"),
+            (r'^from\s+(sqlalchemy)', "python_sqlalchemy"),
+            (r'^import\s+(pymongo)', "python_pymongo"),
+            (r'^from\s+(pymongo)', "python_pymongo"),
+        ],
+        "TypeScript": [
+            (r"""require\s*\(\s*['"](pg)['"]\)""", "ts_pg"),
+            (r"""require\s*\(\s*['"](mysql2)['"]\)""", "ts_mysql2"),
+            (r"""require\s*\(\s*['"](better-sqlite3)['"]\)""", "ts_better_sqlite3"),
+            (r"""from\s+['"]((?:@?prisma)[^'"]*)['"']""", "ts_prisma"),
+            (r"""from\s+['"](drizzle-orm)['"']""", "ts_drizzle"),
+        ],
+        "JavaScript": [
+            (r"""require\s*\(\s*['"](pg)['"]\)""", "js_pg"),
+            (r"""require\s*\(\s*['"](mysql2)['"]\)""", "js_mysql2"),
+            (r"""require\s*\(\s*['"](better-sqlite3)['"]\)""", "js_better_sqlite3"),
+            (r"""from\s+['"]((?:@?prisma)[^'"]*)['"']""", "js_prisma"),
+            (r"""from\s+['"](drizzle-orm)['"']""", "js_drizzle"),
         ],
     },
 }

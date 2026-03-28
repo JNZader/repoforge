@@ -294,6 +294,14 @@ def generate_docs(
                     api_surface_ctx, _fo_compressed, _fo_build_info,
                 )
 
+            # Architecture chapter: short graph + facts + API surface (no snippets, no mermaid)
+            # This is a middle ground — more than other facts-only chapters, less than full semantic.
+            _arch_fo_parts = [p for p in [short_graph_ctx, facts_ctx, api_surface_ctx] if p]
+            _fo_context_by_chapter["03-architecture.md"] = "\n".join(_arch_fo_parts).strip()
+
+            # Index.md: minimal — just tech stack context, no graph/snippets
+            _fo_context_by_chapter["index.md"] = facts_ctx or ""
+
             # Default context for unknown/adaptive chapters (uses all facts)
             _fo_context_by_chapter["_default"] = build_facts_only_context(
                 str(root), all_files, _fo_facts,
