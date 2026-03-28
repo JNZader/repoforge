@@ -243,7 +243,187 @@ class TestMissingFactInjection:
 
 
 # ---------------------------------------------------------------------------
-# 6. No-op when content is already correct
+# 6. Dependency validation
+# ---------------------------------------------------------------------------
+
+class TestDependencyValidation:
+    """Tests for _fix_dependencies — flags hallucinated external deps."""
+
+    def test_flags_hallucinated_go_dep(self):
+        """gorilla/mux NOT in deps should be flagged."""
+        content = "The project uses `github.com/gorilla/mux` for HTTP routing."
+        build = _build_info(
+            language="go",
+            dependencies=[
+                "modernc.org/sqlite",
+                "github.com/charmbracelet/bubbletea",
+            ],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        assert "UNVERIFIED DEPENDENCY" in result
+        assert any("gorilla/mux" in c.reason for c in corrections)
+
+    def test_does_not_flag_real_go_dep(self):
+        """charmbracelet/bubbletea IS in deps — must NOT be flagged."""
+        content = "Uses `github.com/charmbracelet/bubbletea` for the TUI."
+        build = _build_info(
+            language="go",
+            dependencies=["github.com/charmbracelet/bubbletea"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        assert "UNVERIFIED DEPENDENCY" not in result
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        assert len(dep_corrections) == 0
+
+    def test_no_changes_without_dep_mentions(self):
+        """Content with no dependency-like patterns should pass through."""
+        content = "This is a simple overview chapter with no deps mentioned."
+        build = _build_info(
+            language="go",
+            dependencies=["github.com/charmbracelet/bubbletea"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        assert result == content
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        assert len(dep_corrections) == 0
+
+    def test_no_changes_without_build_info(self):
+        """No build_info → skip dep validation entirely."""
+        content = "Uses github.com/gorilla/mux for routing."
+        result, corrections = post_process_chapter(content, [], None, None)
+        assert "UNVERIFIED" not in result
+
+    def test_no_changes_with_empty_deps(self):
+        """Empty deps list → skip dep validation."""
+        content = "Uses github.com/gorilla/mux for routing."
+        build = _build_info(language="go", dependencies=[])
+        result, corrections = post_process_chapter(content, [], build, None)
+        assert "UNVERIFIED DEPENDENCY" not in result
+
+    def test_flags_multiple_fake_deps(self):
+        """Multiple hallucinated deps on different lines."""
+        content = (
+            "Uses `github.com/gorilla/mux` for routing.\n"
+            "Configuration via `github.com/spf13/cobra`.\n"
+            "Real dep: `github.com/charmbracelet/bubbletea`.\n"
+        )
+        build = _build_info(
+            language="go",
+            dependencies=["github.com/charmbracelet/bubbletea"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        flagged_deps = {c.original for c in dep_corrections}
+        assert "github.com/gorilla/mux" in flagged_deps
+        assert "github.com/spf13/cobra" in flagged_deps
+        assert "github.com/charmbracelet/bubbletea" not in flagged_deps
+
+    def test_does_not_flag_go_stdlib_paths(self):
+        """Go stdlib paths like net/http should NOT be flagged."""
+        content = "Import `net/http` and `database/sql` for the server."
+        build = _build_info(
+            language="go",
+            dependencies=["github.com/charmbracelet/bubbletea"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        assert len(dep_corrections) == 0
+
+    def test_subpath_matches_real_dep(self):
+        """github.com/org/repo/subpkg should match github.com/org/repo in deps."""
+        content = "Uses `github.com/charmbracelet/bubbletea/tea` for the app."
+        build = _build_info(
+            language="go",
+            dependencies=["github.com/charmbracelet/bubbletea"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        assert "UNVERIFIED DEPENDENCY" not in result
+
+    def test_flags_npm_scoped_package(self):
+        """Scoped npm packages not in deps should be flagged."""
+        content = "Install `@anthropic-ai/sdk` for the AI features."
+        build = _build_info(
+            language="typescript",
+            dependencies=["express", "zod"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        assert "UNVERIFIED DEPENDENCY" in result
+        assert any("@anthropic-ai/sdk" in c.reason for c in corrections)
+
+    def test_does_not_flag_real_npm_scoped_package(self):
+        """Scoped npm package that IS in deps should pass."""
+        content = "Uses `@anthropic-ai/sdk` for streaming."
+        build = _build_info(
+            language="typescript",
+            dependencies=["@anthropic-ai/sdk", "express"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        assert len(dep_corrections) == 0
+
+    def test_flags_pip_install_target(self):
+        """pip install of a package not in deps should be flagged."""
+        content = "Install with `pip install flask`."
+        build = _build_info(
+            language="python",
+            dependencies=["django", "celery"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        assert "UNVERIFIED DEPENDENCY" in result
+        assert any("flask" in c.reason for c in corrections)
+
+    def test_does_not_flag_real_pip_package(self):
+        """pip install of a real dep should pass."""
+        content = "Install with `pip install django`."
+        build = _build_info(
+            language="python",
+            dependencies=["django", "celery"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        assert len(dep_corrections) == 0
+
+    def test_dev_deps_are_not_flagged(self):
+        """Dev dependencies should be considered valid too."""
+        content = "Uses `github.com/stretchr/testify` for testing."
+        build = _build_info(
+            language="go",
+            dependencies=["github.com/charmbracelet/bubbletea"],
+            dev_dependencies=["github.com/stretchr/testify"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        assert len(dep_corrections) == 0
+
+    def test_already_flagged_line_not_double_flagged(self):
+        """Lines already containing UNVERIFIED DEP comment should be skipped."""
+        content = (
+            "Uses `github.com/gorilla/mux` for routing.\n"
+            "<!-- UNVERIFIED DEPENDENCY: github.com/gorilla/mux — not found in project build files -->"
+        )
+        build = _build_info(
+            language="go",
+            dependencies=["github.com/charmbracelet/bubbletea"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        # The comment line itself should not get a second comment appended
+        assert result.count("UNVERIFIED DEPENDENCY") == 2  # original + new for first line
+
+    def test_module_path_not_flagged_as_dep(self):
+        """The project's own module path should not be flagged."""
+        content = "Import from `github.com/Gentleman-Programming/engram/internal`."
+        build = _build_info(
+            language="go",
+            module_path="github.com/Gentleman-Programming/engram",
+            dependencies=["modernc.org/sqlite"],
+        )
+        result, corrections = post_process_chapter(content, [], build, None)
+        dep_corrections = [c for c in corrections if "Dependency" in c.reason]
+        assert len(dep_corrections) == 0
+
+
+# ---------------------------------------------------------------------------
+# 7. No-op when content is already correct
 # ---------------------------------------------------------------------------
 
 class TestNoOp:

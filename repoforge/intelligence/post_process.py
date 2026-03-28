@@ -8,6 +8,7 @@ Applies rule-based corrections that don't need an LLM:
   3. URL placeholder cleanup (yourusername → real module path)
   4. Endpoint validation (flag endpoints not in facts)
   5. Missing fact injection (append missing endpoints/tables)
+  6. Dependency validation (flag deps not in build files)
 
 All corrections are logged for audit.
 """
@@ -44,12 +45,13 @@ def post_process_chapter(
 ) -> tuple[str, list[Correction]]:
     """Apply deterministic corrections to a generated documentation chapter.
 
-    Runs five correction passes in order:
+    Runs six correction passes in order:
       1. Port replacement
       2. Version replacement
       3. URL placeholder cleanup
       4. Endpoint validation (comments only, no removal)
       5. Missing fact injection (api-reference / data-models chapters)
+      6. Dependency validation (flag deps not in build files)
 
     Args:
         content: The raw LLM-generated chapter markdown.
@@ -68,6 +70,7 @@ def post_process_chapter(
     content = _fix_url_placeholders(content, build_info, corrections)
     content = _validate_endpoints(content, facts, corrections)
     content = _inject_missing_facts(content, facts, ast_symbols, chapter_file, corrections)
+    content = _fix_dependencies(content, build_info, corrections)
 
     return content, corrections
 
@@ -386,3 +389,167 @@ def _inject_missing_tables(
     ))
 
     return content.rstrip() + "\n" + section
+
+
+# ---------------------------------------------------------------------------
+# 6. Dependency validation
+# ---------------------------------------------------------------------------
+
+# Go standard library top-level packages (not exhaustive, but covers the common ones
+# that LLMs reference). We match against the first path segment.
+_GO_STDLIB_PACKAGES: frozenset[str] = frozenset({
+    "archive", "bufio", "builtin", "bytes", "cmp", "compress", "container",
+    "context", "crypto", "database", "debug", "embed", "encoding", "errors",
+    "expvar", "flag", "fmt", "go", "hash", "html", "image", "index", "io",
+    "iter", "log", "maps", "math", "mime", "net", "os", "path", "plugin",
+    "reflect", "regexp", "runtime", "slices", "sort", "strconv", "strings",
+    "structs", "sync", "syscall", "testing", "text", "time", "unicode",
+    "unsafe", "internal", "vendor",
+})
+
+# Patterns to extract dependency-like references from markdown content.
+# Full GitHub/GitLab paths: github.com/org/repo or github.com/org/repo/sub
+_GITHUB_DEP_PATTERN = re.compile(
+    r'(?:github\.com|gitlab\.com|bitbucket\.org)/[\w\-\.]+/[\w\-\.]+(?:/[\w\-\.]+)*'
+)
+
+# npm scoped packages: @scope/package
+_NPM_SCOPED_PATTERN = re.compile(r'@[\w\-]+/[\w\-]+')
+
+# Python package references in pip install / import statements
+_PIP_INSTALL_PATTERN = re.compile(r'pip\s+install\s+(?:-[\w]+\s+)*(\S+)')
+
+
+def _fix_dependencies(
+    content: str,
+    build_info: BuildInfo | None,
+    corrections: list[Correction],
+) -> str:
+    """Flag dependency claims in content that are NOT in the real dependency list.
+
+    Conservative approach: only flags full module paths (github.com/org/repo)
+    that clearly don't appear in build_info.dependencies. Does NOT flag
+    standard library packages or short ambiguous names.
+    """
+    if not build_info or not build_info.dependencies:
+        return content
+
+    real_deps = set(build_info.dependencies)
+    # Also include dev deps as valid (they're real, just not production)
+    real_deps.update(build_info.dev_dependencies)
+    # The project's own module path is not a dependency but references to it are valid
+    if build_info.module_path:
+        real_deps.add(build_info.module_path)
+
+    # Build a lowercase lookup for case-insensitive matching
+    real_deps_lower = {d.lower() for d in real_deps}
+
+    claimed_deps = _extract_claimed_deps(content, build_info.language)
+
+    if not claimed_deps:
+        return content
+
+    lines = content.split("\n")
+    new_lines: list[str] = []
+
+    for i, line in enumerate(lines):
+        flagged_deps: list[str] = []
+        for dep in sorted(claimed_deps):
+            if dep not in line:
+                continue
+            if _is_real_dep(dep, real_deps, real_deps_lower, build_info.language):
+                continue
+            if _is_stdlib(dep, build_info.language):
+                continue
+            # It's in this line and NOT a real dep — flag it
+            flagged_deps.append(dep)
+
+        new_lines.append(line)
+        if flagged_deps and "<!-- UNVERIFIED DEP" not in line:
+            for dep in flagged_deps:
+                corrections.append(Correction(
+                    original=dep,
+                    corrected=dep,
+                    reason=f"Dependency {dep} not found in project dependencies — may be hallucinated",
+                    line=i + 1,
+                ))
+            dep_list = ", ".join(flagged_deps)
+            new_lines.append(
+                f"<!-- UNVERIFIED DEPENDENCY: {dep_list} — not found in project build files -->"
+            )
+
+    return "\n".join(new_lines)
+
+
+def _extract_claimed_deps(content: str, language: str) -> set[str]:
+    """Extract dependency-like references from chapter content."""
+    claimed: set[str] = set()
+
+    # Full paths (github.com/org/repo) — works for Go, Rust, etc.
+    for m in _GITHUB_DEP_PATTERN.finditer(content):
+        # Normalize: take up to org/repo (first 3 segments)
+        parts = m.group(0).split("/")
+        if len(parts) >= 3:
+            # Store the canonical 3-segment form (github.com/org/repo)
+            claimed.add("/".join(parts[:3]))
+
+    # npm scoped packages
+    if language in ("typescript", "javascript"):
+        for m in _NPM_SCOPED_PATTERN.finditer(content):
+            claimed.add(m.group(0))
+
+    # pip install targets
+    if language == "python":
+        for m in _PIP_INSTALL_PATTERN.finditer(content):
+            pkg = m.group(1).strip()
+            # Strip version specifiers
+            pkg = re.split(r'[>=<!\[;]', pkg)[0].strip()
+            if pkg and not pkg.startswith("-"):
+                claimed.add(pkg)
+
+    return claimed
+
+
+def _is_real_dep(
+    dep: str,
+    real_deps: set[str],
+    real_deps_lower: set[str],
+    language: str,
+) -> bool:
+    """Check if a claimed dep matches any real dependency."""
+    # Exact match
+    if dep in real_deps:
+        return True
+    if dep.lower() in real_deps_lower:
+        return True
+
+    # For Go: github.com/org/repo/subpkg should match github.com/org/repo
+    # And github.com/org/repo should match github.com/org/repo/v2
+    for real in real_deps:
+        # Claimed is a sub-path of a real dep
+        if dep.startswith(real + "/") or dep.startswith(real):
+            return True
+        # Real dep is a sub-path of claimed (e.g. real has /v2 suffix)
+        if real.startswith(dep + "/") or real.startswith(dep):
+            return True
+
+    return False
+
+
+def _is_stdlib(dep: str, language: str) -> bool:
+    """Check if a dependency reference is a standard library package."""
+    if language == "go":
+        # Go stdlib: net/http, database/sql, fmt, os, etc.
+        # These don't have a domain prefix (no github.com/)
+        if "/" in dep:
+            top = dep.split("/")[0]
+            # If the top-level is a known Go stdlib package and NOT a domain
+            if top in _GO_STDLIB_PACKAGES and "." not in top:
+                return True
+        else:
+            if dep in _GO_STDLIB_PACKAGES:
+                return True
+    # Python stdlib is hard to enumerate — we only flag pip install targets,
+    # which are unlikely to be stdlib.
+    # Node stdlib (fs, path, http) won't match our patterns.
+    return False
