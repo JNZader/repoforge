@@ -1885,6 +1885,14 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "tree-sitter" },
+    { name = "tree-sitter-language-pack" },
+]
 dev = [
     { name = "mypy" },
     { name = "pytest" },
@@ -1904,11 +1912,12 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "repoforge-ai", extras = ["dev", "intelligence"], marker = "extra == 'all'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "tree-sitter", marker = "extra == 'intelligence'", specifier = ">=0.23" },
     { name = "tree-sitter-language-pack", marker = "extra == 'intelligence'", specifier = ">=1.0" },
 ]
-provides-extras = ["dev", "intelligence"]
+provides-extras = ["dev", "intelligence", "all"]
 
 [[package]]
 name = "requests"
