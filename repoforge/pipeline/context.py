@@ -194,12 +194,33 @@ def _build_facts_only(
         if _fo_compressed:
             log(f"   ✅ Compressed {len(_fo_compressed)} file signatures")
 
-        # Build per-chapter contexts
-        fo_ctx: dict[str, str] = {}
-        for _ch_file in [
+        # Build per-chapter contexts for ALL known chapter files.
+        # This covers universal chapters AND adaptive chapters from any project type
+        # (infra_devops, cli_tool, library_sdk, etc.) to avoid falling back to
+        # the _default context which may exceed GitHub Models' 8K token cap.
+        _all_chapter_files = [
+            # Universal
             "01-overview.md", "02-quickstart.md", "04-core-mechanisms.md",
             "05-data-models.md", "06-api-reference.md", "07-dev-guide.md",
-        ]:
+            # CLI
+            "05-commands.md", "06-config.md",
+            # Library
+            "05-api-reference.md", "06-integration.md",
+            # Data science
+            "04-data-pipeline.md", "05-models.md", "06-experiments.md",
+            # Frontend
+            "05-components.md", "06-state.md",
+            # Mobile
+            "05-screens.md", "06-native.md",
+            # Desktop
+            "05-ui.md", "06-platform.md",
+            # Infra/DevOps
+            "04-resources.md", "05-variables.md", "06-deployment.md",
+            # Monorepo
+            "06b-service-map.md",
+        ]
+        fo_ctx: dict[str, str] = {}
+        for _ch_file in _all_chapter_files:
             fo_ctx[_ch_file] = build_facts_only_context_for_chapter(
                 _ch_file, str(root), all_files, _fo_facts,
                 result["api_surface_ctx"], _fo_compressed, _fo_build_info,
