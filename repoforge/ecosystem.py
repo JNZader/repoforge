@@ -179,4 +179,10 @@ def get_plugin_registry() -> list[PluginInfo]:
             module_path="repoforge.intelligence.symbol_linker",
             category="analysis",
         ),
+        PluginInfo(
+            name="dep_health",
+            description="Dependency health analysis — tree depth, duplicates, licenses, outdated",
+            module_path="repoforge.dep_health",
+            category="analysis",
+        ),
     ]

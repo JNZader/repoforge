@@ -66,6 +66,13 @@ from .plugins import (
     write_plugin,
 )
 from .scorer import SkillScore, SkillScorer
+from .dep_health import (
+    DependencyHealthReport,
+    DuplicateDep,
+    LicenseConflict,
+    OutdatedDep,
+    analyze_dependency_health,
+)
 from .security import (
     Finding,
     ScanResult,
@@ -105,6 +112,11 @@ __all__ = [
     "Finding",
     "Severity",
     "scan_generated_output",
+    "DependencyHealthReport",
+    "DuplicateDep",
+    "LicenseConflict",
+    "OutdatedDep",
+    "analyze_dependency_health",
     "Command",
     "PluginManifest",
     "build_commands",
