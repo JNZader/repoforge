@@ -19,12 +19,31 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-from .scanner import scan_repo, classify_complexity
-from .llm import build_llm
 from .docs_prompts import get_chapter_prompts
+from .incremental import (
+    ChapterEntry,
+    Manifest,
+    build_chapter_deps,
+    content_hash,
+    get_changed_files,
+    get_git_sha,
+    get_stale_chapters,
+    now_iso,
+)
+from .incremental import (
+    load_manifest as _load_manifest,
+)
+from .llm import build_llm
 from .pipeline.context import build_all_contexts
 from .pipeline.generate import generate_chapter, postprocess_chapter
-from .pipeline.write import write_chapter, write_corrections_log, write_docsify, _rel
+from .pipeline.write import (
+    _rel,
+    write_chapter,
+    write_corrections_log,
+    write_docsify,
+    write_manifest,
+)
+from .scanner import classify_complexity, scan_repo
 
 
 def generate_docs(
@@ -43,6 +62,7 @@ def generate_docs(
     verify_model: Optional[str] = None,
     no_verify_docs: bool = False,
     facts_only: bool = False,
+    incremental: bool = False,
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -135,6 +155,37 @@ def generate_docs(
         }
 
     # ------------------------------------------------------------------
+    # Stage 4b: Incremental filtering (--incremental)
+    # ------------------------------------------------------------------
+    _git_sha = get_git_sha(root) if incremental else ""
+    _manifest = None
+    _chapter_deps: dict[str, list[str]] = {}
+    skipped_chapters: list[str] = []
+
+    if incremental:
+        _manifest = _load_manifest(out)
+        _chapter_deps = build_chapter_deps(repo_map, chapters)
+        if _manifest is None:
+            log("\n⚠️  No manifest found — full generation will run")
+        else:
+            changed = get_changed_files(root, _manifest.git_sha)
+            if not changed and _manifest.git_sha == _git_sha:
+                log("\n✅ No source files changed — nothing to regenerate")
+                return {
+                    "project_name": project_name, "language": language,
+                    "output_dir": str(out), "chapters_generated": [],
+                    "skipped": [c["file"] for c in chapters],
+                    "incremental": True,
+                }
+            stale = get_stale_chapters(chapters, _manifest, changed, _chapter_deps)
+            skipped_chapters = [c["file"] for c in chapters if c not in stale]
+            if skipped_chapters:
+                log(f"\n♻️  Incremental: {len(stale)} stale, {len(skipped_chapters)} skipped")
+                for s in skipped_chapters:
+                    log(f"   ⏭  {s}")
+            chapters = stale
+
+    # ------------------------------------------------------------------
     # Stage 5: Prepare post-processing state
     # ------------------------------------------------------------------
     do_post_process = not no_verify_docs
@@ -183,6 +234,11 @@ def generate_docs(
     docsify_files = write_docsify(out, project_name, chapters, generated, language, root, log)
 
     # ------------------------------------------------------------------
+    # Stage 7b: Write manifest (for incremental support)
+    # ------------------------------------------------------------------
+    _write_gen_manifest(out, root, _git_sha, _manifest, _chapter_deps, generated, log)
+
+    # ------------------------------------------------------------------
     # Stage 8: Summary
     # ------------------------------------------------------------------
     _print_summary(log, generated, docsify_files, all_corrections,
@@ -196,6 +252,8 @@ def generate_docs(
         "docsify_files": docsify_files,
         "errors": errors,
         "corrections": all_corrections,
+        "skipped": skipped_chapters,
+        "incremental": incremental,
     }
 
 
@@ -260,6 +318,34 @@ def _parse_toml_name(path: Path) -> str:
 
 def _prettify_name(name: str) -> str:
     return name.replace("-", " ").replace("_", " ").title()
+
+
+def _write_gen_manifest(out, root, git_sha, old_manifest, chapter_deps, generated, log):
+    """Build and persist the dependency manifest after generation."""
+    ts = now_iso()
+
+    # Start from old manifest entries (preserves skipped chapters)
+    manifest = Manifest(
+        git_sha=git_sha or get_git_sha(root),
+        generated_at=ts,
+        chapters=(old_manifest.chapters.copy() if old_manifest else {}),
+    )
+
+    # Update entries for chapters that were (re)generated this run
+    for gen_path in generated:
+        fname = Path(gen_path).name
+        try:
+            text = Path(gen_path).read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        manifest.chapters[fname] = ChapterEntry(
+            source_files=chapter_deps.get(fname, []),
+            content_hash=content_hash(text),
+            generated_at=ts,
+        )
+
+    write_manifest(out, manifest)
+    log(f"\n📦 Manifest written: {_rel(out / '.manifest.json', root)}")
 
 
 def _make_logger(verbose: bool):

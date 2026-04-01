@@ -50,6 +50,15 @@ def write_docsify(out: Path, project_name: str, chapters: list[dict],
     return docsify_files
 
 
+def write_manifest(out: Path, manifest) -> Path:
+    """Persist an incremental-docs manifest to the output directory.
+
+    Delegates to :func:`repoforge.incremental.save_manifest`.
+    """
+    from ..incremental import save_manifest
+    return save_manifest(out, manifest)
+
+
 def _rel(path, root) -> str:
     """Safe relative path — falls back to absolute if outside root."""
     try:

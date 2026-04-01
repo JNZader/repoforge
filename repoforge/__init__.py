@@ -4,39 +4,56 @@ files ready for use in Claude Code, OpenCode, Cursor, Codex, Gemini CLI, and
 GitHub Copilot.
 """
 
-from .generator import generate_artifacts
-from .server import serve_docs, serve_skills
-from .docs_generator import generate_docs
-from .exporter import export_llm_view
-from .scorer import SkillScorer, SkillScore
 from .adapters import (
-    adapt_for_cursor,
-    adapt_for_codex,
-    adapt_for_gemini,
-    adapt_for_copilot,
-    resolve_targets,
     ALL_TARGETS,
-)
-from .disclosure import (
-    extract_tier,
-    extract_frontmatter,
-    build_discovery_index,
-    estimate_tokens,
-    has_tier_markers,
-    count_tier_markers,
+    adapt_for_codex,
+    adapt_for_copilot,
+    adapt_for_cursor,
+    adapt_for_gemini,
+    resolve_targets,
 )
 from .compressor import (
-    SkillCompressor,
     CompressionResult,
-    compress_file,
+    SkillCompressor,
     compress_directory,
+    compress_file,
 )
-from .security import (
-    SecurityScanner,
-    ScanResult,
-    Finding,
-    Severity,
-    scan_generated_output,
+from .diagrams import (
+    generate_all_diagrams,
+    generate_call_flow_diagram,
+    generate_dependency_diagram,
+    generate_directory_diagram,
+)
+from .disclosure import (
+    build_discovery_index,
+    count_tier_markers,
+    estimate_tokens,
+    extract_frontmatter,
+    extract_tier,
+    has_tier_markers,
+)
+from .docs_generator import generate_docs
+from .exporter import export_llm_view
+from .generator import generate_artifacts
+from .graph import (
+    BlastRadiusResult,
+    CodeGraph,
+    Edge,
+    Node,
+    build_graph,
+    build_graph_from_workspace,
+    build_graph_v2,
+    get_blast_radius_v2,
+    is_test_file,
+)
+from .incremental import (
+    ChapterEntry,
+    Manifest,
+    build_chapter_deps,
+    get_changed_files,
+    get_stale_chapters,
+    load_manifest,
+    save_manifest,
 )
 from .plugins import (
     Command,
@@ -48,23 +65,15 @@ from .plugins import (
     manifest_to_markdown,
     write_plugin,
 )
-from .diagrams import (
-    generate_dependency_diagram,
-    generate_directory_diagram,
-    generate_call_flow_diagram,
-    generate_all_diagrams,
+from .scorer import SkillScore, SkillScorer
+from .security import (
+    Finding,
+    ScanResult,
+    SecurityScanner,
+    Severity,
+    scan_generated_output,
 )
-from .graph import (
-    BlastRadiusResult,
-    CodeGraph,
-    Node,
-    Edge,
-    build_graph,
-    build_graph_from_workspace,
-    build_graph_v2,
-    get_blast_radius_v2,
-    is_test_file,
-)
+from .server import serve_docs, serve_skills
 
 __version__ = "0.4.0"
 __all__ = [
@@ -108,6 +117,13 @@ __all__ = [
     "generate_directory_diagram",
     "generate_call_flow_diagram",
     "generate_all_diagrams",
+    "Manifest",
+    "ChapterEntry",
+    "load_manifest",
+    "save_manifest",
+    "get_changed_files",
+    "build_chapter_deps",
+    "get_stale_chapters",
     "BlastRadiusResult",
     "CodeGraph",
     "Node",

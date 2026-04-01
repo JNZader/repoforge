@@ -34,7 +34,6 @@ import logging
 
 import click
 
-
 # ---------------------------------------------------------------------------
 # Shared options factory
 # ---------------------------------------------------------------------------
@@ -207,6 +206,7 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
 
     if do_score and not dry_run:
         from pathlib import Path as _Path
+
         from .scorer import SkillScorer
         out_path = (
             _Path(output_dir) if _Path(output_dir).is_absolute()
@@ -278,10 +278,12 @@ SUPPORTED_LANGUAGES = [
     help="Disable BOTH deterministic corrections (Stage D) and LLM verification (Stage C).")
 @click.option("--facts-only/--no-facts-only", default=False, show_default=True,
     help="Generate only the factual extraction (no LLM prose). Outputs structured facts per chapter.")
+@click.option("--incremental/--no-incremental", default=False, show_default=True,
+    help="Only regenerate chapters whose source files changed since last run (uses git diff + manifest).")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
-         chunked, do_verify, verify_model, no_verify_docs, facts_only):
+         chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -330,6 +332,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             verify_model=verify_model,
             no_verify_docs=no_verify_docs,
             facts_only=facts_only,
+            incremental=incremental,
         )
 
     if do_serve or serve_only:
@@ -386,6 +389,7 @@ def export(working_dir, output_path, max_tokens, no_contents, fmt, do_compress, 
       repoforge export -w . --compress          # API surface only (60-80% smaller)
     """
     import sys
+
     from .exporter import export_llm_view
 
     if not quiet:
@@ -448,6 +452,7 @@ def score(working_dir, skills_dir, fmt, min_score, quiet):
     """
     import sys
     from pathlib import Path
+
     from .scorer import SkillScorer
 
     if skills_dir:
@@ -538,7 +543,8 @@ def scan(workspace, target_dir, fmt, allowlist, fail_on, quiet):
     """
     import sys
     from pathlib import Path
-    from .security import SecurityScanner, scan_generated_output, Severity
+
+    from .security import SecurityScanner, Severity, scan_generated_output
 
     # Parse allowlist
     allow = None
@@ -564,7 +570,7 @@ def scan(workspace, target_dir, fmt, allowlist, fail_on, quiet):
             # Need to create scanner with allowlist and scan manually
             scanner = SecurityScanner(allowlist=allow)
             root = Path(workspace)
-            from .security import ScanResult, Finding
+            from .security import Finding, ScanResult
             all_findings: list[Finding] = []
             files_scanned = 0
 
@@ -667,6 +673,7 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     """
     import sys
     from pathlib import Path
+
     from .compressor import (
         SkillCompressor,
         compress_directory,
@@ -922,14 +929,14 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, q
     if not quiet:
         print(f"Generating {diagram_type} diagram(s) for {workspace} ...", file=sys.stderr)
 
-    from .graph import build_graph_v2
-    from .ripgrep import list_files
     from .diagrams import (
+        generate_all_diagrams,
+        generate_call_flow_diagram,
         generate_dependency_diagram,
         generate_directory_diagram,
-        generate_call_flow_diagram,
-        generate_all_diagrams,
     )
+    from .graph import build_graph_v2
+    from .ripgrep import list_files
 
     root = Path(workspace).resolve()
     code_graph = build_graph_v2(str(root))
