@@ -139,6 +139,7 @@ def generate_docs(
         doc_chunks=ctx["doc_chunks"],
         facts_only_context_by_chapter=ctx["fo_context_by_chapter"],
         diagram_context=ctx.get("diagram_ctx", ""),
+        dep_health_context=ctx.get("dep_health_ctx", ""),
     )
     max_ch = cx["max_chapters"]
     chapters = all_chapters[:max_ch] if len(all_chapters) > max_ch else all_chapters

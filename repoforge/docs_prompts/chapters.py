@@ -127,7 +127,8 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                      graph_context: str = "",
                      doc_chunks: dict | None = None,
                      facts_only: bool = False,
-                     diagram_context: str = "") -> tuple[str, str]:
+                     diagram_context: str = "",
+                     dep_health_context: str = "") -> tuple[str, str]:
     """Route a chapter file to its prompt function."""
     chunks = doc_chunks or {}
 
@@ -157,7 +158,8 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                                      doc_chunks=chunks)
     if chapter_file == "07-dev-guide.md":
         return dev_guide_prompt(repo_map, language, project_name, graph_context=graph_context,
-                                 doc_chunks=chunks, facts_only=facts_only)
+                                 doc_chunks=chunks, facts_only=facts_only,
+                                 dep_health_context=dep_health_context)
 
     # Adaptive chapter prompts
     return _adaptive_prompt(chapter_file, repo_map, language, project_name, project_type,
@@ -176,7 +178,8 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                         short_graph_context: str = "",
                         doc_chunks: dict | None = None,
                         facts_only_context_by_chapter: dict[str, str] | None = None,
-                        diagram_context: str = "") -> list[dict]:
+                        diagram_context: str = "",
+                        dep_health_context: str = "") -> list[dict]:
     """
     Return the adaptive list of chapters to generate with their prompts.
 
@@ -244,6 +247,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
             project_type, all_chapters, graph_context=ch_graph,
             doc_chunks=chunks, facts_only=is_facts_only,
             diagram_context=diagram_context if is_architecture else "",
+            dep_health_context=dep_health_context if chapter_file == "07-dev-guide.md" else "",
         )
 
         # Override system prompt when using facts-only mode

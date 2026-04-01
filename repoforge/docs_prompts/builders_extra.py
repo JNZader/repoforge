@@ -233,7 +233,8 @@ Language: {language}
 def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
                      graph_context: str = "",
                      doc_chunks: dict | None = None,
-                     facts_only: bool = False) -> tuple[str, str]:
+                     facts_only: bool = False,
+                     dep_health_context: str = "") -> tuple[str, str]:
     layers = repo_map.get("layers", {})
 
     # Use ultra-light repo context in facts-only mode
@@ -242,12 +243,20 @@ def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
 
     layer_hint = "which layer to modify and how layers interact" if len(layers) > 1 else "file structure to follow"
 
+    dep_health_section = ""
+    if dep_health_context:
+        dep_health_section = f"""
+### Dependency Health Analysis (include this section in the output)
+{dep_health_context}
+"""
+
     user = f"""Generate **07-dev-guide.md** for **{project_name}**.
 
 {ctx}
-
+{dep_health_section}
 ## Structure
 `# Developer Guide` → dev setup (hot reload, debug, test runner), project conventions (from actual names/paths), how to add a feature ({layer_hint}), testing (runner, patterns), common tasks table (dev server, tests, build, lint), code style tools.
+{('Include a "## Dependency Health" section with the analysis data provided above.' if dep_health_context else '')}
 Be specific to THIS project. Language: {language}
 """
     return _base_system(language), user

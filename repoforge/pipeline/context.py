@@ -43,6 +43,7 @@ def build_all_contexts(
         "_graph": None,
         "_facts": [],
         "_all_files": all_files,
+        "dep_health_ctx": "",
     }
 
     # 3b. Build dependency graph
@@ -66,6 +67,9 @@ def build_all_contexts(
     # 3e. Build facts-only per-chapter contexts (--facts-only flag)
     if facts_only:
         _build_facts_only(root, all_files, repo_map, result, log)
+
+    # 3f. Build dependency health context
+    _build_dep_health(root, result, log)
 
     return result
 
@@ -264,6 +268,24 @@ def _build_facts_only(
         log(f"   ✅ Per-chapter facts-only context built ({len(fo_ctx)} chapters, {_total} total chars)")
     except Exception as e:
         log(f"   ⚠️  Facts-only context skipped: {e}")
+
+
+def _build_dep_health(root: Path, result: dict, log) -> None:
+    """Analyze dependency health and add markdown context."""
+    try:
+        from ..dep_health import analyze_dependency_health
+        report = analyze_dependency_health(str(root))
+        if report is not None:
+            result["dep_health_ctx"] = report.to_markdown()
+            log(
+                f"📦 Dependency health: {report.ecosystem} — "
+                f"{report.direct_count} direct, {report.transitive_count} transitive, "
+                f"health={report.health_score}"
+            )
+        else:
+            log("📦 Dependency health: no supported manifests found")
+    except Exception as e:
+        log(f"   ⚠️  Dependency health analysis skipped: {e}")
 
 
 def _select_top_files(graph, all_files, compute_ranks, is_test_file, limit=15):
