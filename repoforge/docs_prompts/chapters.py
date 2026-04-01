@@ -126,7 +126,8 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                      active_chapters: list[dict],
                      graph_context: str = "",
                      doc_chunks: dict | None = None,
-                     facts_only: bool = False) -> tuple[str, str]:
+                     facts_only: bool = False,
+                     diagram_context: str = "") -> tuple[str, str]:
     """Route a chapter file to its prompt function."""
     chunks = doc_chunks or {}
 
@@ -143,7 +144,8 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                                   doc_chunks=chunks)
     if chapter_file == "03-architecture.md":
         return architecture_prompt(repo_map, language, project_name, graph_context=graph_context,
-                                    doc_chunks=chunks, facts_only=facts_only)
+                                    doc_chunks=chunks, facts_only=facts_only,
+                                    diagram_context=diagram_context)
     if chapter_file == "04-core-mechanisms.md":
         return core_mechanisms_prompt(repo_map, language, project_name, graph_context=graph_context,
                                        doc_chunks=chunks, facts_only=facts_only)
@@ -173,7 +175,8 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                         graph_context: str = "",
                         short_graph_context: str = "",
                         doc_chunks: dict | None = None,
-                        facts_only_context_by_chapter: dict[str, str] | None = None) -> list[dict]:
+                        facts_only_context_by_chapter: dict[str, str] | None = None,
+                        diagram_context: str = "") -> list[dict]:
     """
     Return the adaptive list of chapters to generate with their prompts.
 
@@ -240,6 +243,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
             chapter_file, repo_map, language, project_name,
             project_type, all_chapters, graph_context=ch_graph,
             doc_chunks=chunks, facts_only=is_facts_only,
+            diagram_context=diagram_context if is_architecture else "",
         )
 
         # Override system prompt when using facts-only mode

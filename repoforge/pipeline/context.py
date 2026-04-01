@@ -34,6 +34,7 @@ def build_all_contexts(
     result = {
         "graph_ctx": "",
         "short_graph_ctx": "",
+        "diagram_ctx": "",
         "semantic_ctx": "",
         "facts_ctx": "",
         "api_surface_ctx": "",
@@ -46,6 +47,9 @@ def build_all_contexts(
 
     # 3b. Build dependency graph
     _build_graph(root, result, log)
+
+    # 3b'. Build diagrams from graph
+    _build_diagrams(root, all_files, result, log)
 
     # 3b. Build semantic context
     _build_semantic(root, all_files, result, log)
@@ -64,6 +68,23 @@ def build_all_contexts(
         _build_facts_only(root, all_files, repo_map, result, log)
 
     return result
+
+
+def _build_diagrams(root: Path, all_files: list, result: dict, log) -> None:
+    """Build Mermaid architecture diagrams from the graph (if available)."""
+    _graph = result.get("_graph")
+    if _graph is None:
+        return
+
+    try:
+        from ..diagrams import generate_all_diagrams
+        log("📊 Generating architecture diagrams...")
+        result["diagram_ctx"] = generate_all_diagrams(
+            str(root), _graph, all_files,
+        )
+        log("   ✅ Diagrams generated")
+    except Exception as e:
+        log(f"   ⚠️  Diagram generation skipped: {e}")
 
 
 def _build_graph(root: Path, result: dict, log) -> None:

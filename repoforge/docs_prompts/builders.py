@@ -178,7 +178,8 @@ Language: {language}
 def architecture_prompt(repo_map: dict, language: str, project_name: str,
                         graph_context: str = "",
                         doc_chunks: dict | None = None,
-                        facts_only: bool = False) -> tuple[str, str]:
+                        facts_only: bool = False,
+                        diagram_context: str = "") -> tuple[str, str]:
     chunks = doc_chunks or {}
     layers = repo_map.get("layers", {})
     layer_names = list(layers.keys())
@@ -206,6 +207,17 @@ Language: {language}
 {arch_chunk}
 """
 
+    # Inject auto-generated diagrams if available
+    diagram_section = ""
+    if diagram_context:
+        diagram_section = f"""
+### Auto-generated Architecture Diagrams (from code analysis)
+Use these diagrams in your output — they are derived from actual import/export analysis.
+You may adjust labels for readability but keep the structure accurate.
+
+{diagram_context}
+"""
+
     user = f"""Generate **03-architecture.md** — the Architecture chapter for **{project_name}**.
 
 {_repo_context(repo_map, graph_context=graph_context)}
@@ -213,7 +225,7 @@ Language: {language}
 ### Architecture hints
 - {"Monorepo with multiple layers: " + ", ".join(layer_names) if is_monorepo else "Single-layer project: " + (layer_names[0] if layer_names else "main")}
 - Layers detected: {len(layers)}
-{focused_section}
+{focused_section}{diagram_section}
 ## What this document must contain
 1. `# Architecture` heading
 2. **Architecture overview** — 3-5 sentences describing the overall design pattern
