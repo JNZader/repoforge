@@ -91,7 +91,14 @@ from .coverage import (
     parse_lcov,
     render_coverage_markdown,
 )
+from .import_docs import (
+    fetch_github_docs,
+    fetch_npm_readme,
+    fetch_pypi_description,
+    import_docs,
+)
 from .server import serve_docs, serve_skills
+from .watch import FileWatcher, WatchEvent, watch_docs
 
 __version__ = "0.4.0"
 __all__ = [
@@ -165,4 +172,11 @@ __all__ = [
     "parse_jacoco",
     "parse_lcov",
     "render_coverage_markdown",
+    "FileWatcher",
+    "WatchEvent",
+    "watch_docs",
+    "import_docs",
+    "fetch_npm_readme",
+    "fetch_pypi_description",
+    "fetch_github_docs",
 ]

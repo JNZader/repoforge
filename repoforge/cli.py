@@ -81,6 +81,7 @@ def main(verbose):
     Commands:
       skills           Generate SKILL.md + AGENT.md for Claude Code / OpenCode
       skills-from-docs Generate SKILL.md from documentation (URL, GitHub repo, local dir)
+      import-docs      Import external dependency docs for context enrichment (no API key needed)
       score            Score quality of generated SKILL.md files (no API key needed)
       scan             Security scan generated output for issues (no API key needed)
       docs             Generate technical documentation (Docsify-ready, GH Pages compatible)
@@ -104,6 +105,7 @@ def main(verbose):
       repoforge compress -w . --aggressive --dry-run
       repoforge graph -w . --format mermaid
       repoforge graph -w . --blast-radius src/auth.py
+      repoforge import-docs --npm react --pypi click
       repoforge skills-from-docs -w https://docs.example.com -o .claude/skills
       repoforge skills-from-docs -w /path/to/docs --name my-lib
     """
@@ -284,10 +286,15 @@ SUPPORTED_LANGUAGES = [
     help="Generate only the factual extraction (no LLM prose). Outputs structured facts per chapter.")
 @click.option("--incremental/--no-incremental", default=False, show_default=True,
     help="Only regenerate chapters whose source files changed since last run (uses git diff + manifest).")
+@click.option("--watch", is_flag=True, default=False,
+    help="Enter watch mode: poll source files and regenerate docs on change.")
+@click.option("--watch-interval", default=2.0, show_default=True, type=float,
+    help="Poll interval in seconds for watch mode.")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
-         chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental):
+         chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental,
+         watch, watch_interval):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -318,6 +325,27 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
     """
     from .docs_generator import generate_docs
     from .server import serve_docs
+
+    if watch:
+        from .watch import watch_docs
+        watch_docs(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            interval=watch_interval,
+            model=model,
+            api_key=api_key,
+            api_base=api_base,
+            language=language,
+            project_name=project_name,
+            verbose=not quiet,
+            complexity=complexity,
+            chunked=chunked,
+            verify=do_verify,
+            verify_model=verify_model,
+            no_verify_docs=no_verify_docs,
+            facts_only=facts_only,
+        )
+        return  # watch_docs runs until Ctrl+C
 
     if not serve_only:
         generate_docs(
@@ -990,6 +1018,77 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, q
             print(f"Written to {output_path}", file=sys.stderr)
     else:
         click.echo(output)
+
+
+# ---------------------------------------------------------------------------
+# import-docs subcommand
+# ---------------------------------------------------------------------------
+
+@main.command(name="import-docs")
+@click.option("-w", "--working-dir",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("--npm", multiple=True,
+    help="npm package name to fetch README for. Repeatable.")
+@click.option("--pypi", multiple=True,
+    help="PyPI package name to fetch description for. Repeatable.")
+@click.option("--github", multiple=True,
+    help="GitHub repo URL to clone and extract docs from. Repeatable.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def import_docs_cmd(working_dir, npm, pypi, github, quiet):
+    """
+    Import external dependency docs to enrich analysis context.
+
+    \b
+    Fetches documentation from package registries and repositories,
+    saving them as flat markdown in .repoforge/external-docs/.
+
+    \b
+    No API key needed — pure HTTP fetching.
+
+    \b
+    Examples:
+      repoforge import-docs --npm react --npm express
+      repoforge import-docs --pypi click --pypi pyyaml
+      repoforge import-docs --github https://github.com/pallets/click
+      repoforge import-docs --npm react --pypi flask -w /my/repo
+    """
+    import sys
+
+    from .import_docs import import_docs
+
+    if not npm and not pypi and not github:
+        click.echo(
+            "Error: at least one of --npm, --pypi, or --github is required.",
+            err=True,
+        )
+        sys.exit(1)
+
+    if not quiet:
+        total = len(npm) + len(pypi) + len(github)
+        click.echo(f"Importing docs for {total} source(s)...", err=True)
+
+    result = import_docs(
+        working_dir=working_dir,
+        npm=list(npm),
+        pypi=list(pypi),
+        github=list(github),
+        quiet=quiet,
+    )
+
+    if not quiet:
+        click.echo(f"  Imported: {result['total']} doc(s)", err=True)
+        if result["failed"]:
+            click.echo(f"  Failed:   {len(result['failed'])} source(s)", err=True)
+            for f in result["failed"]:
+                click.echo(f"    - {f['source']}: {f['error']}", err=True)
+        click.echo(f"  Output:   {result['output_dir']}", err=True)
+
+    if result["failed"] and not result["imported"]:
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
