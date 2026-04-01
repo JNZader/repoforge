@@ -433,7 +433,52 @@ def generate_all_diagrams(
             "```mermaid\n" + call_diag + "\n```"
         )
 
+    # 4. Symbol-level dependencies
+    sym_diag = generate_symbol_diagram(root_dir, files)
+    if sym_diag:
+        sections.append(
+            "### Symbol Dependencies\n\n"
+            "```mermaid\n" + sym_diag + "\n```"
+        )
+
     return "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
+# 5. Symbol-level dependency diagram
+# ---------------------------------------------------------------------------
+
+
+def generate_symbol_diagram(
+    root_dir: str,
+    files: list[str],
+    max_symbols: int = 60,
+) -> str:
+    """Generate a Mermaid flowchart of symbol-level (function/class) dependencies.
+
+    Uses regex-based symbol extraction and call graph analysis to show
+    which functions call which across the codebase.
+
+    Args:
+        root_dir: Absolute path to the project root.
+        files: List of relative file paths.
+        max_symbols: Maximum symbols to include (default 60).
+
+    Returns:
+        Mermaid flowchart string (without fences), or empty string if
+        no symbols or edges were found.
+    """
+    try:
+        from .symbols import build_symbol_graph, render_symbol_mermaid
+
+        graph = build_symbol_graph(root_dir, files)
+        if not graph.symbols or not graph.edges:
+            return ""
+
+        return render_symbol_mermaid(graph, max_symbols=max_symbols)
+    except Exception as e:
+        logger.debug("Symbol diagram generation failed: %s", e)
+        return ""
 
 
 def _detect_entry_points(root_dir: str, files: list[str]) -> list[str]:
