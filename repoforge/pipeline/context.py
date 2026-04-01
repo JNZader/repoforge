@@ -44,6 +44,7 @@ def build_all_contexts(
         "_facts": [],
         "_all_files": all_files,
         "dep_health_ctx": "",
+        "coverage_ctx": "",
     }
 
     # 3b. Build dependency graph
@@ -70,6 +71,9 @@ def build_all_contexts(
 
     # 3f. Build dependency health context
     _build_dep_health(root, result, log)
+
+    # 3g. Build coverage context
+    _build_coverage(root, result, log)
 
     return result
 
@@ -286,6 +290,22 @@ def _build_dep_health(root: Path, result: dict, log) -> None:
             log("📦 Dependency health: no supported manifests found")
     except Exception as e:
         log(f"   ⚠️  Dependency health analysis skipped: {e}")
+
+
+def _build_coverage(root: Path, result: dict, log) -> None:
+    """Detect and parse coverage reports, render as markdown context."""
+    try:
+        from ..coverage import auto_detect_and_parse, render_coverage_markdown
+        reports = auto_detect_and_parse(str(root))
+        if reports:
+            total_files = sum(len(r.files) for r in reports)
+            formats = ", ".join({r.source_format for r in reports})
+            result["coverage_ctx"] = render_coverage_markdown(reports)
+            log(f"📈 Coverage: {total_files} files from {formats}")
+        else:
+            log("📈 Coverage: no coverage reports found")
+    except Exception as e:
+        log(f"   ⚠️  Coverage analysis skipped: {e}")
 
 
 def _select_top_files(graph, all_files, compute_ranks, is_test_file, limit=15):

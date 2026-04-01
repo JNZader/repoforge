@@ -50,7 +50,8 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                         doc_chunks: dict | None = None,
                         facts_only_context_by_chapter: dict[str, str] | None = None,
                         diagram_context: str = "",
-                        dep_health_context: str = "") -> list[dict]:
+                        dep_health_context: str = "",
+                        coverage_context: str = "") -> list[dict]:
     """
     Main entry point. Routes monorepos through hierarchical generation,
     single projects through the original adaptive path.
@@ -71,6 +72,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
             None means no facts-only mode.
         diagram_context: Auto-generated Mermaid diagrams to embed in architecture chapter.
         dep_health_context: Dependency health analysis markdown to embed in dev guide.
+        coverage_context: Unified coverage report markdown to embed in dev guide.
     """
     # Allow repoforge.yaml to force the project type
     cfg_type = repo_map.get("repoforge_config", {}).get("project_type")
@@ -88,6 +90,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
         facts_only_context_by_chapter=facts_only_context_by_chapter,
         diagram_context=diagram_context,
         dep_health_context=dep_health_context,
+        coverage_context=coverage_context,
     )
     for ch in chapters:
         ch.setdefault("subdir", None)

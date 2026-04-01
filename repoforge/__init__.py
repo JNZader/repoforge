@@ -80,6 +80,17 @@ from .security import (
     Severity,
     scan_generated_output,
 )
+from .coverage import (
+    CoverageFile,
+    CoverageReport,
+    auto_detect_and_parse,
+    detect_coverage_files,
+    parse_cobertura,
+    parse_coverage_py_json,
+    parse_jacoco,
+    parse_lcov,
+    render_coverage_markdown,
+)
 from .server import serve_docs, serve_skills
 
 __version__ = "0.4.0"
@@ -145,4 +156,13 @@ __all__ = [
     "build_graph_v2",
     "get_blast_radius_v2",
     "is_test_file",
+    "CoverageFile",
+    "CoverageReport",
+    "auto_detect_and_parse",
+    "detect_coverage_files",
+    "parse_cobertura",
+    "parse_coverage_py_json",
+    "parse_jacoco",
+    "parse_lcov",
+    "render_coverage_markdown",
 ]

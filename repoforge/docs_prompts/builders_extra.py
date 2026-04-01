@@ -234,7 +234,8 @@ def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
                      graph_context: str = "",
                      doc_chunks: dict | None = None,
                      facts_only: bool = False,
-                     dep_health_context: str = "") -> tuple[str, str]:
+                     dep_health_context: str = "",
+                     coverage_context: str = "") -> tuple[str, str]:
     layers = repo_map.get("layers", {})
 
     # Use ultra-light repo context in facts-only mode
@@ -250,13 +251,22 @@ def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
 {dep_health_context}
 """
 
+    coverage_section = ""
+    if coverage_context:
+        coverage_section = f"""
+### Test Coverage Analysis (include this section in the output)
+{coverage_context}
+"""
+
     user = f"""Generate **07-dev-guide.md** for **{project_name}**.
 
 {ctx}
 {dep_health_section}
+{coverage_section}
 ## Structure
 `# Developer Guide` → dev setup (hot reload, debug, test runner), project conventions (from actual names/paths), how to add a feature ({layer_hint}), testing (runner, patterns), common tasks table (dev server, tests, build, lint), code style tools.
 {('Include a "## Dependency Health" section with the analysis data provided above.' if dep_health_context else '')}
+{('Include a "## Test Coverage" section with the coverage data provided above.' if coverage_context else '')}
 Be specific to THIS project. Language: {language}
 """
     return _base_system(language), user
