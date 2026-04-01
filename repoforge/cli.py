@@ -3,12 +3,13 @@ cli.py - Command-line interface for RepoForge.
 
 Six modes:
 
-  repoforge skills   [options] — Generate SKILL.md + AGENT.md for Claude Code / OpenCode
-  repoforge score    [options] — Score quality of generated SKILL.md files (no API key needed)
-  repoforge scan     [options] — Security scan generated output for issues (no API key needed)
-  repoforge docs     [options] — Generate technical documentation (Docsify / GH Pages ready)
-  repoforge export   [options] — Flatten repo into a single LLM-optimized file (no API key needed)
-  repoforge compress [options] — Token-optimize generated .md files (no API key needed)
+  repoforge skills           [options] — Generate SKILL.md + AGENT.md for Claude Code / OpenCode
+  repoforge skills-from-docs [options] — Generate SKILL.md from documentation sources
+  repoforge score            [options] — Score quality of generated SKILL.md files (no API key needed)
+  repoforge scan             [options] — Security scan generated output for issues (no API key needed)
+  repoforge docs             [options] — Generate technical documentation (Docsify / GH Pages ready)
+  repoforge export           [options] — Flatten repo into a single LLM-optimized file (no API key needed)
+  repoforge compress         [options] — Token-optimize generated .md files (no API key needed)
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
@@ -78,13 +79,14 @@ def main(verbose):
 
     \b
     Commands:
-      skills    Generate SKILL.md + AGENT.md for Claude Code / OpenCode
-      score     Score quality of generated SKILL.md files (no API key needed)
-      scan      Security scan generated output for issues (no API key needed)
-      docs      Generate technical documentation (Docsify-ready, GH Pages compatible)
-      export    Flatten repo into a single LLM-optimized file (no API key needed)
-      compress  Token-optimize generated .md files (no API key needed)
-      graph     Build a code knowledge graph from scanner data (no API key needed)
+      skills           Generate SKILL.md + AGENT.md for Claude Code / OpenCode
+      skills-from-docs Generate SKILL.md from documentation (URL, GitHub repo, local dir)
+      score            Score quality of generated SKILL.md files (no API key needed)
+      scan             Security scan generated output for issues (no API key needed)
+      docs             Generate technical documentation (Docsify-ready, GH Pages compatible)
+      export           Flatten repo into a single LLM-optimized file (no API key needed)
+      compress         Token-optimize generated .md files (no API key needed)
+      graph            Build a code knowledge graph from scanner data (no API key needed)
 
     \b
     Examples:
@@ -102,6 +104,8 @@ def main(verbose):
       repoforge compress -w . --aggressive --dry-run
       repoforge graph -w . --format mermaid
       repoforge graph -w . --blast-radius src/auth.py
+      repoforge skills-from-docs -w https://docs.example.com -o .claude/skills
+      repoforge skills-from-docs -w /path/to/docs --name my-lib
     """
     level = logging.WARNING
     if verbose >= 2:
@@ -986,6 +990,130 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, q
             print(f"Written to {output_path}", file=sys.stderr)
     else:
         click.echo(output)
+
+
+# ---------------------------------------------------------------------------
+# skills-from-docs subcommand
+# ---------------------------------------------------------------------------
+
+@main.command(name="skills-from-docs")
+@click.option("-w", "--source",
+    required=True,
+    help="Documentation source: URL, GitHub repo URL, or local directory path.")
+@click.option("-o", "--output-dir", default=".claude/skills", show_default=True,
+    help="Output directory for generated SKILL.md.")
+@click.option("--name", default=None,
+    help="Skill name (kebab-case). Auto-derived from docs title if not set.")
+@click.option("--dry-run", is_flag=True, default=False,
+    help="Show what would be generated without writing files.")
+@click.option("--score/--no-score", "do_score", default=False, show_default=True,
+    help="After generation, score quality of the generated SKILL.md.")
+@click.option("--check-conflicts/--no-check-conflicts", "do_conflicts", default=True, show_default=True,
+    help="Compare against existing skills and warn on contradictions.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def skills_from_docs(source, output_dir, name, dry_run, do_score, do_conflicts, quiet):
+    """
+    Generate SKILL.md from documentation (URL, GitHub repo, or local dir).
+
+    \b
+    Accepts three types of sources:
+      - HTTP/HTTPS URL: scrapes documentation page
+      - GitHub repo URL: clones and scans .md files
+      - Local directory: reads .md/.html files recursively
+
+    \b
+    No API key needed — extraction and generation are deterministic.
+
+    \b
+    Examples:
+      repoforge skills-from-docs -w https://docs.example.com/guide
+      repoforge skills-from-docs -w https://github.com/org/repo -o .claude/skills
+      repoforge skills-from-docs -w /path/to/docs --name my-lib
+      repoforge skills-from-docs -w /path/to/docs --dry-run
+      repoforge skills-from-docs -w /path/to/docs --score
+    """
+    import sys
+    from pathlib import Path
+
+    from .skills_from_docs import (
+        check_conflicts,
+        extract_content,
+        generate_skill_md,
+        ingest,
+    )
+
+    # Step 1: Ingest
+    if not quiet:
+        click.echo(f"Ingesting documentation from: {source}", err=True)
+
+    try:
+        raw_texts = ingest(source)
+    except (ValueError, RuntimeError) as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+    if not quiet:
+        click.echo(f"  Fetched {len(raw_texts)} document(s)", err=True)
+
+    # Step 2: Extract
+    if not quiet:
+        click.echo("Extracting content...", err=True)
+
+    doc = extract_content(raw_texts, source=source)
+
+    if not quiet:
+        click.echo(
+            f"  Title: {doc.title}\n"
+            f"  Sections: {len(doc.sections)}\n"
+            f"  Code examples: {len(doc.code_examples)}\n"
+            f"  Patterns: {len(doc.patterns)}\n"
+            f"  Anti-patterns: {len(doc.anti_patterns)}",
+            err=True,
+        )
+
+    # Step 3: Generate
+    if not quiet:
+        click.echo("Generating SKILL.md...", err=True)
+
+    skill_md = generate_skill_md(doc, name=name)
+
+    if dry_run:
+        click.echo("\n--- Generated SKILL.md (dry run) ---\n")
+        click.echo(skill_md)
+        return
+
+    # Step 4: Write
+    out_path = Path(output_dir)
+    skill_name = name or doc.title.lower().replace(" ", "-")
+    skill_dir = out_path / skill_name
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_file = skill_dir / "SKILL.md"
+    skill_file.write_text(skill_md, encoding="utf-8")
+
+    if not quiet:
+        click.echo(f"  Written to: {skill_file}", err=True)
+
+    # Step 5: Conflict check
+    if do_conflicts:
+        conflicts = check_conflicts(skill_md, str(out_path))
+        if conflicts:
+            click.echo(f"\n⚠️  Found {len(conflicts)} potential conflict(s):", err=True)
+            for c in conflicts:
+                click.echo(f"  - {c.description}", err=True)
+        elif not quiet:
+            click.echo("  No conflicts with existing skills.", err=True)
+
+    # Step 6: Optional scoring
+    if do_score:
+        from .scorer import SkillScorer
+        scorer = SkillScorer()
+        scores = scorer.score_directory(str(skill_dir))
+        if scores:
+            click.echo(scorer.report(scores, fmt="table"), err=True)
+
+    if not quiet:
+        click.echo(f"\n✅ SKILL.md generated: {skill_file}", err=True)
 
 
 # ---------------------------------------------------------------------------
