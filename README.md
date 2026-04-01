@@ -45,7 +45,17 @@ Generates `SKILL.md` and `AGENT.md` compatible with:
 
 ---
 
-## What's New in v0.3
+## What's New in v0.4
+
+| # | Feature | Command / Flag | Description |
+|---|---------|---------------|-------------|
+| 1 | **Mermaid diagrams** | `repoforge diagram` | Generate dependency, directory, and call flow Mermaid diagrams from code analysis (no API key) |
+| 2 | **Symbol-level mapping** | `repoforge/symbols/` | Regex-based symbol extraction, call graph construction, and Mermaid rendering at function/class level |
+| 3 | **Incremental docs** | `--incremental` | Only regenerate stale chapters via git diff + manifest tracking |
+| 4 | **Dependency health** | auto in `docs` pipeline | Tree depth, transitive deps, duplicates, license conflicts, health score report |
+| 5 | **Coverage unification** | auto-detected | Parse Cobertura, lcov, coverage.py JSON, and JaCoCo into unified coverage reports for docs |
+
+### Previous (v0.3)
 
 | # | Feature | Command / Flag | Description |
 |---|---------|---------------|-------------|
@@ -103,6 +113,12 @@ repoforge export -w /path/to/repo -o context.md
 
 # Build dependency graph
 repoforge graph -w /path/to/repo --format mermaid
+
+# Generate Mermaid architecture diagrams
+repoforge diagram -w /path/to/repo --type dependency
+
+# Incremental docs (only regenerate stale chapters)
+repoforge docs -w /path/to/repo --incremental
 
 # Open skills browser
 repoforge skills --serve-only
@@ -168,9 +184,14 @@ repoforge docs [OPTIONS]
   --serve                   Serve docs after generating (opens browser)
   --serve-only              Skip generation, serve existing docs
   --port INT                Server port  [default: 8000]
+  --incremental             Only regenerate chapters whose source files changed (git diff + manifest)
   --dry-run                 Plan only, no LLM calls, no files written
   -q, --quiet               Suppress progress output
 ```
+
+### Incremental mode
+
+With `--incremental`, RepoForge tracks which source files feed each doc chapter via a `.manifest.json` file. On re-run, it uses `git diff` to detect changed files and only regenerates stale chapters — saving LLM calls and time on large projects.
 
 ### Complexity levels
 
@@ -476,6 +497,34 @@ repoforge graph -w . --blast-radius src/auth.py   # who breaks if auth changes?
 
 ---
 
+## `diagram` command
+
+Generate Mermaid architecture diagrams from code analysis. **No API key needed.**
+
+Three diagram types: module dependency flowchart, directory structure hierarchy, and entry point call flow sequence diagrams.
+
+```
+repoforge diagram [OPTIONS]
+
+  -w, --workspace DIR       Repo root  [default: .]
+  -o, --output FILE         Output file (default: stdout)
+  --type TYPE               Diagram type  [default: all]
+                            dependency|directory|callflow|all
+  --max-nodes INT           Max nodes in dependency diagram  [default: 40]
+  --max-depth INT           Max depth for directory/call flow  [default: 3]
+  --entry FILE              Entry point for call flow (auto-detected if not set)
+  -q, --quiet               Suppress progress output
+```
+
+```bash
+repoforge diagram -w .                                   # all diagrams to stdout
+repoforge diagram -w . --type dependency                 # dependency graph only
+repoforge diagram -w . --type callflow --entry src/main.py  # call flow from entry
+repoforge diagram -w . -o diagrams.md                    # save to file
+```
+
+---
+
 ## Monorepo support
 
 Auto-detects layers from directory structure. Docs are generated hierarchically:
@@ -567,6 +616,20 @@ from repoforge import (
     manifest_to_json, manifest_to_markdown, write_plugin,
     # Code graph
     CodeGraph, Node, Edge, build_graph, build_graph_from_workspace,
+    build_graph_v2, get_blast_radius_v2, BlastRadiusResult,
+    # Mermaid diagrams
+    generate_dependency_diagram, generate_directory_diagram,
+    generate_call_flow_diagram, generate_all_diagrams,
+    # Incremental docs
+    Manifest, ChapterEntry, load_manifest, save_manifest,
+    get_changed_files, build_chapter_deps, get_stale_chapters,
+    # Dependency health
+    DependencyHealthReport, analyze_dependency_health,
+    DuplicateDep, LicenseConflict, OutdatedDep,
+    # Coverage unification
+    CoverageReport, CoverageFile, auto_detect_and_parse,
+    render_coverage_markdown, parse_cobertura, parse_lcov,
+    parse_coverage_py_json, parse_jacoco,
 )
 
 # Skills + agents
@@ -615,6 +678,29 @@ graph = build_graph_from_workspace("/path/to/repo")
 print(graph.to_mermaid())
 print(graph.summary())
 affected = graph.get_blast_radius("src/auth.py")
+
+# Mermaid diagrams (no API key needed)
+from repoforge import generate_dependency_diagram, generate_all_diagrams
+graph = build_graph_v2("/path/to/repo")
+print(generate_dependency_diagram(graph, max_nodes=40))
+print(generate_all_diagrams("/path/to/repo", graph, file_list))
+
+# Incremental docs
+generate_docs(
+    working_dir="/path/to/repo",
+    output_dir="docs",
+    model="claude-haiku-3-5",
+    incremental=True,  # only regenerate stale chapters
+)
+
+# Dependency health (no API key needed)
+report = analyze_dependency_health("/path/to/repo")
+print(report.to_markdown())
+print(f"Health: {report.health_score}")  # good, moderate, or poor
+
+# Coverage report unification (no API key needed)
+reports = auto_detect_and_parse("/path/to/repo")
+markdown = render_coverage_markdown(reports)
 ```
 
 ---
@@ -622,15 +708,17 @@ affected = graph.get_blast_radius("src/auth.py")
 ## How it works
 
 ```
-1. SCAN     (free, no LLM) — detect layers, extract exports/imports, detect stack
+1. SCAN     (free, no LLM) — detect layers, extract exports/imports, detect stack, extract symbols
 2. PLAN     (free, no LLM) — select chapters by project type, rank modules, route by complexity
-3. GENERATE (LLM calls)    — one call per chapter or skill
+                             with --incremental: skip unchanged chapters via git diff + manifest
+3. GENERATE (LLM calls)    — one call per chapter or skill (only stale chapters in incremental mode)
 4. ADAPT    (free, no LLM) — convert to target formats (Cursor, Codex, Gemini, Copilot)
-5. ENRICH   (free, no LLM) — hooks, plugin manifest, disclosure index, compression, security scan
+5. ENRICH   (free, no LLM) — hooks, plugin manifest, disclosure index, compression, security scan,
+                             dependency health report, coverage report, Mermaid diagrams
 6. WRITE                   — Docsify-ready docs/ or .claude/ skills + multi-tool output
 ```
 
-The LLM only generates **text**. All structural analysis, scoring, compression, scanning, and graph building is deterministic.
+The LLM only generates **text**. All structural analysis, scoring, compression, scanning, graph building, symbol extraction, diagram generation, dependency health, and coverage parsing is deterministic.
 
 ---
 
@@ -659,7 +747,7 @@ MIT
 
 ---
 
-## v0.3.0 Inspirations
+## v0.4.0 Inspirations
 
 - [CodeViewX](https://github.com/dean2021/codeviewx) — original export concept
 - [Gentleman-Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) — skill format spec
