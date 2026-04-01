@@ -48,6 +48,12 @@ from .plugins import (
     manifest_to_markdown,
     write_plugin,
 )
+from .diagrams import (
+    generate_dependency_diagram,
+    generate_directory_diagram,
+    generate_call_flow_diagram,
+    generate_all_diagrams,
+)
 from .graph import (
     BlastRadiusResult,
     CodeGraph,
@@ -98,6 +104,10 @@ __all__ = [
     "manifest_to_json",
     "manifest_to_markdown",
     "write_plugin",
+    "generate_dependency_diagram",
+    "generate_directory_diagram",
+    "generate_call_flow_diagram",
+    "generate_all_diagrams",
     "BlastRadiusResult",
     "CodeGraph",
     "Node",

@@ -869,6 +869,119 @@ def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, inclu
 
 
 # ---------------------------------------------------------------------------
+# diagram subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--workspace",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("-o", "--output", "output_path", default=None,
+    help="Output file path. If not set, prints to stdout.",
+    type=click.Path(),
+)
+@click.option("--type", "diagram_type",
+    default="all", show_default=True,
+    type=click.Choice(["dependency", "directory", "callflow", "all"], case_sensitive=False),
+    help="Diagram type to generate.")
+@click.option("--max-nodes", default=40, show_default=True, type=int,
+    help="Max nodes in dependency diagram.")
+@click.option("--max-depth", default=3, show_default=True, type=int,
+    help="Max depth for directory/call flow diagrams.")
+@click.option("--entry", default=None,
+    help="Entry point file for call flow diagram (auto-detected if not set).")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, quiet):
+    """
+    Generate Mermaid architecture diagrams from code analysis (no API key needed).
+
+    \b
+    Analyzes imports/exports and project structure to produce Mermaid diagrams
+    suitable for embedding in documentation or README files.
+
+    \b
+    Diagram types:
+      dependency  — Module dependency flowchart (imports/exports)
+      directory   — Project directory hierarchy
+      callflow    — Sequence diagram from entry point call chains
+      all         — All diagram types combined
+
+    \b
+    Examples:
+      repoforge diagram -w .                          # all diagrams to stdout
+      repoforge diagram -w . --type dependency        # dependency graph only
+      repoforge diagram -w . --type callflow --entry src/main.py
+      repoforge diagram -w . -o diagrams.md           # save to file
+    """
+    import sys
+    from pathlib import Path
+
+    if not quiet:
+        print(f"Generating {diagram_type} diagram(s) for {workspace} ...", file=sys.stderr)
+
+    from .graph import build_graph_v2
+    from .ripgrep import list_files
+    from .diagrams import (
+        generate_dependency_diagram,
+        generate_directory_diagram,
+        generate_call_flow_diagram,
+        generate_all_diagrams,
+    )
+
+    root = Path(workspace).resolve()
+    code_graph = build_graph_v2(str(root))
+
+    # Discover files
+    discovered = list_files(root)
+    files = []
+    for f in discovered:
+        try:
+            files.append(str(f.relative_to(root)))
+        except ValueError:
+            pass
+
+    if diagram_type == "all":
+        output = generate_all_diagrams(
+            str(root), code_graph, files,
+            max_dep_nodes=max_nodes, max_dir_depth=max_depth,
+            max_call_depth=max_depth,
+        )
+    elif diagram_type == "dependency":
+        mermaid = generate_dependency_diagram(code_graph, max_nodes=max_nodes)
+        output = "```mermaid\n" + mermaid + "\n```"
+    elif diagram_type == "directory":
+        mermaid = generate_directory_diagram(files, max_depth=max_depth)
+        output = "```mermaid\n" + mermaid + "\n```"
+    elif diagram_type == "callflow":
+        if not entry:
+            from .diagrams import _detect_entry_points
+            entries = _detect_entry_points(str(root), files)
+            if not entries:
+                click.echo("No entry point detected. Use --entry to specify one.", err=True)
+                sys.exit(1)
+            entry = entries[0]
+            if not quiet:
+                print(f"Auto-detected entry point: {entry}", file=sys.stderr)
+        mermaid = generate_call_flow_diagram(
+            str(root), entry, files, max_depth=max_depth,
+        )
+        output = "```mermaid\n" + mermaid + "\n```"
+    else:
+        output = ""
+
+    # Write output
+    if output_path:
+        Path(output_path).write_text(output, encoding="utf-8")
+        if not quiet:
+            print(f"Written to {output_path}", file=sys.stderr)
+    else:
+        click.echo(output)
+
+
+# ---------------------------------------------------------------------------
 # Backwards compatibility: allow `repoforge` (no subcommand) to run skills
 # ---------------------------------------------------------------------------
 
