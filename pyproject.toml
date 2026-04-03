@@ -48,8 +48,14 @@ intelligence = [
     "tree-sitter>=0.23",
     "tree-sitter-language-pack>=1.0",
 ]
+pdf = [
+    "pdfplumber>=0.10.0",
+]
+youtube = [
+    "youtube-transcript-api>=1.0.0",
+]
 all = [
-    "repoforge-ai[dev,intelligence]",
+    "repoforge-ai[dev,intelligence,pdf,youtube]",
 ]
 
 [project.scripts]

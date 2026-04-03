@@ -14,6 +14,9 @@ class SourceType(Enum):
     URL = "url"
     GITHUB_REPO = "github_repo"
     LOCAL_DIR = "local_dir"
+    PDF = "pdf"
+    YOUTUBE = "youtube"
+    JUPYTER_NOTEBOOK = "jupyter_notebook"
 
 
 @dataclass
