@@ -880,6 +880,10 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     default="summary", show_default=True,
     type=click.Choice(["mermaid", "json", "dot", "summary"], case_sensitive=False),
     help="Output format: mermaid, json, dot, or summary.")
+@click.option("--type", "graph_type",
+    default="deps", show_default=True,
+    type=click.Choice(["deps", "calls"], case_sensitive=False),
+    help="Graph type: deps (file-level dependencies) or calls (symbol-level call graph).")
 @click.option("--blast-radius", default=None,
     help="Show blast radius for a specific module (path or name).")
 @click.option("--v2", is_flag=True, default=False,
@@ -892,7 +896,7 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     help="Include test files in blast radius (v2 only).")
 @click.option("-q", "--quiet", is_flag=True, default=False,
     help="Suppress progress output.")
-def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, include_tests, quiet):
+def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_files, include_tests, quiet):
     """
     Build a code knowledge graph from scanner data (no API key needed).
 
@@ -901,11 +905,16 @@ def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, inclu
     import/export name matching. No tree-sitter needed — uses RepoMap data.
 
     \b
+    Graph types:
+      deps   — File-level dependency graph (default)
+      calls  — Symbol-level call graph (function-to-function)
+
+    \b
     Output formats:
       summary  — Human-readable stats (modules, deps, most connected)
       mermaid  — Mermaid flowchart diagram (for docs / README)
       json     — D3/Cytoscape-compatible nodes + edges
-      dot      — Graphviz DOT format
+      dot      — Graphviz DOT format (deps only)
 
     \b
     Examples:
@@ -914,94 +923,125 @@ def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, inclu
       repoforge graph -w . --format json -o graph.json # JSON to file
       repoforge graph -w . --format dot -o graph.dot   # DOT to file
       repoforge graph -w . --blast-radius src/auth.py  # blast radius
+      repoforge graph -w . --type calls                # symbol call graph
+      repoforge graph -w . --type calls --format json  # call graph as JSON
     """
     import sys
 
-    if not quiet:
-        mode = "v2 (extractor-based)" if v2 else "v1 (name-matching)"
-        print(f"Building code graph for {workspace} ({mode}) ...", file=sys.stderr)
-
-    if v2:
-        from .graph import build_graph_v2
-        code_graph = build_graph_v2(workspace)
-    else:
-        from .graph import build_graph_from_workspace
-        code_graph = build_graph_from_workspace(workspace)
-
-    # Handle blast radius mode
-    if blast_radius:
-        # Try exact match first, then fuzzy match on module name
-        node = code_graph.get_node(blast_radius)
-        if not node:
-            # Search by name or partial path
-            for n in code_graph.nodes:
-                if n.name == blast_radius or blast_radius in n.id:
-                    node = n
-                    break
-
-        if not node:
-            click.echo(f"Module not found: {blast_radius}", err=True)
-            click.echo("Available modules:", err=True)
-            for n in code_graph.nodes:
-                if n.node_type == "module":
-                    click.echo(f"  {n.id} ({n.name})", err=True)
+    # --- Calls mode: symbol-level call graph ---
+    if graph_type == "calls":
+        if blast_radius:
+            click.echo(
+                "Error: --blast-radius is not supported with --type calls "
+                "(blast radius operates on file-level graphs).",
+                err=True,
+            )
             sys.exit(1)
 
-        if v2:
-            from .graph import get_blast_radius_v2
-            br = get_blast_radius_v2(
-                code_graph, node.id,
-                max_depth=depth, max_files=max_files,
-                include_tests=include_tests,
-            )
-            lines = [
-                f"Blast radius for: {node.id}",
-                f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
-                f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
-                f"Affected files: {len(br.files)}",
-                f"Test files: {len(br.test_files)}",
-                f"Max depth reached: {br.depth}",
-                f"Exceeded cap: {br.exceeded_cap}",
-            ]
-            if br.files:
-                lines.append("")
-                lines.append("Affected files:")
-                for fid in br.files:
-                    anode = code_graph.get_node(fid)
-                    name = anode.name if anode else fid
-                    lines.append(f"  {name} ({fid})")
-            if br.test_files:
-                lines.append("")
-                lines.append("Related test files:")
-                for fid in br.test_files:
-                    lines.append(f"  {fid}")
-        else:
-            affected = code_graph.get_blast_radius(node.id)
-            lines = [
-                f"Blast radius for: {node.id}",
-                f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
-                f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
-                f"Total affected by change: {len(affected)} module(s)",
-            ]
-            if affected:
-                lines.append("")
-                lines.append("Affected modules:")
-                for mid in affected:
-                    anode = code_graph.get_node(mid)
-                    name = anode.name if anode else mid
-                    lines.append(f"  {name} ({mid})")
+        if not quiet:
+            print(f"Building symbol call graph for {workspace} ...", file=sys.stderr)
 
-        output = "\n".join(lines)
-    else:
-        # Normal format output
+        from .symbols import build_symbol_graph, render_symbol_mermaid
+
+        sym_graph = build_symbol_graph(workspace)
+
         if fmt == "mermaid":
-            output = code_graph.to_mermaid()
+            output = render_symbol_mermaid(sym_graph)
         elif fmt == "json":
-            output = code_graph.to_json()
+            output = sym_graph.to_json()
         elif fmt == "dot":
-            output = code_graph.to_dot()
+            click.echo("DOT format is not supported for call graphs. Use mermaid, json, or summary.", err=True)
+            sys.exit(1)
         else:
-            output = code_graph.summary()
+            output = sym_graph.summary()
+
+    # --- Deps mode: file-level dependency graph (default) ---
+    else:
+        if not quiet:
+            mode = "v2 (extractor-based)" if v2 else "v1 (name-matching)"
+            print(f"Building code graph for {workspace} ({mode}) ...", file=sys.stderr)
+
+        if v2:
+            from .graph import build_graph_v2
+            code_graph = build_graph_v2(workspace)
+        else:
+            from .graph import build_graph_from_workspace
+            code_graph = build_graph_from_workspace(workspace)
+
+        # Handle blast radius mode
+        if blast_radius:
+            # Try exact match first, then fuzzy match on module name
+            node = code_graph.get_node(blast_radius)
+            if not node:
+                # Search by name or partial path
+                for n in code_graph.nodes:
+                    if n.name == blast_radius or blast_radius in n.id:
+                        node = n
+                        break
+
+            if not node:
+                click.echo(f"Module not found: {blast_radius}", err=True)
+                click.echo("Available modules:", err=True)
+                for n in code_graph.nodes:
+                    if n.node_type == "module":
+                        click.echo(f"  {n.id} ({n.name})", err=True)
+                sys.exit(1)
+
+            if v2:
+                from .graph import get_blast_radius_v2
+                br = get_blast_radius_v2(
+                    code_graph, node.id,
+                    max_depth=depth, max_files=max_files,
+                    include_tests=include_tests,
+                )
+                lines = [
+                    f"Blast radius for: {node.id}",
+                    f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
+                    f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
+                    f"Affected files: {len(br.files)}",
+                    f"Test files: {len(br.test_files)}",
+                    f"Max depth reached: {br.depth}",
+                    f"Exceeded cap: {br.exceeded_cap}",
+                ]
+                if br.files:
+                    lines.append("")
+                    lines.append("Affected files:")
+                    for fid in br.files:
+                        anode = code_graph.get_node(fid)
+                        name = anode.name if anode else fid
+                        lines.append(f"  {name} ({fid})")
+                if br.test_files:
+                    lines.append("")
+                    lines.append("Related test files:")
+                    for fid in br.test_files:
+                        lines.append(f"  {fid}")
+            else:
+                affected = code_graph.get_blast_radius(node.id)
+                lines = [
+                    f"Blast radius for: {node.id}",
+                    f"Directly depends on: {', '.join(code_graph.get_dependencies(node.id)) or 'nothing'}",
+                    f"Direct dependents: {', '.join(code_graph.get_dependents(node.id)) or 'none'}",
+                    f"Total affected by change: {len(affected)} module(s)",
+                ]
+                if affected:
+                    lines.append("")
+                    lines.append("Affected modules:")
+                    for mid in affected:
+                        anode = code_graph.get_node(mid)
+                        name = anode.name if anode else mid
+                        lines.append(f"  {name} ({mid})")
+
+            output = "\n".join(lines)
+        else:
+            # Normal format output
+            if fmt == "mermaid":
+                output = code_graph.to_mermaid()
+            elif fmt == "json":
+                output = code_graph.to_json()
+            elif fmt == "dot":
+                output = code_graph.to_dot()
+            else:
+                output = code_graph.summary()
 
     # Write output
     if output_path:
@@ -1029,7 +1069,7 @@ def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, inclu
 )
 @click.option("--type", "diagram_type",
     default="all", show_default=True,
-    type=click.Choice(["dependency", "directory", "callflow", "all"], case_sensitive=False),
+    type=click.Choice(["dependency", "directory", "callflow", "erd", "k8s", "openapi", "all"], case_sensitive=False),
     help="Diagram type to generate.")
 @click.option("--max-nodes", default=40, show_default=True, type=int,
     help="Max nodes in dependency diagram.")
@@ -1037,9 +1077,13 @@ def graph(workspace, output_path, fmt, blast_radius, v2, depth, max_files, inclu
     help="Max depth for directory/call flow diagrams.")
 @click.option("--entry", default=None,
     help="Entry point file for call flow diagram (auto-detected if not set).")
+@click.option("--input", "input_path", default=None,
+    help="Input file for erd/k8s/openapi diagram types.",
+    type=click.Path(exists=True, dir_okay=False),
+)
 @click.option("-q", "--quiet", is_flag=True, default=False,
     help="Suppress progress output.")
-def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, quiet):
+def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, input_path, quiet):
     """
     Generate Mermaid architecture diagrams from code analysis (no API key needed).
 
@@ -1052,6 +1096,9 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, q
       dependency  — Module dependency flowchart (imports/exports)
       directory   — Project directory hierarchy
       callflow    — Sequence diagram from entry point call chains
+      erd         — Entity-Relationship from SQL CREATE TABLE (requires --input)
+      k8s         — Kubernetes resource graph from YAML manifests (requires --input)
+      openapi     — API structure from OpenAPI/Swagger spec (requires --input)
       all         — All diagram types combined
 
     \b
@@ -1059,6 +1106,9 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, q
       repoforge diagram -w .                          # all diagrams to stdout
       repoforge diagram -w . --type dependency        # dependency graph only
       repoforge diagram -w . --type callflow --entry src/main.py
+      repoforge diagram -w . --type erd --input schema.sql
+      repoforge diagram -w . --type k8s --input k8s/deployment.yaml
+      repoforge diagram -w . --type openapi --input openapi.json
       repoforge diagram -w . -o diagrams.md           # save to file
     """
     import sys
@@ -1072,6 +1122,9 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, q
         generate_call_flow_diagram,
         generate_dependency_diagram,
         generate_directory_diagram,
+        generate_erd_diagram,
+        generate_k8s_diagram,
+        generate_openapi_diagram,
     )
     from .graph import build_graph_v2
     from .ripgrep import list_files
@@ -1113,6 +1166,18 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, q
         mermaid = generate_call_flow_diagram(
             str(root), entry, files, max_depth=max_depth,
         )
+        output = "```mermaid\n" + mermaid + "\n```"
+    elif diagram_type in ("erd", "k8s", "openapi"):
+        if not input_path:
+            click.echo(f"--input is required for --type {diagram_type}.", err=True)
+            sys.exit(1)
+        content = Path(input_path).read_text(encoding="utf-8")
+        if diagram_type == "erd":
+            mermaid = generate_erd_diagram(content)
+        elif diagram_type == "k8s":
+            mermaid = generate_k8s_diagram(content)
+        else:
+            mermaid = generate_openapi_diagram(content)
         output = "```mermaid\n" + mermaid + "\n```"
     else:
         output = ""

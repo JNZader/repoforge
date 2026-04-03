@@ -23,6 +23,9 @@ from .diagrams import (
     generate_call_flow_diagram,
     generate_dependency_diagram,
     generate_directory_diagram,
+    generate_erd_diagram,
+    generate_k8s_diagram,
+    generate_openapi_diagram,
 )
 from .disclosure import (
     build_discovery_index,
@@ -97,6 +100,13 @@ from .import_docs import (
     fetch_pypi_description,
     import_docs,
 )
+from .prompts_cmd import (
+    AnalysisPrompt,
+    PROMPT_TYPES,
+    generate_prompts,
+    render_prompts_markdown,
+    write_individual_prompts,
+)
 from .server import serve_docs, serve_skills
 from .watch import FileWatcher, WatchEvent, watch_docs
 
@@ -147,6 +157,9 @@ __all__ = [
     "generate_directory_diagram",
     "generate_call_flow_diagram",
     "generate_all_diagrams",
+    "generate_erd_diagram",
+    "generate_k8s_diagram",
+    "generate_openapi_diagram",
     "Manifest",
     "ChapterEntry",
     "load_manifest",
@@ -179,4 +192,9 @@ __all__ = [
     "fetch_npm_readme",
     "fetch_pypi_description",
     "fetch_github_docs",
+    "AnalysisPrompt",
+    "PROMPT_TYPES",
+    "generate_prompts",
+    "render_prompts_markdown",
+    "write_individual_prompts",
 ]

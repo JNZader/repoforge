@@ -503,3 +503,491 @@ def _detect_entry_points(root_dir: str, files: list[str]) -> list[str]:
                 break
 
     return entries
+
+
+# ---------------------------------------------------------------------------
+# 6. SQL → ERD diagram
+# ---------------------------------------------------------------------------
+
+# Regex patterns for SQL CREATE TABLE parsing
+_SQL_CREATE_TABLE_RE = re.compile(
+    r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`\"']?(\w+)[`\"']?\s*\(",
+    re.IGNORECASE,
+)
+_SQL_COLUMN_RE = re.compile(
+    r"^\s+[`\"']?(\w+)[`\"']?\s+([\w()]+)",
+    re.MULTILINE,
+)
+_SQL_FK_RE = re.compile(
+    r"REFERENCES\s+[`\"']?(\w+)[`\"']?\s*\(\s*[`\"']?(\w+)[`\"']?\s*\)",
+    re.IGNORECASE,
+)
+_SQL_PK_RE = re.compile(
+    r"PRIMARY\s+KEY",
+    re.IGNORECASE,
+)
+
+# SQL keywords that are NOT column names
+_SQL_KEYWORDS = frozenset({
+    "primary", "key", "foreign", "unique", "check", "constraint",
+    "index", "references", "not", "null", "default", "auto_increment",
+    "autoincrement", "serial", "create", "table", "if", "exists",
+    "engine", "charset", "collate", "comment",
+})
+
+
+def generate_erd_diagram(sql: str) -> str:
+    """Generate a Mermaid erDiagram from SQL CREATE TABLE statements.
+
+    Parses CREATE TABLE definitions to extract table names, column names
+    with types, and foreign key relationships.
+
+    Args:
+        sql: Raw SQL string containing CREATE TABLE statements.
+
+    Returns:
+        Mermaid erDiagram string (without fences).
+    """
+    if not sql or not sql.strip():
+        return "erDiagram\n    %% No tables detected"
+
+    tables: dict[str, list[tuple[str, str, bool]]] = {}  # name -> [(col, type, is_pk)]
+    relationships: list[tuple[str, str, str, str]] = []  # (from_table, to_table, from_col, to_col)
+
+    # Split into individual CREATE TABLE blocks
+    table_matches = list(_SQL_CREATE_TABLE_RE.finditer(sql))
+    if not table_matches:
+        return "erDiagram\n    %% No tables detected"
+
+    for i, match in enumerate(table_matches):
+        table_name = match.group(1)
+        start = match.end()
+        # Find the end of this CREATE TABLE (next CREATE TABLE or end of string)
+        end = table_matches[i + 1].start() if i + 1 < len(table_matches) else len(sql)
+        block = sql[start:end]
+
+        # Find the closing paren of CREATE TABLE
+        paren_depth = 1
+        block_end = 0
+        for ci, ch in enumerate(block):
+            if ch == "(":
+                paren_depth += 1
+            elif ch == ")":
+                paren_depth -= 1
+                if paren_depth == 0:
+                    block_end = ci
+                    break
+        if block_end:
+            block = block[:block_end]
+
+        columns: list[tuple[str, str, bool]] = []
+
+        for line in block.split("\n"):
+            line_stripped = line.strip().rstrip(",")
+            if not line_stripped:
+                continue
+
+            # Skip pure constraint lines
+            first_word = line_stripped.split()[0].lower().strip("`\"'") if line_stripped.split() else ""
+            if first_word in _SQL_KEYWORDS:
+                continue
+
+            # Extract column
+            col_match = _SQL_COLUMN_RE.match(line)
+            if col_match:
+                col_name = col_match.group(1).lower()
+                col_type = col_match.group(2)
+                if col_name not in _SQL_KEYWORDS:
+                    is_pk = bool(_SQL_PK_RE.search(line))
+                    columns.append((col_name, col_type, is_pk))
+
+            # Extract FK references
+            fk_match = _SQL_FK_RE.search(line)
+            if fk_match:
+                ref_table = fk_match.group(1)
+                ref_col = fk_match.group(2)
+                # Find the column name this FK belongs to
+                fk_col_match = _SQL_COLUMN_RE.match(line)
+                fk_col = fk_col_match.group(1) if fk_col_match else "unknown"
+                relationships.append((table_name, ref_table, fk_col, ref_col))
+
+        if columns:
+            tables[table_name] = columns
+
+    if not tables:
+        return "erDiagram\n    %% No tables detected"
+
+    lines = ["erDiagram"]
+
+    # Render relationships
+    for from_table, to_table, from_col, to_col in relationships:
+        if from_table in tables and to_table in tables:
+            lines.append(
+                f"    {to_table} ||--o{{ {from_table} : \"{from_col} -> {to_col}\""
+            )
+
+    # Render entities
+    for table_name, columns in sorted(tables.items()):
+        lines.append(f"    {table_name} {{")
+        for col_name, col_type, is_pk in columns:
+            safe_type = re.sub(r"[^a-zA-Z0-9_]", "", col_type)
+            pk_marker = " PK" if is_pk else ""
+            lines.append(f"        {safe_type} {col_name}{pk_marker}")
+        lines.append("    }")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 7. Kubernetes YAML → diagram
+# ---------------------------------------------------------------------------
+
+# Regex patterns for K8s YAML parsing (avoids PyYAML dependency)
+_K8S_KIND_RE = re.compile(r"^kind:\s*(\S+)", re.MULTILINE)
+_K8S_NAME_RE = re.compile(
+    r"^metadata:\s*\n(?:\s+\S.*\n)*?\s+name:\s*(\S+)",
+    re.MULTILINE,
+)
+_K8S_NAMESPACE_RE = re.compile(
+    r"^metadata:\s*\n(?:\s+\S.*\n)*?\s+namespace:\s*(\S+)",
+    re.MULTILINE,
+)
+_K8S_SELECTOR_RE = re.compile(
+    r"selector:\s*\n(?:\s+matchLabels:\s*\n)?\s+app:\s*(\S+)",
+    re.MULTILINE,
+)
+_K8S_LABELS_APP_RE = re.compile(
+    r"labels:\s*\n\s+app:\s*(\S+)",
+    re.MULTILINE,
+)
+_K8S_CONTAINER_IMAGE_RE = re.compile(
+    r"image:\s*(\S+)",
+    re.MULTILINE,
+)
+_K8S_SERVICE_TYPE_RE = re.compile(
+    r"type:\s*(ClusterIP|NodePort|LoadBalancer|ExternalName)",
+    re.MULTILINE,
+)
+_K8S_INGRESS_SVC_RE = re.compile(
+    r"service:\s*\n\s+name:\s*(\S+)",
+    re.MULTILINE,
+)
+
+# Resource types that represent workloads
+_K8S_WORKLOADS = frozenset({
+    "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicaSet", "Pod",
+})
+
+# Resource shapes in Mermaid
+_K8S_SHAPES: dict[str, tuple[str, str]] = {
+    "Service": ("((", "))"),
+    "Ingress": ("[[", "]]"),
+    "ConfigMap": ("[/", "/]"),
+    "Secret": ("[/", "/]"),
+    "PersistentVolumeClaim": ("[(", ")]"),
+    "Namespace": ("{{", "}}"),
+}
+
+
+def generate_k8s_diagram(yaml_content: str) -> str:
+    """Generate a Mermaid flowchart from Kubernetes YAML manifests.
+
+    Parses kind, metadata.name, selectors, and labels to build a graph
+    of K8s resources and their relationships.
+
+    Args:
+        yaml_content: Raw YAML string (may contain multiple documents
+            separated by ``---``).
+
+    Returns:
+        Mermaid flowchart string (without fences).
+    """
+    if not yaml_content or not yaml_content.strip():
+        return "graph TD\n    empty[No Kubernetes resources detected]"
+
+    # Split multi-document YAML
+    documents = re.split(r"^---\s*$", yaml_content, flags=re.MULTILINE)
+
+    resources: list[dict[str, str]] = []
+
+    for doc in documents:
+        doc = doc.strip()
+        if not doc:
+            continue
+
+        kind_match = _K8S_KIND_RE.search(doc)
+        name_match = _K8S_NAME_RE.search(doc)
+
+        if not kind_match or not name_match:
+            continue
+
+        resource: dict[str, str] = {
+            "kind": kind_match.group(1),
+            "name": name_match.group(1),
+            "raw": doc,
+        }
+
+        ns_match = _K8S_NAMESPACE_RE.search(doc)
+        if ns_match:
+            resource["namespace"] = ns_match.group(1)
+
+        selector_match = _K8S_SELECTOR_RE.search(doc)
+        if selector_match:
+            resource["selector_app"] = selector_match.group(1)
+
+        label_match = _K8S_LABELS_APP_RE.search(doc)
+        if label_match:
+            resource["label_app"] = label_match.group(1)
+
+        svc_type_match = _K8S_SERVICE_TYPE_RE.search(doc)
+        if svc_type_match:
+            resource["service_type"] = svc_type_match.group(1)
+
+        resources.append(resource)
+
+    if not resources:
+        return "graph TD\n    empty[No Kubernetes resources detected]"
+
+    lines = ["graph TD"]
+
+    # Build node ID map and render nodes
+    node_ids: dict[str, str] = {}
+    for r in resources:
+        kind = r["kind"]
+        name = r["name"]
+        node_id = _mermaid_id(f"{kind}_{name}")
+        node_ids[f"{kind}/{name}"] = node_id
+
+        label = _mermaid_safe(f"{kind}: {name}")
+        shape = _K8S_SHAPES.get(kind, ("[", "]"))
+        if kind in _K8S_WORKLOADS:
+            shape = ("[", "]")
+
+        lines.append(f"    {node_id}{shape[0]}{label}{shape[1]}")
+
+    # Build edges based on selector/label matching
+    for r in resources:
+        kind = r["kind"]
+        name = r["name"]
+        src_id = node_ids[f"{kind}/{name}"]
+
+        # Service → Workload (selector → label match)
+        if kind == "Service" and "selector_app" in r:
+            app = r["selector_app"]
+            for target in resources:
+                if target["kind"] in _K8S_WORKLOADS and target.get("label_app") == app:
+                    tgt_id = node_ids[f"{target['kind']}/{target['name']}"]
+                    lines.append(f"    {src_id} -->|selects| {tgt_id}")
+
+        # Ingress → Service
+        if kind == "Ingress":
+            for svc_match in _K8S_INGRESS_SVC_RE.finditer(r["raw"]):
+                svc_name = svc_match.group(1)
+                tgt_key = f"Service/{svc_name}"
+                if tgt_key in node_ids:
+                    tgt_id = node_ids[tgt_key]
+                    lines.append(f"    {src_id} -->|routes| {tgt_id}")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 8. OpenAPI spec → diagram
+# ---------------------------------------------------------------------------
+
+
+def generate_openapi_diagram(spec_content: str) -> str:
+    """Generate a Mermaid class diagram from an OpenAPI 3.x specification.
+
+    Parses paths (endpoints) and component schemas to show API structure
+    and schema relationships. Supports JSON input; for YAML-format specs,
+    falls back to regex extraction.
+
+    Args:
+        spec_content: Raw OpenAPI spec string (JSON or YAML).
+
+    Returns:
+        Mermaid classDiagram string (without fences).
+    """
+    import json as _json
+
+    if not spec_content or not spec_content.strip():
+        return "classDiagram\n    class NoSpec\n    NoSpec : No OpenAPI spec detected"
+
+    spec: dict | None = None
+
+    # Try JSON first
+    try:
+        spec = _json.loads(spec_content)
+    except (ValueError, TypeError):
+        pass
+
+    # Fallback: regex-based YAML extraction
+    if spec is None:
+        return _parse_openapi_yaml_fallback(spec_content)
+
+    # Validate it looks like OpenAPI
+    if not isinstance(spec, dict) or ("openapi" not in spec and "swagger" not in spec):
+        return "classDiagram\n    class NoSpec\n    NoSpec : No OpenAPI spec detected"
+
+    lines = ["classDiagram"]
+    schema_names: set[str] = set()
+    endpoint_ids: dict[str, str] = {}
+    schema_refs: list[tuple[str, str]] = []
+
+    # Extract schemas from components.schemas (v3) or definitions (v2)
+    schemas = spec.get("components", {}).get("schemas", {})
+    if not schemas:
+        schemas = spec.get("definitions", {})
+
+    for schema_name, schema_def in schemas.items():
+        if not isinstance(schema_def, dict):
+            continue
+        schema_names.add(schema_name)
+        safe_name = _mermaid_id(schema_name)
+        lines.append(f"    class {safe_name} {{")
+
+        properties = schema_def.get("properties", {})
+        for prop_name, prop_def in properties.items():
+            if not isinstance(prop_def, dict):
+                continue
+            prop_type = prop_def.get("type", "object")
+
+            # Track $ref relationships
+            ref = prop_def.get("$ref", "")
+            if ref:
+                ref_name = ref.split("/")[-1]
+                schema_refs.append((schema_name, ref_name))
+                prop_type = ref_name
+
+            items = prop_def.get("items", {})
+            if isinstance(items, dict):
+                item_ref = items.get("$ref", "")
+                if item_ref:
+                    ref_name = item_ref.split("/")[-1]
+                    schema_refs.append((schema_name, ref_name))
+                    prop_type = f"{ref_name}[]"
+
+            lines.append(f"        +{prop_type} {_mermaid_safe(prop_name)}")
+        lines.append("    }")
+
+    # Extract paths/endpoints
+    paths = spec.get("paths", {})
+    for path, methods in paths.items():
+        if not isinstance(methods, dict):
+            continue
+        for method in ("get", "post", "put", "patch", "delete"):
+            if method not in methods:
+                continue
+            op = methods[method]
+            if not isinstance(op, dict):
+                continue
+
+            op_id = op.get("operationId", f"{method}_{path}")
+            safe_id = _mermaid_id(op_id)
+            endpoint_ids[safe_id] = f"{method.upper()} {path}"
+
+            lines.append(f"    class {safe_id} {{")
+            lines.append(f"        <<endpoint>>")
+            lines.append(f"        +{method.upper()} {_mermaid_safe(path)}")
+            lines.append("    }")
+
+            # Find schema references in responses and requestBody
+            _collect_openapi_refs(op, safe_id, schema_names, schema_refs, lines)
+
+    # Render schema-to-schema relationships
+    rendered_rels: set[tuple[str, str]] = set()
+    for from_name, to_name in schema_refs:
+        safe_from = _mermaid_id(from_name)
+        safe_to = _mermaid_id(to_name)
+        rel_key = (safe_from, safe_to)
+        if rel_key not in rendered_rels and safe_from != safe_to:
+            rendered_rels.add(rel_key)
+            lines.append(f"    {safe_from} --> {safe_to}")
+
+    if len(lines) == 1:
+        lines.append("    class NoSpec\n    NoSpec : No OpenAPI spec detected")
+
+    return "\n".join(lines)
+
+
+def _collect_openapi_refs(
+    operation: dict,
+    endpoint_id: str,
+    schema_names: set[str],
+    schema_refs: list[tuple[str, str]],
+    lines: list[str],
+) -> None:
+    """Walk an OpenAPI operation to find $ref links to schemas."""
+    def _walk(obj: object) -> None:
+        if isinstance(obj, dict):
+            ref = obj.get("$ref", "")
+            if isinstance(ref, str) and ref:
+                ref_name = ref.split("/")[-1]
+                if ref_name in schema_names:
+                    schema_refs.append((endpoint_id, ref_name))
+            for v in obj.values():
+                _walk(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _walk(item)
+
+    # Walk responses
+    _walk(operation.get("responses", {}))
+    # Walk requestBody
+    _walk(operation.get("requestBody", {}))
+    # Walk parameters
+    _walk(operation.get("parameters", []))
+
+
+def _parse_openapi_yaml_fallback(content: str) -> str:
+    """Best-effort regex extraction for YAML-format OpenAPI specs."""
+    lines = ["classDiagram"]
+
+    # Extract paths
+    path_re = re.compile(r"^\s{2}(/\S*):", re.MULTILINE)
+    method_re = re.compile(r"^\s{4}(get|post|put|patch|delete):", re.MULTILINE)
+
+    paths_found = []
+    for m in path_re.finditer(content):
+        path = m.group(1)
+        # Find methods after this path
+        region_start = m.end()
+        next_path = path_re.search(content, region_start)
+        region_end = next_path.start() if next_path else len(content)
+        region = content[region_start:region_end]
+
+        for method_match in method_re.finditer(region):
+            method = method_match.group(1).upper()
+            op_id = _mermaid_id(f"{method}_{path}")
+            paths_found.append(op_id)
+            lines.append(f"    class {op_id} {{")
+            lines.append(f"        <<endpoint>>")
+            lines.append(f"        +{method} {_mermaid_safe(path)}")
+            lines.append("    }")
+
+    # Extract schemas
+    schema_re = re.compile(r"^\s{4}(\w+):\s*$", re.MULTILINE)
+    in_schemas = False
+    schemas_section = ""
+
+    # Find the schemas section
+    schemas_start = re.search(r"^\s{2}schemas:\s*$", content, re.MULTILINE)
+    if schemas_start:
+        schemas_section = content[schemas_start.end():]
+        # Cut at next top-level key
+        next_top = re.search(r"^\S", schemas_section, re.MULTILINE)
+        if next_top:
+            schemas_section = schemas_section[:next_top.start()]
+
+        for sm in schema_re.finditer(schemas_section):
+            schema_name = sm.group(1)
+            safe_name = _mermaid_id(schema_name)
+            lines.append(f"    class {safe_name} {{")
+            lines.append(f"        <<schema>>")
+            lines.append("    }")
+
+    if len(lines) == 1:
+        lines.append("    class NoSpec\n    NoSpec : No OpenAPI spec detected")
+
+    return "\n".join(lines)

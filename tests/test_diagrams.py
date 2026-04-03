@@ -520,3 +520,405 @@ class TestDiagramPublicAPI:
         assert "generate_directory_diagram" in repoforge.__all__
         assert "generate_call_flow_diagram" in repoforge.__all__
         assert "generate_all_diagrams" in repoforge.__all__
+        assert "generate_erd_diagram" in repoforge.__all__
+        assert "generate_k8s_diagram" in repoforge.__all__
+        assert "generate_openapi_diagram" in repoforge.__all__
+
+    def test_new_imports_from_init(self):
+        from repoforge import (
+            generate_erd_diagram,
+            generate_k8s_diagram,
+            generate_openapi_diagram,
+        )
+        assert generate_erd_diagram is not None
+        assert generate_k8s_diagram is not None
+        assert generate_openapi_diagram is not None
+
+
+# ---------------------------------------------------------------------------
+# Tests: generate_erd_diagram()
+# ---------------------------------------------------------------------------
+
+class TestERDDiagram:
+    def test_basic_table(self):
+        from repoforge.diagrams import generate_erd_diagram
+        sql = """
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255)
+);
+"""
+        output = generate_erd_diagram(sql)
+        assert output.startswith("erDiagram")
+        assert "users" in output
+        assert "id" in output
+        assert "name" in output
+        assert "email" in output
+
+    def test_foreign_key_relationship(self):
+        from repoforge.diagrams import generate_erd_diagram
+        sql = """
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    total DECIMAL(10,2)
+);
+"""
+        output = generate_erd_diagram(sql)
+        assert "erDiagram" in output
+        assert "users" in output
+        assert "orders" in output
+        # Should have a relationship edge
+        assert "||--o{" in output
+
+    def test_empty_sql(self):
+        from repoforge.diagrams import generate_erd_diagram
+        output = generate_erd_diagram("")
+        assert "erDiagram" in output
+        assert "No tables detected" in output
+
+    def test_no_create_table(self):
+        from repoforge.diagrams import generate_erd_diagram
+        output = generate_erd_diagram("SELECT * FROM users;")
+        assert "No tables detected" in output
+
+    def test_multiple_tables(self):
+        from repoforge.diagrams import generate_erd_diagram
+        sql = """
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE categories (
+    id INT PRIMARY KEY,
+    label VARCHAR(50)
+);
+"""
+        output = generate_erd_diagram(sql)
+        assert "products" in output
+        assert "categories" in output
+
+    def test_primary_key_marker(self):
+        from repoforge.diagrams import generate_erd_diagram
+        sql = """
+CREATE TABLE items (
+    id INT PRIMARY KEY,
+    name TEXT
+);
+"""
+        output = generate_erd_diagram(sql)
+        assert "PK" in output
+
+
+# ---------------------------------------------------------------------------
+# Tests: generate_k8s_diagram()
+# ---------------------------------------------------------------------------
+
+class TestK8sDiagram:
+    def test_deployment_and_service(self):
+        from repoforge.diagrams import generate_k8s_diagram
+        yaml_content = """
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  labels:
+    app: web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+"""
+        output = generate_k8s_diagram(yaml_content)
+        assert output.startswith("graph TD")
+        assert "web_app" in output or "web-app" in output
+        assert "web_service" in output or "web-service" in output
+        assert "selects" in output
+
+    def test_multi_document(self):
+        from repoforge.diagrams import generate_k8s_diagram
+        yaml_content = """
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+"""
+        output = generate_k8s_diagram(yaml_content)
+        assert "ConfigMap" in output
+        assert "Secret" in output
+
+    def test_empty_yaml(self):
+        from repoforge.diagrams import generate_k8s_diagram
+        output = generate_k8s_diagram("")
+        assert "No Kubernetes resources detected" in output
+
+    def test_invalid_yaml(self):
+        from repoforge.diagrams import generate_k8s_diagram
+        output = generate_k8s_diagram("just some random text\nnothing k8s here")
+        assert "No Kubernetes resources detected" in output
+
+    def test_single_deployment(self):
+        from repoforge.diagrams import generate_k8s_diagram
+        yaml_content = """
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  labels:
+    app: api
+spec:
+  replicas: 2
+"""
+        output = generate_k8s_diagram(yaml_content)
+        assert "Deployment" in output
+        assert "api" in output
+
+
+# ---------------------------------------------------------------------------
+# Tests: generate_openapi_diagram()
+# ---------------------------------------------------------------------------
+
+class TestOpenAPIDiagram:
+    def test_basic_openapi_json(self):
+        from repoforge.diagrams import generate_openapi_diagram
+        spec = json.dumps({
+            "openapi": "3.0.0",
+            "info": {"title": "Test API", "version": "1.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "operationId": "listUsers",
+                        "responses": {
+                            "200": {
+                                "content": {
+                                    "application/json": {
+                                        "schema": {"$ref": "#/components/schemas/User"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer"},
+                            "name": {"type": "string"},
+                        }
+                    }
+                }
+            }
+        })
+        output = generate_openapi_diagram(spec)
+        assert output.startswith("classDiagram")
+        assert "User" in output
+        assert "listUsers" in output
+        assert "id" in output
+        assert "name" in output
+
+    def test_schema_ref_relationship(self):
+        from repoforge.diagrams import generate_openapi_diagram
+        spec = json.dumps({
+            "openapi": "3.0.0",
+            "info": {"title": "Test", "version": "1.0"},
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Order": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer"},
+                            "user": {"$ref": "#/components/schemas/User"},
+                        }
+                    },
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer"},
+                        }
+                    }
+                }
+            }
+        })
+        output = generate_openapi_diagram(spec)
+        assert "Order" in output
+        assert "User" in output
+        assert "-->" in output
+
+    def test_empty_spec(self):
+        from repoforge.diagrams import generate_openapi_diagram
+        output = generate_openapi_diagram("")
+        assert "classDiagram" in output
+        assert "No OpenAPI spec detected" in output
+
+    def test_invalid_json(self):
+        from repoforge.diagrams import generate_openapi_diagram
+        output = generate_openapi_diagram("{not valid json")
+        assert "classDiagram" in output
+
+    def test_swagger_v2_definitions(self):
+        from repoforge.diagrams import generate_openapi_diagram
+        spec = json.dumps({
+            "swagger": "2.0",
+            "info": {"title": "Legacy API", "version": "1.0"},
+            "paths": {},
+            "definitions": {
+                "Product": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "name": {"type": "string"},
+                    }
+                }
+            }
+        })
+        output = generate_openapi_diagram(spec)
+        assert "Product" in output
+        assert "id" in output
+
+    def test_array_ref(self):
+        from repoforge.diagrams import generate_openapi_diagram
+        spec = json.dumps({
+            "openapi": "3.0.0",
+            "info": {"title": "Test", "version": "1.0"},
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Team": {
+                        "type": "object",
+                        "properties": {
+                            "members": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/User"}
+                            }
+                        }
+                    },
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"}
+                        }
+                    }
+                }
+            }
+        })
+        output = generate_openapi_diagram(spec)
+        assert "Team" in output
+        assert "User" in output
+        assert "-->" in output
+
+
+# ---------------------------------------------------------------------------
+# Tests: CLI diagram with new types
+# ---------------------------------------------------------------------------
+
+class TestCLIDiagramParsers:
+    def test_diagram_help_shows_new_types(self):
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
+        runner = CliRunner()
+        result = runner.invoke(main, ["diagram", "--help"])
+        assert result.exit_code == 0
+        assert "erd" in result.output
+        assert "k8s" in result.output
+        assert "openapi" in result.output
+        assert "--input" in result.output
+
+    def test_erd_requires_input(self):
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
+        runner = CliRunner()
+        result = runner.invoke(main, ["diagram", "--type", "erd", "-q"])
+        assert result.exit_code != 0
+
+    def test_erd_with_input_file(self, tmp_path):
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
+        sql_file = tmp_path / "schema.sql"
+        sql_file.write_text(
+            "CREATE TABLE users (\n"
+            "    id INT PRIMARY KEY,\n"
+            "    name VARCHAR(255)\n"
+            ");\n"
+        )
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "diagram", "--type", "erd", "--input", str(sql_file), "-q",
+        ])
+        assert result.exit_code == 0
+        assert "```mermaid" in result.output
+        assert "erDiagram" in result.output
+        assert "users" in result.output
+
+    def test_k8s_with_input_file(self, tmp_path):
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
+        yaml_file = tmp_path / "deploy.yaml"
+        yaml_file.write_text(
+            "apiVersion: apps/v1\n"
+            "kind: Deployment\n"
+            "metadata:\n"
+            "  name: web\n"
+            "  labels:\n"
+            "    app: web\n"
+        )
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "diagram", "--type", "k8s", "--input", str(yaml_file), "-q",
+        ])
+        assert result.exit_code == 0
+        assert "```mermaid" in result.output
+        assert "Deployment" in result.output
+
+    def test_openapi_with_input_file(self, tmp_path):
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
+        spec_file = tmp_path / "openapi.json"
+        spec_file.write_text(json.dumps({
+            "openapi": "3.0.0",
+            "info": {"title": "Test", "version": "1.0"},
+            "paths": {"/health": {"get": {"operationId": "healthCheck", "responses": {}}}},
+            "components": {"schemas": {}}
+        }))
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "diagram", "--type", "openapi", "--input", str(spec_file), "-q",
+        ])
+        assert result.exit_code == 0
+        assert "```mermaid" in result.output
+        assert "classDiagram" in result.output
