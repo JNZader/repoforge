@@ -21,6 +21,7 @@ Multi-tool targets (via --targets flag):
   copilot → .github/copilot-instructions.md
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
@@ -46,6 +47,18 @@ from .graph_context import (
     build_module_facts_context,
     format_facts_section,
 )
+
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Token budget constants
+# ---------------------------------------------------------------------------
+
+_CHARS_PER_TOKEN = 4
+# Conservative default: most models handle ≥128k input tokens.
+# The budget leaves room for the LLM's output (max_tokens) on top.
+_DEFAULT_INPUT_TOKEN_BUDGET = 120_000
 
 
 # Defaults — overridden by complexity classification at runtime
@@ -185,7 +198,9 @@ def generate_artifacts(
         module_count = len([n for n in _graph.nodes if n.node_type == "module"])
         edge_count = len([e for e in _graph.edges if e.edge_type in ("imports", "depends_on")])
         log(f"   ✅ Graph: {module_count} modules, {edge_count} dependencies")
-    except Exception as e:
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        # ImportError: graph module not available; OSError: file access errors
+        # ValueError: parse failures; RuntimeError: graph construction errors
         log(f"   ⚠️  Graph analysis skipped: {e}")
 
     # Extract semantic facts (cached, reused for all skills)
@@ -204,7 +219,9 @@ def generate_artifacts(
             log(f"   ✅ Facts: {len(_all_facts)} items extracted")
         else:
             log(f"   ℹ️  No semantic facts found")
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
+        # ImportError: facts module not available; OSError: file read errors
+        # ValueError: parse failures in fact extraction
         log(f"   ⚠️  Fact extraction skipped: {e}")
 
     generated = {
@@ -535,9 +552,45 @@ def _collect_contents(
     return result
 
 
-def _generate(llm: LLM, system: str, user: str, dry_run: bool) -> str:
+def _estimate_prompt_tokens(text: str) -> int:
+    """Rough token estimate consistent with intelligence.budget (~4 chars/token)."""
+    return max(1, len(text) // _CHARS_PER_TOKEN)
+
+
+def _generate(
+    llm: LLM,
+    system: str,
+    user: str,
+    dry_run: bool,
+    input_budget: int = _DEFAULT_INPUT_TOKEN_BUDGET,
+) -> str:
+    """Call the LLM with token-budget enforcement.
+
+    Before every LLM call, estimates the combined prompt size (system + user).
+    If over budget, truncates the *user* prompt to fit and logs a warning.
+    The system prompt is never truncated — it contains essential instructions.
+    """
     if dry_run:
         return f"# DRY RUN\n\nWould call {llm.model} here.\n"
+
+    system_tokens = _estimate_prompt_tokens(system)
+    user_tokens = _estimate_prompt_tokens(user)
+    total_tokens = system_tokens + user_tokens
+
+    if total_tokens > input_budget:
+        # Reserve space for the system prompt; truncate user prompt to fit
+        available_for_user = max(0, input_budget - system_tokens)
+        char_limit = available_for_user * _CHARS_PER_TOKEN
+        original_user_tokens = user_tokens
+        user = user[:char_limit]
+        user_tokens = _estimate_prompt_tokens(user)
+        logger.warning(
+            "Token budget exceeded: %d tokens (system=%d + user=%d) > budget=%d. "
+            "User prompt truncated from %d to %d tokens.",
+            total_tokens, system_tokens, original_user_tokens,
+            input_budget, original_user_tokens, user_tokens,
+        )
+
     return llm.complete(user, system=system)
 
 
