@@ -92,7 +92,8 @@ def parse_build_files(root_dir: str) -> BuildInfo:
                     logger.debug("Parsed %s -> language=%s, %d packages",
                                  filename, info.language, len(info.packages))
                     return info
-            except Exception as e:
+            except (OSError, ValueError, KeyError, IndexError) as e:
+                # OSError: file read; ValueError/KeyError/IndexError: manifest parse errors
                 logger.warning("Failed to parse %s: %s", manifest, e)
 
     logger.debug("No recognized manifest files found in %s", root)

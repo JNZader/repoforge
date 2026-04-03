@@ -61,7 +61,8 @@ def verify_chapter(
         corrections = _parse_verification_response(raw_response)
         corrected, issues = _apply_verification_corrections(chapter_content, corrections)
         return corrected, issues
-    except Exception as e:
+    except (RuntimeError, ValueError, KeyError) as e:
+        # RuntimeError: LLM call failure; ValueError/KeyError: response parse errors
         logger.warning("Verification failed: %s — returning original content", e)
         return chapter_content, [f"Verification error: {e}"]
 

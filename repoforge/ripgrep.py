@@ -47,7 +47,8 @@ def rg_version() -> Optional[str]:
             capture_output=True, text=True, timeout=5
         )
         return result.stdout.split("\n")[0].strip()
-    except Exception as e:
+    except (subprocess.SubprocessError, OSError, IndexError) as e:
+        # SubprocessError: rg execution failure; OSError: binary not found; IndexError: empty output
         logger.debug("Failed to get ripgrep version: %s", e)
         return None
 

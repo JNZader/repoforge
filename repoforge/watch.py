@@ -78,7 +78,8 @@ class FileWatcher:
             try:
                 rel = str(path.relative_to(self._root))
                 files[rel] = hash_file(path)
-            except Exception:
+            except OSError:
+                # File may have been deleted or be unreadable between snapshot and hash
                 logger.debug("Failed to hash %s", path)
 
         return files
@@ -178,7 +179,8 @@ def watch_docs(
             facts_only=facts_only,
             incremental=True,
         )
-    except Exception as exc:
+    except (OSError, ValueError, RuntimeError) as exc:
+        # OSError: file system errors; ValueError: config/parse errors; RuntimeError: LLM/pipeline errors
         _log(f"\u274C Initial generation failed: {exc}")
 
     _log(f"\n\u23F3 Watching for changes (interval={interval}s)...\n")
@@ -225,7 +227,8 @@ def watch_docs(
                          f"skipped {len(skipped)}")
                 else:
                     _log("\u2705 No chapters needed regeneration")
-            except Exception as exc:
+            except (OSError, ValueError, RuntimeError) as exc:
+                # OSError: file system errors; ValueError: config/parse errors; RuntimeError: LLM/pipeline errors
                 _log(f"\u274C Regeneration failed: {exc}")
 
             prev_snapshot = new_snapshot

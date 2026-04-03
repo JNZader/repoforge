@@ -232,7 +232,8 @@ def build_discovery_index(skills_dir: str) -> str:
     for skill_path in sorted(root.rglob("SKILL.md")):
         try:
             content = skill_path.read_text(encoding="utf-8")
-        except Exception as e:
+        except OSError as e:
+            # File read error (permissions, encoding, etc.)
             logger.debug("Failed to read skill file %s: %s", skill_path, e)
             continue
 

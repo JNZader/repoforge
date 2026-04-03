@@ -12,6 +12,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import mimetypes
 import zipfile
@@ -195,7 +196,9 @@ async def stream_generation(
                 }
                 if event["type"] in terminal_events:
                     break
-            except Exception:
+            except (asyncio.CancelledError, OSError, RuntimeError):
+                # CancelledError: client disconnected; OSError: connection error
+                # RuntimeError: event loop issues
                 logger.exception("sse_error", generation_id=generation_id)
                 break
 

@@ -156,7 +156,8 @@ def parse_source(parser, content: str):
     try:
         tree = parser.parse(content.encode("utf-8"))
         return tree.root_node
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
+        # ValueError: invalid content; RuntimeError/OSError: tree-sitter parser errors
         logger.debug("tree-sitter parse failed: %s", e)
         return None
 

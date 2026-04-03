@@ -82,7 +82,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 try:
     from importlib.metadata import version as _pkg_version
     APP_VERSION = _pkg_version("repoforge-ai")
-except Exception:
+except (ImportError, KeyError):
+    # ImportError: package not installed; KeyError: missing version metadata
     APP_VERSION = "0.3.0"
 
 app = FastAPI(
@@ -207,7 +208,8 @@ async def health_detailed() -> dict:
                 "ok": True,
                 "latency_ms": int((time.monotonic() - db_start) * 1000),
             }
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError) as e:
+        # Database connectivity failures (connection refused, timeout, etc.)
         checks["database"] = {"ok": False, "error": str(e)}
 
     healthy = all(c.get("ok", False) for c in checks.values())

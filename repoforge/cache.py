@@ -86,7 +86,8 @@ def compute_repo_snapshot(
 
         try:
             files[str(path.relative_to(root))] = hash_file(path)
-        except Exception:
+        except OSError:
+            # File may have been deleted or be unreadable between discovery and hash
             logger.debug("Failed to hash %s", path)
 
     return {"files": files}

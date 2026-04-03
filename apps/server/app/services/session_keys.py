@@ -161,5 +161,6 @@ async def session_key_cleanup_loop(store: SessionKeyStore | None = None) -> None
         await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
         try:
             await target.cleanup_expired()
-        except Exception:
+        except (OSError, RuntimeError, ConnectionError):
+            # Store cleanup failure — log and retry on next interval
             logger.exception("Error during session key cleanup")

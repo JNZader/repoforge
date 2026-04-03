@@ -341,7 +341,8 @@ def build_symbol_graph(
                     files.append(str(f.relative_to(root)))
                 except ValueError:
                     pass
-        except Exception:
+        except (ImportError, OSError, RuntimeError):
+            # ImportError: ripgrep module; OSError: rg binary or file access; RuntimeError: rg failures
             files = []
 
     graph = SymbolGraph()

@@ -136,7 +136,8 @@ def auto_detect_and_parse(root: str | Path) -> list[CoverageReport]:
             report = parser(path)
             reports.append(report)
             logger.debug("Parsed %s coverage from %s (%d files)", fmt, path, len(report.files))
-        except Exception as e:
+        except (OSError, ValueError, KeyError) as e:
+            # OSError: file read error; ValueError/KeyError: malformed coverage data
             logger.warning("Failed to parse %s: %s", path, e)
 
     return reports

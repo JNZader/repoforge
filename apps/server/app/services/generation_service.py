@@ -455,9 +455,10 @@ class GenerationService:
                 )
                 session.add(event)
                 await session.commit()
-        except Exception:
+        except (OSError, RuntimeError, ConnectionError) as exc:
             # Fire-and-forget — never let event persistence crash the pipeline
-            logger.debug("event_persist_failed", generation_id=generation_id, event_type=event_type)
+            logger.debug("event_persist_failed", generation_id=generation_id,
+                         event_type=event_type, error=str(exc))
 
     # ------------------------------------------------------------------
     # DB updates
@@ -481,7 +482,8 @@ class GenerationService:
                     .values(**values)
                 )
                 await session.commit()
-        except Exception:
+        except (OSError, RuntimeError, ConnectionError):
+            # DB write failure — log and continue, don't crash the pipeline
             logger.debug("status_update_failed", generation_id=generation_id, status=status)
 
     async def _update_completed(
@@ -528,7 +530,8 @@ class GenerationService:
                     )
                 )
                 await session.commit()
-        except Exception:
+        except (OSError, RuntimeError, ConnectionError):
+            # DB write failure — log and continue
             logger.debug("failed_update_failed", generation_id=generation_id)
 
     # ------------------------------------------------------------------
@@ -584,8 +587,9 @@ class GenerationService:
                     master_key = bytes.fromhex(settings.ENCRYPTION_KEY)
                     user_key = derive_user_key(master_key, str(user.id))
                     return decrypt_key(user.github_token, user_key)
-        except Exception:
-            logger.debug("github_token_resolve_failed", user_id=user_id)
+        except (OSError, RuntimeError, ConnectionError, ValueError) as exc:
+            # DB read, decryption, or key derivation failures
+            logger.debug("github_token_resolve_failed", user_id=user_id, error=str(exc))
         return None
 
     @staticmethod

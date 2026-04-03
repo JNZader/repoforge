@@ -192,7 +192,8 @@ def import_docs(
             fname = f"npm--{_sanitize_name(pkg)}.md"
             (out_dir / fname).write_text(content, encoding="utf-8")
             imported.append(fname)
-        except Exception as exc:
+        except (urllib.error.URLError, OSError, json.JSONDecodeError, RuntimeError) as exc:
+            # Network errors, file write errors, or malformed API responses
             logger.warning("Failed to fetch npm/%s: %s", pkg, exc)
             failed.append({"source": f"npm/{pkg}", "error": str(exc)})
 
@@ -204,7 +205,8 @@ def import_docs(
             fname = f"pypi--{_sanitize_name(pkg)}.md"
             (out_dir / fname).write_text(content, encoding="utf-8")
             imported.append(fname)
-        except Exception as exc:
+        except (urllib.error.URLError, OSError, json.JSONDecodeError, RuntimeError) as exc:
+            # Network errors, file write errors, or malformed API responses
             logger.warning("Failed to fetch pypi/%s: %s", pkg, exc)
             failed.append({"source": f"pypi/{pkg}", "error": str(exc)})
 
@@ -221,7 +223,8 @@ def import_docs(
                 fname = f"github--{_sanitize_name(url)}.md"
             (out_dir / fname).write_text(content, encoding="utf-8")
             imported.append(fname)
-        except Exception as exc:
+        except (urllib.error.URLError, OSError, subprocess.SubprocessError, RuntimeError) as exc:
+            # Network errors, file write errors, or git clone failures
             logger.warning("Failed to fetch github/%s: %s", url, exc)
             failed.append({"source": f"github/{url}", "error": str(exc)})
 

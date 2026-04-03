@@ -364,7 +364,8 @@ def build_all_ast_symbols(
     try:
         from .extractor_registry import get_ast_registry
         registry = get_ast_registry()
-    except Exception:
+    except (ImportError, OSError, RuntimeError):
+        # ImportError: registry not available; OSError/RuntimeError: tree-sitter init failures
         return {}
 
     if registry is None:
@@ -382,7 +383,8 @@ def build_all_ast_symbols(
             symbols = registry.extract_symbols(content, rel_path)
             if symbols:
                 result[rel_path] = symbols
-        except Exception:
+        except (OSError, SyntaxError, ValueError):
+            # OSError: file read error; SyntaxError/ValueError: AST parse failures
             logger.debug("Failed to extract AST symbols for %s", rel_path, exc_info=True)
 
     return result

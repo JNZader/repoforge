@@ -313,6 +313,7 @@ def extract_symbols(content: str, language: str, file_path: str = "") -> list[Sy
 
     try:
         return extractor(content, file_path)
-    except Exception as e:
+    except (SyntaxError, ValueError, TypeError, AttributeError) as e:
+        # Regex or AST-based extraction parse failures
         logger.debug("Symbol extraction failed for %s: %s", file_path, e)
         return []

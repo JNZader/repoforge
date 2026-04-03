@@ -91,7 +91,8 @@ def _build_diagrams(root: Path, all_files: list, result: dict, log) -> None:
             str(root), _graph, all_files,
         )
         log("   ✅ Diagrams generated")
-    except Exception as e:
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        # ImportError: diagrams module missing; others: generation failures
         log(f"   ⚠️  Diagram generation skipped: {e}")
 
 
@@ -108,7 +109,8 @@ def _build_graph(root: Path, result: dict, log) -> None:
         module_count = len([n for n in _graph.nodes if n.node_type == "module"])
         edge_count = len([e for e in _graph.edges if e.edge_type in ("imports", "depends_on")])
         log(f"   ✅ Graph: {module_count} modules, {edge_count} dependencies")
-    except Exception as e:
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        # ImportError: graph module not available; others: graph build failures
         log(f"   ⚠️  Graph analysis skipped: {e}")
 
 
@@ -130,7 +132,8 @@ def _build_semantic(root: Path, all_files: list, result: dict, log) -> None:
             log(f"   ✅ Facts: {len(_facts)} items extracted")
         else:
             log(f"   ℹ️  No semantic facts found (project may not match patterns)")
-    except Exception as e:
+    except (ImportError, OSError, ValueError, KeyError) as e:
+        # ImportError: module missing; OSError: file read; ValueError/KeyError: data issues
         log(f"   ⚠️  Semantic context extraction skipped: {e}")
 
 
@@ -145,7 +148,8 @@ def _build_api_surface(root: Path, all_files: list, result: dict, log) -> None:
             if api_surface_ctx:
                 result["api_surface_ctx"] = api_surface_ctx
                 log("   ✅ API Surface extracted for all chapters")
-    except Exception as e:
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        # API surface extraction failures — degrade gracefully
         log(f"   ⚠️  API Surface extraction skipped: {e}")
 
 
@@ -185,7 +189,8 @@ def _build_doc_chunks(
         result["doc_chunks"] = doc_chunks
         non_empty = sum(1 for v in doc_chunks.values() if v)
         log(f"   ✅ Chunks: {non_empty}/{len(doc_chunks)} non-empty")
-    except Exception as e:
+    except (ImportError, OSError, ValueError, KeyError) as e:
+        # ImportError: doc_chunks module; OSError: file read; ValueError/KeyError: data issues
         log(f"   ⚠️  Doc chunks skipped: {e}")
 
 
@@ -217,8 +222,8 @@ def _build_facts_only(
             if full_path.is_file():
                 try:
                     _contents[fpath] = full_path.read_text(encoding="utf-8", errors="replace")
-                except Exception:
-                    pass
+                except OSError:
+                    pass  # File unreadable or deleted between check and read
         _fo_compressed = compress_batch(_contents) if _contents else {}
         if _fo_compressed:
             log(f"   ✅ Compressed {len(_fo_compressed)} file signatures")
@@ -270,7 +275,8 @@ def _build_facts_only(
         result["fo_context_by_chapter"] = fo_ctx
         _total = sum(len(v) for v in fo_ctx.values())
         log(f"   ✅ Per-chapter facts-only context built ({len(fo_ctx)} chapters, {_total} total chars)")
-    except Exception as e:
+    except (ImportError, OSError, ValueError, KeyError) as e:
+        # ImportError: compressor/graph modules; OSError: file read; ValueError/KeyError: data issues
         log(f"   ⚠️  Facts-only context skipped: {e}")
 
 
@@ -288,7 +294,8 @@ def _build_dep_health(root: Path, result: dict, log) -> None:
             )
         else:
             log("📦 Dependency health: no supported manifests found")
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
+        # ImportError: dep_health module; OSError: manifest file read; ValueError: parse errors
         log(f"   ⚠️  Dependency health analysis skipped: {e}")
 
 
@@ -304,7 +311,8 @@ def _build_coverage(root: Path, result: dict, log) -> None:
             log(f"📈 Coverage: {total_files} files from {formats}")
         else:
             log("📈 Coverage: no coverage reports found")
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
+        # ImportError: coverage module; OSError: report file read; ValueError: parse errors
         log(f"   ⚠️  Coverage analysis skipped: {e}")
 
 

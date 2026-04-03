@@ -67,7 +67,9 @@ def compress_file(content: str, file_path: str) -> str:
             compressed = _compress_with_treesitter(content, ext)
             if compressed is not None:
                 return compressed
-    except Exception:
+    except (ImportError, SyntaxError, ValueError, RuntimeError):
+        # ImportError: tree-sitter not available; SyntaxError/ValueError: parse failures
+        # RuntimeError: tree-sitter internal errors
         logger.debug("Tree-sitter compression failed for %s", file_path, exc_info=True)
 
     # Fallback: first N lines
@@ -91,7 +93,8 @@ def compress_batch(contents: dict[str, str]) -> dict[str, str]:
     for path, content in contents.items():
         try:
             result[path] = compress_file(content, path)
-        except Exception:
+        except (SyntaxError, ValueError, RuntimeError, OSError):
+            # Parse errors, tree-sitter failures, or file encoding issues
             logger.warning("Compression failed for %s, using original content", path)
             result[path] = content
     return result

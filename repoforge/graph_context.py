@@ -39,7 +39,10 @@ def build_graph_context(root_dir: str, files: list[str] | None = None) -> str:
     """
     try:
         graph = build_graph_v2(root_dir, files)
-    except Exception:
+    except (OSError, ValueError, RuntimeError):
+        # OSError: file system access errors during graph building
+        # ValueError: malformed file paths or parse failures
+        # RuntimeError: graph construction errors
         logger.debug("Failed to build graph v2 for %s", root_dir, exc_info=True)
         return ""
 
@@ -369,7 +372,9 @@ def format_api_surface(
     try:
         from .intelligence.extractor_registry import get_ast_registry
         ast_registry = get_ast_registry()
-    except Exception:
+    except (ImportError, OSError, RuntimeError):
+        # ImportError: intelligence extras not installed
+        # OSError/RuntimeError: tree-sitter init failures
         ast_registry = None
 
     if ast_registry is None:
@@ -623,8 +628,8 @@ def format_snippets_section(snippets: list[CodeSnippet]) -> str:
     try:
         from .intelligence.extractor_registry import get_ast_registry
         ast_registry = get_ast_registry()
-    except Exception:
-        pass
+    except (ImportError, OSError, RuntimeError):
+        pass  # intelligence extras not installed or tree-sitter init failure
 
     lines = ["## Key Source Code\n"]
 
@@ -650,8 +655,8 @@ def format_snippets_section(snippets: list[CodeSnippet]) -> str:
                     for sym in symbols[:15]:  # Cap at 15 to avoid bloat
                         lines.append(f"- `{sym.signature}`\n")
                     lines.append("\n")
-            except Exception:
-                pass  # Graceful fallback — just show the raw code
+            except (SyntaxError, ValueError, TypeError, AttributeError):
+                pass  # Graceful fallback — AST parse error, just show the raw code
 
         lines.append(f"```{lang}\n{snippet.content}\n```\n\n")
 
@@ -691,7 +696,8 @@ def build_semantic_context(
     if _graph is None:
         try:
             _graph = build_graph_v2(root_dir, files if files else None)
-        except Exception:
+        except (OSError, ValueError, RuntimeError):
+            # OSError: file system errors; ValueError: parse failures; RuntimeError: graph errors
             logger.debug("Failed to build graph for semantic context", exc_info=True)
             _graph = None
 
@@ -706,7 +712,8 @@ def build_semantic_context(
         facts_section = format_facts_section(facts)
         if facts_section:
             sections.append(facts_section)
-    except Exception:
+    except (OSError, ValueError, KeyError):
+        # OSError: file read errors; ValueError: parse failures; KeyError: malformed data
         logger.debug("Failed to extract facts for semantic context", exc_info=True)
 
     # 3. API Surface (real signatures from AST — placed BEFORE snippets)
@@ -714,7 +721,8 @@ def build_semantic_context(
         api_surface = format_api_surface(root_dir, files, graph=_graph)
         if api_surface:
             sections.append(api_surface)
-    except Exception:
+    except (ImportError, OSError, ValueError, RuntimeError):
+        # ImportError: AST registry not available; others: extraction failures
         logger.debug("Failed to build API surface for semantic context", exc_info=True)
 
     # 4. Code snippets (optional — can be heavy on tokens)
@@ -724,7 +732,8 @@ def build_semantic_context(
             snippets_section = format_snippets_section(snippets)
             if snippets_section:
                 sections.append(snippets_section)
-        except Exception:
+        except (OSError, ValueError, KeyError):
+            # OSError: file read errors; ValueError/KeyError: graph data issues
             logger.debug("Failed to select code snippets for semantic context", exc_info=True)
 
     return "\n".join(sections)
@@ -739,7 +748,8 @@ def build_module_facts_context(root_dir: str, module_path: str, files: list[str]
     try:
         facts = extract_facts(root_dir, [module_path])
         return format_facts_section(facts)
-    except Exception:
+    except (OSError, ValueError, KeyError):
+        # OSError: file read errors; ValueError/KeyError: parse or data issues
         logger.debug("Failed to extract module facts for %s", module_path, exc_info=True)
         return ""
 
@@ -1151,6 +1161,7 @@ def _compute_ranks(graph: CodeGraph) -> dict[str, float]:
     try:
         from .intelligence.ranker import pagerank
         return pagerank(graph)
-    except Exception:
+    except (ImportError, ValueError, ZeroDivisionError):
+        # ImportError: ranker not available; ValueError/ZeroDivisionError: computation errors
         logger.debug("PageRank computation unavailable or failed", exc_info=True)
         return {}

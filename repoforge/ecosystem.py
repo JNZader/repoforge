@@ -35,7 +35,8 @@ def get_package_metadata() -> dict:
             "license": meta.get("License", ""),
             "homepage": meta.get("Home-page", ""),
         }
-    except Exception:
+    except (ImportError, KeyError):
+        # ImportError: package not installed; KeyError: missing metadata field
         # Fallback for development installs
         from . import __version__
         return {

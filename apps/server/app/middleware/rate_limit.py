@@ -44,8 +44,8 @@ def get_user_id_key(request: Request) -> str:
                 options={"verify_exp": False},  # Don't fail on expiry for key extraction
             )
             return payload.get("sub", get_remote_address(request))
-        except Exception:
-            pass
+        except (pyjwt.InvalidTokenError, KeyError, ValueError):
+            pass  # Invalid/expired/malformed JWT — fall through to IP-based key
 
     # Fall back to query param token (SSE endpoints)
     token = request.query_params.get("token")
@@ -60,8 +60,8 @@ def get_user_id_key(request: Request) -> str:
                 options={"verify_exp": False},
             )
             return payload.get("sub", get_remote_address(request))
-        except Exception:
-            pass
+        except (pyjwt.InvalidTokenError, KeyError, ValueError):
+            pass  # Invalid/expired/malformed JWT — fall through to IP-based key
 
     return get_remote_address(request)
 

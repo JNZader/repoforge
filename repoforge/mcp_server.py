@@ -147,7 +147,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text=_tool_context(arguments))]
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, KeyError) as e:
+        # OSError: file I/O errors; ValueError: invalid arguments
+        # RuntimeError: tool execution errors; KeyError: missing required args
         return [TextContent(type="text", text=f"Error: {e}")]
 
 
@@ -247,8 +249,8 @@ def _tool_analyze(args: dict) -> str:
         if p.is_file():
             try:
                 contents[f] = p.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                pass
+            except OSError:
+                pass  # File unreadable or deleted between check and read
     complexity = analyze_complexity(contents)
 
     lines = [f"Analysis of {root}", ""]
@@ -301,7 +303,8 @@ def _tool_context(args: dict) -> str:
         short_graph = build_short_graph_context(graph)
         patterns = detect_architecture_patterns(graph)
         mermaid = generate_architecture_mermaid(graph)
-    except Exception:
+    except (ImportError, OSError, ValueError, RuntimeError):
+        # ImportError: graph module not available; others: graph build/analysis failures
         short_graph = ""
         patterns = []
         mermaid = ""
@@ -309,7 +312,8 @@ def _tool_context(args: dict) -> str:
     # API surface
     try:
         api_surface = format_api_surface(root, all_files, graph=graph if 'graph' in dir() else None)
-    except Exception:
+    except (ImportError, OSError, ValueError, RuntimeError):
+        # API surface extraction failures — degrade gracefully
         api_surface = ""
 
     lines = [

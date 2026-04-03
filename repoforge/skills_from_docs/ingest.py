@@ -103,7 +103,8 @@ def fetch_url(url: str, *, timeout: int = 30) -> list[str]:
         raise RuntimeError(f"HTTP {exc.code} fetching {url}: {exc.reason}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Failed to fetch {url}: {exc.reason}") from exc
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        # OSError: network/socket errors; UnicodeDecodeError: charset issues; ValueError: URL errors
         raise RuntimeError(f"Failed to fetch {url}: {exc}") from exc
 
 
@@ -236,7 +237,8 @@ def extract_pdf(path: str) -> list[str]:
         return ["\n\n".join(pages_text)]
     except RuntimeError:
         raise
-    except Exception as exc:
+    except (OSError, ValueError, TypeError) as exc:
+        # OSError: file read error; ValueError/TypeError: PDF parsing failures
         raise RuntimeError(f"Failed to read PDF {path}: {exc}") from exc
 
 
@@ -289,11 +291,12 @@ def fetch_youtube_transcript(url: str) -> list[str]:
         # Prefer manually created transcripts, fall back to generated
         try:
             transcript = transcript_list.find_manually_created_transcript(["en"])
-        except Exception:
+        except (KeyError, ValueError, StopIteration, LookupError):
+            # No manually-created English transcript available
             try:
                 transcript = transcript_list.find_generated_transcript(["en"])
-            except Exception:
-                # Try any available transcript
+            except (KeyError, ValueError, StopIteration, LookupError):
+                # No generated English transcript — try any available
                 transcript = next(iter(transcript_list))
 
         segments = transcript.fetch()
@@ -307,7 +310,8 @@ def fetch_youtube_transcript(url: str) -> list[str]:
         return [text.strip()]
     except RuntimeError:
         raise
-    except Exception as exc:
+    except (OSError, ValueError, StopIteration, LookupError) as exc:
+        # Network errors, API failures, or no transcripts available
         raise RuntimeError(f"Failed to fetch YouTube transcript for {url}: {exc}") from exc
 
 

@@ -47,7 +47,8 @@ class ASTExtractorRegistry:
             return []
         try:
             return extractor.extract_symbols(content, file_path)
-        except Exception:
+        except (SyntaxError, ValueError, TypeError, AttributeError):
+            # tree-sitter parse errors or malformed AST node access
             logger.debug("AST symbol extraction failed for %s", file_path, exc_info=True)
             return []
 
@@ -58,7 +59,8 @@ class ASTExtractorRegistry:
             return []
         try:
             return extractor.extract_endpoints(content, file_path)
-        except Exception:
+        except (SyntaxError, ValueError, TypeError, AttributeError):
+            # tree-sitter parse errors or malformed AST node access
             logger.debug("AST endpoint extraction failed for %s", file_path, exc_info=True)
             return []
 
@@ -69,7 +71,8 @@ class ASTExtractorRegistry:
             return []
         try:
             return extractor.extract_schemas(content, file_path)
-        except Exception:
+        except (SyntaxError, ValueError, TypeError, AttributeError):
+            # tree-sitter parse errors or malformed AST node access
             logger.debug("AST schema extraction failed for %s", file_path, exc_info=True)
             return []
 
@@ -126,7 +129,10 @@ def get_ast_registry() -> ASTExtractorRegistry | None:
         )
         return _ast_registry
 
-    except Exception:
+    except (ImportError, OSError, RuntimeError):
+        # ImportError: tree-sitter language bindings not installed
+        # OSError: shared library loading failure
+        # RuntimeError: tree-sitter initialization errors
         logger.debug("Failed to initialize AST extractor registry", exc_info=True)
         _ast_registry = None
         return None

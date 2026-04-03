@@ -107,8 +107,8 @@ def detect_doc_drift(
         for md in sorted(docs_dir.glob("*.md")):
             try:
                 doc_files[md.name] = hash_content(md.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except OSError:
+                pass  # File unreadable — skip from hash computation
         docs_hash = hash_content(str(sorted(doc_files.items())))
 
     return DriftReport(

@@ -227,7 +227,8 @@ def generate_docs(
 
             path = write_chapter(content, chapter, out)
             generated.append(path)
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, KeyError) as e:
+            # OSError: file I/O; ValueError/KeyError: data issues; RuntimeError: LLM or pipeline errors
             errors.append({"file": chapter["file"], "error": str(e)})
             log(f"❌ {e}")
 
@@ -271,7 +272,8 @@ def _load_build_info(root, do_post_process, do_verify, log):
     try:
         from .intelligence.build_parser import parse_build_files
         return parse_build_files(str(root))
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
+        # ImportError: build_parser not available; OSError: file read; ValueError: parse failure
         log(f"   ⚠️  Build info for post-processing unavailable: {e}")
         return None
 
@@ -287,7 +289,9 @@ def _load_ast_symbols(root, repo_map, chunked, do_post_process, log):
             for m in layer.get("modules", [])
         ]
         return build_all_ast_symbols(str(root), _all_files)
-    except Exception:
+    except (ImportError, OSError, SyntaxError, ValueError):
+        # ImportError: doc_chunks not available; OSError: file read
+        # SyntaxError/ValueError: AST parse failures
         return None
 
 
@@ -305,7 +309,8 @@ def _infer_project_name(root: Path, repo_map: dict) -> str:
                 name = parser(name_source)
                 if name:
                     return _prettify_name(name)
-            except Exception as e:
+            except (json.JSONDecodeError, OSError, KeyError, IndexError, ValueError) as e:
+                # JSON/TOML/go.mod parse errors or file read failures
                 logger.debug("Failed to read project name from %s: %s", name_source.name, e)
 
     return _prettify_name(root.name)

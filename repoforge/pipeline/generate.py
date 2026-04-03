@@ -53,7 +53,8 @@ def postprocess_chapter(
                         for c in d_corrections
                     ],
                 })
-        except Exception as e:
+        except (ImportError, ValueError, KeyError) as e:
+            # ImportError: post-processor missing; ValueError/KeyError: correction parse errors
             if log:
                 log(f" ⚠️D:{e}", end="")
 
@@ -76,7 +77,8 @@ def postprocess_chapter(
                     "stage": "C",
                     "issues": v_issues,
                 })
-        except Exception as e:
+        except (ImportError, ValueError, RuntimeError) as e:
+            # ImportError: verifier missing; ValueError: parse error; RuntimeError: LLM call failure
             if log:
                 log(f" ⚠️C:{e}", end="")
 

@@ -38,7 +38,8 @@ async def validate_provider_key(
     except httpx.TimeoutException:
         logger.warning("Validation timeout for provider %s", provider)
         return False, []
-    except Exception:
+    except (httpx.HTTPError, OSError, ValueError, RuntimeError):
+        # HTTP errors, connection issues, or response parsing failures
         logger.exception("Unexpected error validating %s key", provider)
         return False, []
 

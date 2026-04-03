@@ -476,7 +476,8 @@ def generate_symbol_diagram(
             return ""
 
         return render_symbol_mermaid(graph, max_symbols=max_symbols)
-    except Exception as e:
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        # ImportError: symbols module; OSError: file read; ValueError/RuntimeError: graph errors
         logger.debug("Symbol diagram generation failed: %s", e)
         return ""
 

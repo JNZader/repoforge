@@ -446,7 +446,8 @@ def _detect_tech_stack(root: Path) -> list:
                     stack.append("Zustand")
                 if "supabase" in " ".join(deps.keys()):
                     stack.append("Supabase")
-            except Exception as e:
+            except (json.JSONDecodeError, OSError, KeyError) as e:
+                # JSON parse error, file read error, or missing key in package.json
                 logger.debug("Failed to parse package.json %s: %s", p, e)
 
     # Python framework hints — search all subdirs
@@ -472,7 +473,8 @@ def _detect_tech_stack(root: Path) -> list:
                         stack.append("Supabase")
                     if "redis" in txt:
                         stack.append("Redis")
-                except Exception as e:
+                except OSError as e:
+                    # File read error on requirements.txt or pyproject.toml
                     logger.debug("Failed to parse Python manifest %s: %s", p, e)
 
     # Docker / infra
@@ -590,13 +592,15 @@ def _scan_layer(
             try:
                 content = fpath.read_text(errors="replace")
                 _enrich_python(module, content)
-            except Exception as e:
+            except (OSError, SyntaxError, ValueError) as e:
+                # OSError: file read error; SyntaxError/ValueError: AST parse failures
                 logger.debug("Failed to enrich Python module %s: %s", fpath, e)
         elif ext in (".ts", ".tsx", ".js", ".jsx") and not rg_available():
             try:
                 content = fpath.read_text(errors="replace")
                 _enrich_js(module, content)
-            except Exception as e:
+            except (OSError, ValueError) as e:
+                # OSError: file read error; ValueError: regex parse failures
                 logger.debug("Failed to enrich JS/TS module %s: %s", fpath, e)
 
         modules.append(module)
@@ -773,7 +777,8 @@ def _find_entry_points(root: Path) -> list:
                                 found.append(mod)
                             else:
                                 found.append(f"{cmd_name} → {module_path}")
-        except Exception as e:
+        except (OSError, ValueError, IndexError, KeyError) as e:
+            # OSError: file read; ValueError/IndexError/KeyError: TOML parsing failures
             logger.debug("Failed to detect entrypoints from pyproject.toml: %s", e)
 
     # 2. package.json main/bin
@@ -787,7 +792,8 @@ def _find_entry_points(root: Path) -> list:
                 found.extend(data["bin"].values())
             elif isinstance(data.get("bin"), str):
                 found.append(data["bin"])
-        except Exception as e:
+        except (json.JSONDecodeError, OSError, KeyError, TypeError) as e:
+            # JSON parse error, file read error, or unexpected data shape
             logger.debug("Failed to parse package.json for entrypoints: %s", e)
 
     # 3. Common filename fallbacks
