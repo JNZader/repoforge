@@ -1,5 +1,7 @@
 """Tests for symbol-level call graph construction."""
 
+import json
+
 import pytest
 from repoforge.symbols.extractor import Symbol
 from repoforge.symbols.graph import (
@@ -146,3 +148,99 @@ class TestBuildSymbolGraph:
         assert len(graph.symbols) >= 2
         callees = graph.get_callees("b.py::bar")
         assert "a.py::foo" in callees
+
+
+class TestSymbolGraphToJson:
+
+    def test_empty_graph(self):
+        g = SymbolGraph()
+        result = json.loads(g.to_json())
+        assert result == {"symbols": [], "edges": []}
+
+    def test_symbols_in_json(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="foo", kind="function", file="a.py", line=1, end_line=3))
+        result = json.loads(g.to_json())
+        assert len(result["symbols"]) == 1
+        sym = result["symbols"][0]
+        assert sym["id"] == "a.py::foo"
+        assert sym["name"] == "foo"
+        assert sym["kind"] == "function"
+        assert sym["file"] == "a.py"
+        assert sym["line"] == 1
+        assert sym["end_line"] == 3
+
+    def test_edges_in_json(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="foo", kind="function", file="a.py", line=1, end_line=3))
+        g.add_symbol(Symbol(name="bar", kind="function", file="a.py", line=5, end_line=7))
+        g.add_edge(CallEdge(caller="a.py::foo", callee="a.py::bar"))
+        result = json.loads(g.to_json())
+        assert len(result["edges"]) == 1
+        edge = result["edges"][0]
+        assert edge["caller"] == "a.py::foo"
+        assert edge["callee"] == "a.py::bar"
+
+    def test_json_is_valid_string(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="x", kind="function", file="b.py", line=1, end_line=2))
+        raw = g.to_json()
+        assert isinstance(raw, str)
+        # Should be valid JSON
+        json.loads(raw)
+
+
+class TestSymbolGraphSummary:
+
+    def test_empty_graph(self):
+        g = SymbolGraph()
+        result = g.summary()
+        assert "Functions: 0" in result
+        assert "Call edges: 0" in result
+
+    def test_counts_functions_and_classes(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="foo", kind="function", file="a.py", line=1, end_line=3))
+        g.add_symbol(Symbol(name="bar", kind="function", file="a.py", line=5, end_line=7))
+        g.add_symbol(Symbol(name="Baz", kind="class", file="a.py", line=9, end_line=15))
+        result = g.summary()
+        assert "Functions: 2" in result
+        assert "Classes: 1" in result
+
+    def test_most_called(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="helper", kind="function", file="a.py", line=1, end_line=3))
+        g.add_symbol(Symbol(name="foo", kind="function", file="a.py", line=5, end_line=7))
+        g.add_symbol(Symbol(name="bar", kind="function", file="b.py", line=1, end_line=3))
+        g.add_edge(CallEdge(caller="a.py::foo", callee="a.py::helper"))
+        g.add_edge(CallEdge(caller="b.py::bar", callee="a.py::helper"))
+        result = g.summary()
+        assert "Most called:" in result
+        assert "helper (2 calls)" in result
+
+    def test_isolated_functions(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="lonely", kind="function", file="c.py", line=1, end_line=3))
+        result = g.summary()
+        assert "Isolated functions" in result
+        assert "lonely" in result
+
+    def test_file_count(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="a", kind="function", file="x.py", line=1, end_line=2))
+        g.add_symbol(Symbol(name="b", kind="function", file="y.py", line=1, end_line=2))
+        result = g.summary()
+        assert "Files: 2" in result
+
+
+class TestCallsBlastRadiusIncompatibility:
+    """Test that --blast-radius with --type calls is rejected."""
+
+    def test_blast_radius_with_calls_exits(self):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["graph", "--type", "calls", "--blast-radius", "foo.py"])
+        assert result.exit_code != 0
+        assert "not supported" in result.output or "not supported" in (result.output + str(result.exception or ""))

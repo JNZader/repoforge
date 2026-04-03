@@ -13,6 +13,9 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import json
+from collections import defaultdict
+
 from .extractor import (
     SKIP_NAMES,
     Symbol,
@@ -68,6 +71,83 @@ class SymbolGraph:
     def get_callers(self, symbol_id: str) -> list[str]:
         """Get symbols that call this symbol."""
         return [e.caller for e in self.edges if e.callee == symbol_id]
+
+    def to_json(self) -> str:
+        """Export as JSON (symbols + edges arrays, D3/Cytoscape-compatible).
+
+        Returns:
+            JSON string with ``symbols`` and ``edges`` arrays.
+        """
+        data = {
+            "symbols": [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "kind": s.kind,
+                    "file": s.file,
+                    "line": s.line,
+                    "end_line": s.end_line,
+                }
+                for s in self.symbols.values()
+            ],
+            "edges": [
+                {"caller": e.caller, "callee": e.callee}
+                for e in self.edges
+            ],
+        }
+        return json.dumps(data, indent=2) + "\n"
+
+    def summary(self) -> str:
+        """Human-readable summary: symbol count, edge count, most-called.
+
+        Returns:
+            Multi-line summary string.
+        """
+        functions = [s for s in self.symbols.values() if s.kind == "function"]
+        classes = [s for s in self.symbols.values() if s.kind == "class"]
+        files = {s.file for s in self.symbols.values()}
+
+        # Count incoming calls per symbol (most-called)
+        call_count: dict[str, int] = defaultdict(int)
+        for e in self.edges:
+            call_count[e.callee] += 1
+
+        sorted_callees = sorted(call_count.items(), key=lambda x: x[1], reverse=True)
+        top = sorted_callees[:5]
+
+        # Symbols with no incoming or outgoing edges
+        connected = {e.caller for e in self.edges} | {e.callee for e in self.edges}
+        isolated = [
+            sid for sid in self.symbols
+            if sid not in connected and self.symbols[sid].kind == "function"
+        ]
+
+        lines = [
+            f"Functions: {len(functions)}",
+            f"Classes: {len(classes)}",
+            f"Files: {len(files)}",
+            f"Call edges: {len(self.edges)}",
+        ]
+
+        if top:
+            lines.append("")
+            lines.append("Most called:")
+            for sid, count in top:
+                sym = self.symbols.get(sid)
+                name = sym.name if sym else sid
+                lines.append(f"  {name} ({count} calls)")
+
+        if isolated:
+            lines.append("")
+            lines.append(f"Isolated functions ({len(isolated)}):")
+            for sid in isolated[:5]:
+                sym = self.symbols.get(sid)
+                name = sym.name if sym else sid
+                lines.append(f"  {name}")
+            if len(isolated) > 5:
+                lines.append(f"  ... and {len(isolated) - 5} more")
+
+        return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
