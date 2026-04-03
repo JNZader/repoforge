@@ -12,6 +12,11 @@ from .adapters import (
     adapt_for_gemini,
     resolve_targets,
 )
+from .diff import (
+    DiffEntry,
+    DiffResult,
+    diff_entities,
+)
 from .compressor import (
     CompressionResult,
     SkillCompressor,
@@ -48,6 +53,12 @@ from .graph import (
     build_graph_v2,
     get_blast_radius_v2,
     is_test_file,
+)
+from .graph_query import (
+    QueryResult,
+    query_callers,
+    query_callees,
+    query_imports,
 )
 from .incremental import (
     ChapterEntry,
@@ -112,6 +123,9 @@ from .watch import FileWatcher, WatchEvent, watch_docs
 
 __version__ = "0.4.0"
 __all__ = [
+    "DiffEntry",
+    "DiffResult",
+    "diff_entities",
     "generate_artifacts",
     "generate_docs",
     "export_llm_view",
@@ -176,6 +190,10 @@ __all__ = [
     "build_graph_v2",
     "get_blast_radius_v2",
     "is_test_file",
+    "QueryResult",
+    "query_callers",
+    "query_callees",
+    "query_imports",
     "CoverageFile",
     "CoverageReport",
     "auto_detect_and_parse",

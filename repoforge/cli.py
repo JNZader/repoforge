@@ -12,6 +12,7 @@ Six modes:
   repoforge compress         [options] — Token-optimize generated .md files (no API key needed)
   repoforge prompts          [options] — Generate reusable analysis prompts from codebase scan (no API key needed)
   repoforge check            [options] — Validate code references in generated docs (no API key needed)
+  repoforge diff             REF_A REF_B — Entity-level semantic diff between git refs (no API key needed)
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
@@ -92,6 +93,7 @@ def main(verbose):
       graph            Build a code knowledge graph from scanner data (no API key needed)
       prompts          Generate reusable analysis prompts from codebase scan (no API key needed)
       check            Validate code references in generated docs (no API key needed)
+      diff             Entity-level semantic diff between two git refs (no API key needed)
 
     \b
     Examples:
@@ -894,9 +896,16 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     help="Max files in blast radius result (v2 only).")
 @click.option("--include-tests/--no-include-tests", default=True, show_default=True,
     help="Include test files in blast radius (v2 only).")
+@click.option("--query", "query_mode", default=None,
+    type=click.Choice(["callers", "callees", "imports"], case_sensitive=False),
+    help="Query mode: callers (who calls symbol), callees (what symbol calls), imports (file imports).")
+@click.option("--symbol", default=None,
+    help="Symbol name for --query callers/callees.")
+@click.option("--file", "query_file", default=None,
+    help="File path for --query imports.")
 @click.option("-q", "--quiet", is_flag=True, default=False,
     help="Suppress progress output.")
-def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_files, include_tests, quiet):
+def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_files, include_tests, query_mode, symbol, query_file, quiet):
     """
     Build a code knowledge graph from scanner data (no API key needed).
 
@@ -925,8 +934,70 @@ def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_
       repoforge graph -w . --blast-radius src/auth.py  # blast radius
       repoforge graph -w . --type calls                # symbol call graph
       repoforge graph -w . --type calls --format json  # call graph as JSON
+      repoforge graph --query callers --symbol build_graph  # who calls this?
+      repoforge graph --query callees --symbol main         # what does it call?
+      repoforge graph --query imports --file repoforge/cli.py  # file imports
     """
     import sys
+
+    # --- Query mode: structured queries for external tools ---
+    if query_mode:
+        if query_mode in ("callers", "callees"):
+            if not symbol:
+                click.echo(
+                    f"Error: --query {query_mode} requires --symbol <name>.",
+                    err=True,
+                )
+                sys.exit(1)
+
+            if not quiet:
+                print(
+                    f"Querying {query_mode} for symbol '{symbol}' in {workspace} ...",
+                    file=sys.stderr,
+                )
+
+            from .symbols import build_symbol_graph
+            from .graph_query import query_callers, query_callees
+
+            sym_graph = build_symbol_graph(workspace)
+
+            if query_mode == "callers":
+                result = query_callers(sym_graph, symbol)
+            else:
+                result = query_callees(sym_graph, symbol)
+
+            output = result.to_json()
+
+        elif query_mode == "imports":
+            if not query_file:
+                click.echo(
+                    "Error: --query imports requires --file <path>.",
+                    err=True,
+                )
+                sys.exit(1)
+
+            if not quiet:
+                print(
+                    f"Querying imports for '{query_file}' in {workspace} ...",
+                    file=sys.stderr,
+                )
+
+            from .graph import build_graph_v2
+            from .graph_query import query_imports
+
+            code_graph = build_graph_v2(workspace)
+            result = query_imports(code_graph, query_file)
+            output = result.to_json()
+
+        # Write query output
+        if output_path:
+            from pathlib import Path
+            Path(output_path).write_text(output, encoding="utf-8")
+            if not quiet:
+                print(f"Written to {output_path}", file=sys.stderr)
+        else:
+            click.echo(output)
+        return
 
     # --- Calls mode: symbol-level call graph ---
     if graph_type == "calls":
@@ -1051,6 +1122,68 @@ def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_
             print(f"Written to {output_path}", file=sys.stderr)
     else:
         click.echo(output)
+
+
+# ---------------------------------------------------------------------------
+# diff subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.argument("ref_a")
+@click.argument("ref_b")
+@click.option("-w", "--workspace",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("--format", "fmt",
+    default="table", show_default=True,
+    type=click.Choice(["table", "json", "markdown"], case_sensitive=False),
+    help="Output format.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def diff(ref_a, ref_b, workspace, fmt, quiet):
+    """
+    Entity-level semantic diff between two git refs (no API key needed).
+
+    \b
+    Shows which functions/classes were added, removed, modified (cosmetic
+    vs logic change), or renamed between REF_A and REF_B.
+
+    \b
+    Examples:
+      repoforge diff HEAD~1 HEAD
+      repoforge diff main feature-branch --format json
+      repoforge diff v1.0.0 v2.0.0 --format markdown
+    """
+    from .diff import diff_entities, render_diff_json, render_diff_markdown, render_diff_table
+
+    if not quiet:
+        click.echo(f"Computing entity diff: {ref_a} → {ref_b} ...", err=True)
+
+    try:
+        result = diff_entities(workspace, ref_a, ref_b)
+    except RuntimeError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1)
+
+    if fmt == "json":
+        output = render_diff_json(result)
+    elif fmt == "markdown":
+        output = render_diff_markdown(result)
+    else:
+        output = render_diff_table(result)
+
+    click.echo(output)
+
+    if not quiet and result.entries:
+        s = result.summary
+        click.echo(
+            f"\n{s['total']} entities changed: "
+            f"{s['added']} added, {s['removed']} removed, "
+            f"{s['modified']} modified, {s['renamed']} renamed",
+            err=True,
+        )
 
 
 # ---------------------------------------------------------------------------
