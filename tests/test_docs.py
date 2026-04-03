@@ -537,3 +537,54 @@ class TestProjectNameInference:
         # Should use directory name, title-cased
         assert isinstance(name, str)
         assert len(name) > 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: link_style (wikilinks)
+# ---------------------------------------------------------------------------
+
+class TestLinkStyle:
+    """Tests for --link-style wiki feature."""
+
+    def test_default_link_style_no_wikilink_rules(self, minimal_repo_map):
+        from repoforge.docs_prompts import get_chapter_prompts
+        chapters = get_chapter_prompts(minimal_repo_map, "English", "Test")
+        for ch in chapters:
+            assert "[[" not in ch["system"]
+
+    def test_wiki_link_style_injects_wikilink_rules(self, minimal_repo_map):
+        from repoforge.docs_prompts import get_chapter_prompts
+        chapters = get_chapter_prompts(
+            minimal_repo_map, "English", "Test", link_style="wiki"
+        )
+        for ch in chapters:
+            assert "[[wikilinks]]" in ch["system"] or "[[" in ch["system"]
+
+    def test_wiki_link_style_mentions_format(self, minimal_repo_map):
+        from repoforge.docs_prompts import get_chapter_prompts
+        chapters = get_chapter_prompts(
+            minimal_repo_map, "English", "Test", link_style="wiki"
+        )
+        overview = next(c for c in chapters if c["file"] == "01-overview.md")
+        assert "wikilink" in overview["system"].lower() or "[[" in overview["system"]
+
+    def test_cli_link_style_flag_exists(self):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["docs", "--help"])
+        assert result.exit_code == 0
+        assert "--link-style" in result.output
+
+    def test_cli_link_style_accepts_wiki(self):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        runner = CliRunner()
+        # Dry run with --link-style wiki — should not error
+        result = runner.invoke(main, [
+            "docs", "-w", str(Path(__file__).parent.parent),
+            "--link-style", "wiki", "--dry-run", "-q",
+        ])
+        assert result.exit_code == 0

@@ -129,7 +129,8 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
                      facts_only: bool = False,
                      diagram_context: str = "",
                      dep_health_context: str = "",
-                     coverage_context: str = "") -> tuple[str, str]:
+                     coverage_context: str = "",
+                     link_style: str = "backtick") -> tuple[str, str]:
     """Route a chapter file to its prompt function."""
     chunks = doc_chunks or {}
 
@@ -182,7 +183,8 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                         facts_only_context_by_chapter: dict[str, str] | None = None,
                         diagram_context: str = "",
                         dep_health_context: str = "",
-                        coverage_context: str = "") -> list[dict]:
+                        coverage_context: str = "",
+                        link_style: str = "backtick") -> list[dict]:
     """
     Return the adaptive list of chapters to generate with their prompts.
 
@@ -233,7 +235,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                 chapter_file,
                 facts_only_context_by_chapter.get("_default", ""),
             )
-            ch_system_override = _base_system_facts_only(language)
+            ch_system_override = _base_system_facts_only(language, link_style=link_style)
         elif is_architecture:
             # Normal mode: architecture gets full graph context
             ch_graph = graph_context
@@ -257,6 +259,10 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
         # Override system prompt when using facts-only mode
         if ch_system_override is not None:
             system = ch_system_override
+        elif link_style == "wiki":
+            # Inject wikilink rules into the system prompt from builders
+            from .system import _WIKILINK_RULES
+            system = system + _WIKILINK_RULES
 
         result.append({
             "file":        chapter["file"],

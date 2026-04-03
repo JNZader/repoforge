@@ -63,6 +63,7 @@ def generate_docs(
     no_verify_docs: bool = False,
     facts_only: bool = False,
     incremental: bool = False,
+    link_style: str = "backtick",
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -141,6 +142,7 @@ def generate_docs(
         diagram_context=ctx.get("diagram_ctx", ""),
         dep_health_context=ctx.get("dep_health_ctx", ""),
         coverage_context=ctx.get("coverage_ctx", ""),
+        link_style=link_style,
     )
     max_ch = cx["max_chapters"]
     chapters = all_chapters[:max_ch] if len(all_chapters) > max_ch else all_chapters

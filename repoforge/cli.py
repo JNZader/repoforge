@@ -83,7 +83,7 @@ def main(verbose):
     \b
     Commands:
       skills           Generate SKILL.md + AGENT.md for Claude Code / OpenCode
-      skills-from-docs Generate SKILL.md from documentation (URL, GitHub repo, local dir)
+      skills-from-docs Generate SKILL.md from documentation (URL, GitHub, PDF, YouTube, notebook)
       import-docs      Import external dependency docs for context enrichment (no API key needed)
       score            Score quality of generated SKILL.md files (no API key needed)
       scan             Security scan generated output for issues (no API key needed)
@@ -296,11 +296,15 @@ SUPPORTED_LANGUAGES = [
     help="Enter watch mode: poll source files and regenerate docs on change.")
 @click.option("--watch-interval", default=2.0, show_default=True, type=float,
     help="Poll interval in seconds for watch mode.")
+@click.option("--link-style", "link_style",
+    default="backtick", show_default=True,
+    type=click.Choice(["backtick", "wiki"], case_sensitive=False),
+    help="Code reference style in docs. 'wiki' uses [[wikilinks]] for a knowledge graph.")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
          chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental,
-         watch, watch_interval):
+         watch, watch_interval, link_style):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -371,6 +375,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             no_verify_docs=no_verify_docs,
             facts_only=facts_only,
             incremental=incremental,
+            link_style=link_style,
         )
 
     if do_serve or serve_only:
@@ -1417,13 +1422,16 @@ def import_docs_cmd(working_dir, npm, pypi, github, quiet):
     help="Suppress progress output.")
 def skills_from_docs(source, output_dir, name, dry_run, do_score, do_conflicts, quiet):
     """
-    Generate SKILL.md from documentation (URL, GitHub repo, or local dir).
+    Generate SKILL.md from documentation (URL, GitHub repo, local dir, PDF, YouTube, notebook).
 
     \b
-    Accepts three types of sources:
+    Accepts six types of sources:
       - HTTP/HTTPS URL: scrapes documentation page
       - GitHub repo URL: clones and scans .md files
       - Local directory: reads .md/.html files recursively
+      - PDF file (.pdf): extracts text (requires: pip install repoforge[pdf])
+      - YouTube URL: downloads transcript (requires: pip install repoforge[youtube])
+      - Jupyter notebook (.ipynb): parses markdown + code cells
 
     \b
     No API key needed — extraction and generation are deterministic.
@@ -1435,6 +1443,9 @@ def skills_from_docs(source, output_dir, name, dry_run, do_score, do_conflicts, 
       repoforge skills-from-docs -w /path/to/docs --name my-lib
       repoforge skills-from-docs -w /path/to/docs --dry-run
       repoforge skills-from-docs -w /path/to/docs --score
+      repoforge skills-from-docs -w /path/to/guide.pdf --name my-lib
+      repoforge skills-from-docs -w https://youtube.com/watch?v=VIDEO_ID
+      repoforge skills-from-docs -w /path/to/notebook.ipynb
     """
     import sys
     from pathlib import Path

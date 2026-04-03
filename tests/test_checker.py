@@ -366,3 +366,140 @@ class TestCLIIntegration:
         data = json.loads(result.output)
         assert "summary" in data
         assert "refs" in data
+
+
+# ---------------------------------------------------------------------------
+# Wikilink reference tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def wikilink_repo(tmp_path):
+    """Create a repo with source files and docs using wikilinks."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "auth.py").write_text(
+        'def validate_token(token: str) -> bool:\n    return True\n'
+    )
+    (tmp_path / "src" / "models.py").write_text(
+        'class UserModel:\n    pass\n'
+    )
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "01-overview.md").write_text(
+        "# Overview\n\n"
+        "The auth module is at [[src/auth.py]] and handles token validation.\n"
+        "The validate function is at [[src/auth.py#validate_token]].\n"
+        "A broken link: [[src/deleted.py]].\n"
+    )
+    (docs / "02-mixed.md").write_text(
+        "# Mixed\n\n"
+        "Backtick ref: `src/models.py` and wikilink: [[src/auth.py]].\n"
+        "```python\n"
+        "# This wikilink inside fenced block should be ignored: [[src/fake.py]]\n"
+        "```\n"
+    )
+    return tmp_path
+
+
+class TestWikilinkExtraction:
+    """Tests for wikilink reference extraction."""
+
+    def test_detects_simple_wikilink(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        refs = checker.scan_content(
+            "See [[src/auth.py]] for details.",
+            "test.md",
+        )
+        wiki_refs = [r for r in refs if r.ref_type == RefType.WIKILINK]
+        assert len(wiki_refs) == 1
+        assert wiki_refs[0].ref_text == "src/auth.py"
+
+    def test_detects_wikilink_with_anchor(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        refs = checker.scan_content(
+            "See [[src/auth.py#validate_token]] for the function.",
+            "test.md",
+        )
+        wiki_refs = [r for r in refs if r.ref_type == RefType.WIKILINK]
+        assert len(wiki_refs) == 1
+        assert wiki_refs[0].ref_text == "src/auth.py#validate_token"
+
+    def test_detects_multiple_wikilinks(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        refs = checker.scan_content(
+            "See [[src/auth.py]] and [[src/models.py]] for implementation.",
+            "test.md",
+        )
+        wiki_refs = [r for r in refs if r.ref_type == RefType.WIKILINK]
+        assert len(wiki_refs) == 2
+
+    def test_skips_wikilinks_in_fenced_blocks(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        refs = checker.scan_content(
+            "Normal: [[src/auth.py]]\n\n```\n[[src/fake.py]]\n```\n\nAfter.",
+            "test.md",
+        )
+        wiki_refs = [r for r in refs if r.ref_type == RefType.WIKILINK]
+        texts = [r.ref_text for r in wiki_refs]
+        assert "src/auth.py" in texts
+        assert "src/fake.py" not in texts
+
+
+class TestWikilinkValidation:
+    """Tests for wikilink reference validation."""
+
+    def test_valid_file_wikilink(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        refs = checker.scan_content(
+            "The module [[src/auth.py]] handles auth.",
+            "test.md",
+        )
+        wiki_refs = [r for r in refs if r.ref_type == RefType.WIKILINK]
+        assert len(wiki_refs) == 1
+        assert wiki_refs[0].status == RefStatus.VALID
+
+    def test_broken_file_wikilink(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        refs = checker.scan_content(
+            "The file [[src/deleted.py]] was removed.",
+            "test.md",
+        )
+        wiki_refs = [r for r in refs if r.ref_type == RefType.WIKILINK]
+        assert len(wiki_refs) == 1
+        assert wiki_refs[0].status == RefStatus.BROKEN
+
+    def test_wikilink_with_valid_anchor(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        refs = checker.scan_content(
+            "See [[src/auth.py#validate_token]] for validation.",
+            "test.md",
+        )
+        wiki_refs = [r for r in refs if r.ref_type == RefType.WIKILINK]
+        assert len(wiki_refs) == 1
+        assert wiki_refs[0].status == RefStatus.VALID
+
+    def test_directory_scan_with_wikilinks(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        result = checker.scan_directory(wikilink_repo / "docs")
+        wiki_refs = [r for r in result.refs if r.ref_type == RefType.WIKILINK]
+        assert len(wiki_refs) > 0
+        valid_wiki = [r for r in wiki_refs if r.status == RefStatus.VALID]
+        broken_wiki = [r for r in wiki_refs if r.status == RefStatus.BROKEN]
+        assert len(valid_wiki) > 0
+        assert len(broken_wiki) > 0
+
+    def test_wikilink_coexists_with_backtick_refs(self, wikilink_repo):
+        """Wikilinks and backtick refs should both be detected in the same doc."""
+        checker = ReferenceChecker(wikilink_repo)
+        result = checker.scan_directory(wikilink_repo / "docs")
+        types = {r.ref_type for r in result.refs}
+        assert RefType.WIKILINK in types
+        assert RefType.FILE in types
+
+    def test_wikilink_in_report_json(self, wikilink_repo):
+        checker = ReferenceChecker(wikilink_repo)
+        result = checker.scan_directory(wikilink_repo / "docs")
+        report = ReferenceChecker.report(result, fmt="json")
+        data = json.loads(report)
+        wikilink_refs = [r for r in data["refs"] if r["ref_type"] == "wikilink"]
+        assert len(wikilink_refs) > 0

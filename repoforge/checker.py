@@ -48,6 +48,7 @@ class RefStatus(Enum):
 class RefType(Enum):
     FILE = "file"
     SYMBOL = "symbol"
+    WIKILINK = "wikilink"
 
 
 @dataclass
@@ -113,6 +114,11 @@ _SYMBOL_RE = re.compile(
     r"(?<!`)`(?!`)"
     r"([A-Z][\w]{2,}|[a-z][\w]*_[\w]+)"  # PascalCase or snake_case with underscore
     r"`(?!`)",
+)
+
+# Matches wikilink references: [[path]], [[path#symbol]], [[module.symbol]]
+_WIKILINK_RE = re.compile(
+    r"\[\[([^\]\n]+)\]\]"              # content between [[ and ]]
 )
 
 # Fenced code block boundaries (to skip content inside them)
@@ -248,6 +254,21 @@ class ReferenceChecker:
                     line_number=line_number,
                 ))
 
+        # 3. Wikilink references: [[path]], [[path#symbol]], [[module.symbol]]
+        for m in _WIKILINK_RE.finditer(line):
+            text = m.group(1).strip()
+            if not text or text.lower() in _SKIP_PATTERNS:
+                continue
+            if text not in seen:
+                seen.add(text)
+                refs.append(CodeRef(
+                    ref_text=text,
+                    ref_type=RefType.WIKILINK,
+                    status=RefStatus.BROKEN,  # Will be validated later
+                    source_file=source_file,
+                    line_number=line_number,
+                ))
+
         return refs
 
     # -- Validation -----------------------------------------------------------
@@ -345,6 +366,80 @@ class ReferenceChecker:
 
         ref.status = RefStatus.UNRESOLVABLE
 
+    def _validate_wikilink_ref(self, ref: CodeRef) -> None:
+        """Validate a wikilink reference.
+
+        Supports formats:
+          [[path/to/file.ext]]         — file path
+          [[path/to/file.ext#symbol]]  — file path with symbol anchor
+          [[module.symbol]]            — qualified symbol
+        """
+        text = ref.ref_text
+
+        # Split on # to separate path from symbol anchor
+        if "#" in text:
+            path_part, symbol_part = text.split("#", 1)
+        else:
+            path_part = text
+            symbol_part = ""
+
+        # Determine if path_part looks like a file path (has extension)
+        has_extension = "." in path_part and not path_part.startswith(".")
+        path_obj = Path(path_part) if has_extension else None
+        is_file_path = (
+            path_obj is not None
+            and path_obj.suffix.lower() in _CODE_EXTENSIONS
+        )
+
+        if is_file_path:
+            # Validate the file path component
+            file_ref = CodeRef(
+                ref_text=path_part,
+                ref_type=RefType.FILE,
+                status=RefStatus.BROKEN,
+                source_file=ref.source_file,
+                line_number=ref.line_number,
+            )
+            self._validate_file_ref(file_ref)
+
+            if file_ref.status != RefStatus.VALID:
+                ref.status = RefStatus.BROKEN
+                return
+
+            ref.resolved_path = file_ref.resolved_path
+
+            # If there's a symbol anchor, validate that too
+            if symbol_part:
+                sym_ref = CodeRef(
+                    ref_text=symbol_part,
+                    ref_type=RefType.SYMBOL,
+                    status=RefStatus.UNRESOLVABLE,
+                    source_file=ref.source_file,
+                    line_number=ref.line_number,
+                )
+                self._validate_symbol_ref(sym_ref)
+                if sym_ref.status == RefStatus.VALID:
+                    ref.status = RefStatus.VALID
+                    ref.resolved_path = f"{file_ref.resolved_path}#{symbol_part}"
+                else:
+                    # File exists but symbol not found — still mark valid for the file
+                    ref.status = RefStatus.VALID
+                    ref.resolved_path = file_ref.resolved_path
+            else:
+                ref.status = RefStatus.VALID
+        else:
+            # Treat as a qualified symbol reference (module.symbol)
+            sym_ref = CodeRef(
+                ref_text=path_part,
+                ref_type=RefType.SYMBOL,
+                status=RefStatus.UNRESOLVABLE,
+                source_file=ref.source_file,
+                line_number=ref.line_number,
+            )
+            self._validate_symbol_ref(sym_ref)
+            ref.status = sym_ref.status
+            ref.resolved_path = sym_ref.resolved_path
+
     # -- Public API -----------------------------------------------------------
 
     def scan_content(self, content: str, file_path: str = "<string>") -> list[CodeRef]:
@@ -369,6 +464,8 @@ class ReferenceChecker:
                 self._validate_file_ref(ref)
             elif ref.ref_type == RefType.SYMBOL:
                 self._validate_symbol_ref(ref)
+            elif ref.ref_type == RefType.WIKILINK:
+                self._validate_wikilink_ref(ref)
 
         return refs
 

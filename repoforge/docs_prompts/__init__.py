@@ -51,7 +51,8 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
                         facts_only_context_by_chapter: dict[str, str] | None = None,
                         diagram_context: str = "",
                         dep_health_context: str = "",
-                        coverage_context: str = "") -> list[dict]:
+                        coverage_context: str = "",
+                        link_style: str = "backtick") -> list[dict]:
     """
     Main entry point. Routes monorepos through hierarchical generation,
     single projects through the original adaptive path.
@@ -91,6 +92,7 @@ def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
         diagram_context=diagram_context,
         dep_health_context=dep_health_context,
         coverage_context=coverage_context,
+        link_style=link_style,
     )
     for ch in chapters:
         ch.setdefault("subdir", None)
