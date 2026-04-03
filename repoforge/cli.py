@@ -10,6 +10,8 @@ Six modes:
   repoforge docs             [options] — Generate technical documentation (Docsify / GH Pages ready)
   repoforge export           [options] — Flatten repo into a single LLM-optimized file (no API key needed)
   repoforge compress         [options] — Token-optimize generated .md files (no API key needed)
+  repoforge prompts          [options] — Generate reusable analysis prompts from codebase scan (no API key needed)
+  repoforge check            [options] — Validate code references in generated docs (no API key needed)
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
@@ -88,6 +90,8 @@ def main(verbose):
       export           Flatten repo into a single LLM-optimized file (no API key needed)
       compress         Token-optimize generated .md files (no API key needed)
       graph            Build a code knowledge graph from scanner data (no API key needed)
+      prompts          Generate reusable analysis prompts from codebase scan (no API key needed)
+      check            Validate code references in generated docs (no API key needed)
 
     \b
     Examples:
@@ -663,6 +667,108 @@ def scan(workspace, target_dir, fmt, allowlist, fail_on, quiet):
 
 
 # ---------------------------------------------------------------------------
+# check subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--working-dir",
+    default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("--docs-dir", default=None,
+    help="Documentation directory to check. Default: <working-dir>/docs/",
+    type=click.Path(file_okay=False),
+)
+@click.option("--format", "fmt",
+    default="table", show_default=True,
+    type=click.Choice(["table", "json", "markdown"], case_sensitive=False),
+    help="Output format for the report.")
+@click.option("--fail-on",
+    default=None,
+    type=click.Choice(["broken", "any"], case_sensitive=False),
+    help="Exit code 1 if references of this status are found. "
+         "'broken' fails on broken file refs; 'any' includes unresolvable.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def check(working_dir, docs_dir, fmt, fail_on, quiet):
+    """
+    Validate code references in generated documentation (no API key needed).
+
+    \b
+    Scans markdown files for code references and checks them against
+    the actual codebase:
+      - File path references in backticks (e.g., `src/auth.ts`)
+      - Symbol references (e.g., `Auth.validate`)
+
+    \b
+    Reports: valid refs, broken refs, unresolvable refs.
+    Can be used as a CI gate with --fail-on.
+
+    \b
+    Examples:
+      repoforge check -w .                         # check with table output
+      repoforge check -w . --format json           # JSON output
+      repoforge check -w . --fail-on broken        # exit 1 on broken refs
+      repoforge check -w . --fail-on any           # exit 1 on any issues
+      repoforge check -w . --docs-dir my-docs/     # check specific directory
+    """
+    import sys
+    from pathlib import Path
+
+    from .checker import ReferenceChecker, check_docs
+
+    workspace = Path(working_dir).resolve()
+
+    if docs_dir:
+        target = Path(docs_dir)
+        if not target.is_absolute():
+            target = workspace / docs_dir
+    else:
+        target = workspace / "docs"
+
+    if not target.exists():
+        click.echo(f"Documentation directory not found: {target}", err=True)
+        click.echo("Run 'repoforge docs' first to generate documentation.", err=True)
+        sys.exit(1)
+
+    if not quiet:
+        click.echo(f"Checking code references in {target} ...", err=True)
+
+    checker = ReferenceChecker(workspace)
+    result = checker.scan_directory(target)
+
+    report = checker.report(result, fmt=fmt)
+    click.echo(report)
+
+    if not quiet and result.total_count > 0:
+        click.echo(
+            f"\nSummary: {result.valid_count} valid, "
+            f"{result.broken_count} broken, "
+            f"{result.unresolvable_count} unresolvable",
+            err=True,
+        )
+
+    # Exit code based on --fail-on
+    if fail_on:
+        if fail_on == "broken" and result.broken_count > 0:
+            if not quiet:
+                click.echo(
+                    f"\n{result.broken_count} broken reference(s) found.",
+                    err=True,
+                )
+            sys.exit(1)
+        elif fail_on == "any" and (result.broken_count + result.unresolvable_count) > 0:
+            if not quiet:
+                click.echo(
+                    f"\n{result.broken_count + result.unresolvable_count} "
+                    f"problematic reference(s) found.",
+                    err=True,
+                )
+            sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
 # compress subcommand
 # ---------------------------------------------------------------------------
 
@@ -1213,6 +1319,94 @@ def skills_from_docs(source, output_dir, name, dry_run, do_score, do_conflicts, 
 
     if not quiet:
         click.echo(f"\n✅ SKILL.md generated: {skill_file}", err=True)
+
+
+# ---------------------------------------------------------------------------
+# prompts subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--working-dir",
+    default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("-o", "--output-dir", "output_dir", default=None,
+    help="Output directory. Writes individual .txt per prompt. If not set, prints single markdown to stdout.",
+    type=click.Path(),
+)
+@click.option("--type", "prompt_types", default=None,
+    help=(
+        "Comma-separated prompt types to generate. "
+        "Valid: solid, dead-code, security, architecture, test-gaps, performance, deps. "
+        "Default: all."
+    ))
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def prompts(working_dir, output_dir, prompt_types, quiet):
+    """
+    Generate reusable analysis prompts from codebase scanning (no API key needed).
+
+    \b
+    Scans the repo and produces structured prompts you can paste into any LLM
+    for targeted code analysis.  No LLM calls — purely deterministic.
+
+    \b
+    Prompt types:
+      solid         SOLID principle violations
+      dead-code     Dead code paths
+      security      Security review
+      architecture  Architecture review
+      test-gaps     Test coverage gaps
+      performance   Performance bottlenecks
+      deps          Dependency risks
+
+    \b
+    Examples:
+      repoforge prompts -w .                              # all prompts to stdout
+      repoforge prompts -w . --type security,architecture # specific types
+      repoforge prompts -w . -o prompts/                  # individual .txt files
+    """
+    import sys
+
+    from .prompts_cmd import (
+        PROMPT_TYPES,
+        generate_prompts,
+        render_prompts_markdown,
+        write_individual_prompts,
+    )
+
+    types_list = None
+    if prompt_types:
+        types_list = [t.strip() for t in prompt_types.split(",") if t.strip()]
+        invalid = [t for t in types_list if t not in PROMPT_TYPES]
+        if invalid:
+            click.echo(
+                f"Unknown prompt type(s): {', '.join(invalid)}\n"
+                f"Valid types: {', '.join(PROMPT_TYPES)}",
+                err=True,
+            )
+            sys.exit(1)
+
+    if not quiet:
+        label = ", ".join(types_list) if types_list else "all"
+        click.echo(f"Generating analysis prompts ({label}) for {working_dir} ...", err=True)
+
+    result = generate_prompts(workspace=working_dir, types=types_list)
+
+    if not result:
+        click.echo("No prompts generated.", err=True)
+        sys.exit(1)
+
+    if output_dir:
+        written = write_individual_prompts(result, output_dir)
+        if not quiet:
+            click.echo(f"Written {len(written)} prompt(s) to {output_dir}/", err=True)
+            for w in written:
+                click.echo(f"  {w}", err=True)
+    else:
+        md = render_prompts_markdown(result)
+        click.echo(md)
 
 
 # ---------------------------------------------------------------------------
