@@ -25,6 +25,41 @@ Use actual names from the module info provided (real exports, real paths).
 """
 
 
+# ---------------------------------------------------------------------------
+# Shared helpers — extracted to eliminate duplication across prompt builders
+# ---------------------------------------------------------------------------
+
+
+def format_tech_stack(repo_map: dict) -> str:
+    """Format tech stack as comma-separated string from repo_map."""
+    return ", ".join(repo_map.get("tech_stack", []))
+
+
+def format_modules_hint(modules: list[dict], limit: int = 8) -> str:
+    """Format module list with optional summary hints (for agent/orchestrator prompts).
+
+    Returns indented lines like:
+      - `path/to/file.py` — Summary hint
+    """
+    lines = []
+    for m in modules[:limit]:
+        hint = m.get("summary_hint", "")[:60]
+        line = f"  - `{m['path']}`"
+        if hint:
+            line += f" — {hint}"
+        lines.append(line)
+    return "\n".join(lines) or "  (none)"
+
+
+def build_detail_and_tiered_suffix(
+    prompt_detail: str, disclosure: str,
+) -> str:
+    """Build the combined detail-level + tiered disclosure suffix for skill prompts."""
+    detail_suffix = _DETAIL_INSTRUCTIONS.get(prompt_detail, "")
+    tiered_suffix = _TIERED_SKILL_INSTRUCTIONS if disclosure == "tiered" else ""
+    return f"{detail_suffix}{tiered_suffix}"
+
+
 # ===========================================================================
 # SKILL.md
 # ===========================================================================
@@ -231,7 +266,7 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict,
         disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
         graph_context: Pre-built module dependency context from graph v2.
     """
-    tech = ", ".join(repo_map.get("tech_stack", []))
+    tech = format_tech_stack(repo_map)
     exports = module.get("exports", [])
     imports = module.get("imports", [])
     exports_str = ", ".join(f"`{e}`" for e in exports[:10]) or "none detected"
@@ -255,8 +290,7 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict,
         "C#": "csharp", "PHP": "php", "Swift": "swift",
     }.get(module.get("language", ""), "text")
 
-    detail_suffix = _DETAIL_INSTRUCTIONS.get(prompt_detail, "")
-    tiered_suffix = _TIERED_SKILL_INSTRUCTIONS if disclosure == "tiered" else ""
+    suffix = build_detail_and_tiered_suffix(prompt_detail, disclosure)
 
     user = f"""Generate a SKILL.md for this module.
 
@@ -283,7 +317,7 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict,
 - Code blocks MUST use `{lang_hint}` language tag
 - Commands must be real {tech} commands (not placeholders)
 - Trigger in description must mention: `{module['name']}` or its domain
-{detail_suffix}{tiered_suffix}
+{suffix}
 {graph_context}"""
     return SKILL_SYSTEM, user
 
@@ -392,7 +426,7 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
         disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
         graph_context: Pre-built dependency context from graph v2.
     """
-    tech = ", ".join(repo_map.get("tech_stack", []))
+    tech = format_tech_stack(repo_map)
     modules = layer.get("modules", [])
 
     by_lang: dict[str, list] = {}
@@ -417,8 +451,7 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
     languages = list(by_lang.keys())
     is_multilang = len(languages) > 1
 
-    detail_suffix = _DETAIL_INSTRUCTIONS.get(prompt_detail, "")
-    tiered_suffix = _TIERED_SKILL_INSTRUCTIONS if disclosure == "tiered" else ""
+    suffix = build_detail_and_tiered_suffix(prompt_detail, disclosure)
 
     user = f"""Generate a layer-level SKILL.md for the **"{layer_name}"** layer.
 
@@ -441,7 +474,7 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
 {"- MULTILANGUAGE LAYER: include one code block per language: " + ", ".join(languages) if is_multilang else "- Single language: " + (languages[0] if languages else "unknown")}
 - 'Adding a New X' step names must match real file structure shown above
 - Anti-patterns must cover cross-layer issues (what breaks when {layer_name} changes)
-{detail_suffix}{tiered_suffix}
+{suffix}
 {graph_context}"""
     return LAYER_SKILL_SYSTEM, user
 
@@ -542,14 +575,11 @@ def agent_prompt(layer_name: str, layer: dict, repo_map: dict,
     generated_skills: list of SKILL.md absolute paths already written for this layer.
     Passing them avoids the LLM inventing skill paths that don't exist.
     """
-    tech = ", ".join(repo_map.get("tech_stack", []))
+    tech = format_tech_stack(repo_map)
     other_agents = [f"`{layer}-agent`" for layer in all_layers if layer != layer_name]
 
     # Key modules for this layer
-    modules_hint = "\n".join(
-        f"  - `{m['path']}`" + (f" — {m.get('summary_hint','')[:60]}" if m.get('summary_hint') else "")
-        for m in layer.get("modules", [])[:8]
-    ) or "  (none)"
+    modules_hint = format_modules_hint(layer.get("modules", []))
 
     # Real generated skill paths for this layer (relative display)
     if generated_skills:
@@ -677,7 +707,7 @@ RULES:
 
 def orchestrator_prompt(repo_map: dict) -> tuple[str, str]:
     """Build prompt for the orchestrator AGENT.md."""
-    tech = ", ".join(repo_map.get("tech_stack", []))
+    tech = format_tech_stack(repo_map)
     layers = list(repo_map["layers"].keys())
 
     layer_details = "\n".join(
@@ -928,7 +958,7 @@ def hooks_prompt(repo_map: dict, complexity: dict) -> tuple[str, str]:
         (system, user) tuple for LLM completion.
     """
     tech = repo_map.get("tech_stack", [])
-    tech_str = ", ".join(tech) or "unknown"
+    tech_str = format_tech_stack(repo_map) or "unknown"
     entry_points = repo_map.get("entry_points", [])
     config_files = repo_map.get("config_files", [])
     layers = repo_map.get("layers", {})
