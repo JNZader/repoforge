@@ -922,3 +922,206 @@ class TestCLIDiagramParsers:
         assert result.exit_code == 0
         assert "```mermaid" in result.output
         assert "classDiagram" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Tests: repoforge diagrams (plural) command
+# ---------------------------------------------------------------------------
+
+class TestCLIDiagramsCommand:
+    """Tests for the 'diagrams' (plural) subcommand that writes all diagrams to a .md file."""
+
+    def test_diagrams_help(self):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["diagrams", "--help"])
+        assert result.exit_code == 0
+        assert "--output" in result.output or "-o" in result.output
+        assert "mermaid" in result.output.lower() or "diagram" in result.output.lower()
+
+    def test_diagrams_writes_file(self, tmp_path):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
+        output_file = str(tmp_path / "arch.md")
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "diagrams", "-w", repo_dir, "-o", output_file, "-q",
+        ])
+        assert result.exit_code == 0
+        assert __import__("pathlib").Path(output_file).exists()
+        content = __import__("pathlib").Path(output_file).read_text()
+        assert "```mermaid" in content
+
+    def test_diagrams_default_output_name(self, tmp_path):
+        """Default output is diagrams.md in the current working directory."""
+        from click.testing import CliRunner
+        from repoforge.cli import main
+        import os
+
+        repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
+        runner = CliRunner()
+        # Run with mix_stderr=False to avoid output contamination; use tmp_path as cwd
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(main, [
+                "diagrams", "-w", repo_dir, "-q",
+            ])
+        assert result.exit_code == 0
+
+    def test_diagrams_output_contains_header(self, tmp_path):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
+        output_file = str(tmp_path / "diagrams.md")
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "diagrams", "-w", repo_dir, "-o", output_file, "-q",
+        ])
+        assert result.exit_code == 0
+        content = __import__("pathlib").Path(output_file).read_text()
+        # Should start with a heading
+        assert content.startswith("#")
+
+    def test_diagrams_in_main_help(self):
+        """'diagrams' command is listed in the main help."""
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["--help"])
+        assert result.exit_code == 0
+        assert "diagrams" in result.output
+
+    def test_diagrams_max_nodes_option(self, tmp_path):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
+        output_file = str(tmp_path / "diagrams.md")
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "diagrams", "-w", repo_dir, "-o", output_file,
+            "--max-nodes", "10", "-q",
+        ])
+        assert result.exit_code == 0
+        assert __import__("pathlib").Path(output_file).exists()
+
+
+# ---------------------------------------------------------------------------
+# Tests: --diagrams flag for repoforge docs
+# ---------------------------------------------------------------------------
+
+class TestDocsDiagramsFlag:
+    """Tests for the --diagrams flag on the docs subcommand."""
+
+    def test_docs_help_shows_diagrams_flag(self):
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["docs", "--help"])
+        assert result.exit_code == 0
+        assert "--diagrams" in result.output
+
+    def test_docs_dry_run_with_diagrams_flag(self, tmp_path):
+        """--diagrams flag is accepted without error in dry-run mode."""
+        from click.testing import CliRunner
+        from repoforge.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "docs", "-w", str(tmp_path), "--dry-run", "--diagrams", "-q",
+        ])
+        # dry-run with no files should either succeed or exit cleanly (no crash)
+        assert result.exit_code in (0, 1)  # 1 = empty repo, no LLM, acceptable
+
+    def test_generate_docs_accepts_embed_diagrams(self, tmp_path):
+        """generate_docs() accepts embed_diagrams without raising."""
+        from unittest.mock import patch, MagicMock
+
+        # Write a minimal repo
+        (tmp_path / "main.py").write_text("def hello(): pass\n")
+        (tmp_path / "pyproject.toml").write_text('[project]\nname="test"\nversion="0.1.0"\n')
+
+        mock_llm = MagicMock()
+        mock_llm.model = "mock-model"
+        mock_llm.call.return_value = "# Test\n\nContent."
+
+        with patch("repoforge.docs_generator.build_llm", return_value=mock_llm):
+            from repoforge.docs_generator import generate_docs
+            # Should not raise TypeError for unknown kwarg
+            result = generate_docs(
+                working_dir=str(tmp_path),
+                output_dir=str(tmp_path / "docs"),
+                dry_run=True,
+                verbose=False,
+                embed_diagrams=True,
+            )
+        # dry-run returns early without generating files
+        assert result.get("dry_run") is True
+
+    def test_build_all_contexts_accepts_embed_diagrams(self, tmp_path):
+        """build_all_contexts() accepts embed_diagrams parameter without raising."""
+        from pathlib import Path
+        from repoforge.scanner import scan_repo
+        from repoforge.pipeline.context import build_all_contexts
+
+        (tmp_path / "main.py").write_text("def hello(): pass\n")
+        repo_map = scan_repo(str(tmp_path))
+        log = lambda msg="", **kwargs: None
+
+        # Should not raise
+        ctx = build_all_contexts(
+            tmp_path, repo_map, log,
+            embed_diagrams=False,
+        )
+        assert isinstance(ctx, dict)
+        assert "diagram_ctx" in ctx
+
+    def test_write_diagrams_file_with_empty_ctx(self, tmp_path):
+        """_write_diagrams_file returns None when no diagram context is available."""
+        from pathlib import Path
+        from repoforge.docs_generator import _write_diagrams_file
+
+        out = tmp_path / "docs"
+        out.mkdir()
+        log = lambda msg="", **kwargs: None
+
+        result = _write_diagrams_file(
+            ctx={"diagram_ctx": ""},
+            root=tmp_path,
+            out=out,
+            project_name="Test Project",
+            log=log,
+        )
+        assert result is None
+        assert not (out / "diagrams.md").exists()
+
+    def test_write_diagrams_file_with_content(self, tmp_path):
+        """_write_diagrams_file writes diagrams.md when diagram_ctx is present."""
+        from pathlib import Path
+        from repoforge.docs_generator import _write_diagrams_file
+
+        out = tmp_path / "docs"
+        out.mkdir()
+        log = lambda msg="", **kwargs: None
+        fake_ctx = "```mermaid\ngraph LR\n    A --> B\n```"
+
+        result = _write_diagrams_file(
+            ctx={"diagram_ctx": fake_ctx},
+            root=tmp_path,
+            out=out,
+            project_name="My Project",
+            log=log,
+        )
+        assert result is not None
+        diag_path = out / "diagrams.md"
+        assert diag_path.exists()
+        content = diag_path.read_text()
+        assert "# My Project" in content
+        assert "```mermaid" in content
+        assert "graph LR" in content

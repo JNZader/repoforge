@@ -1204,6 +1204,270 @@ def diff(ref_a, ref_b, workspace, fmt, quiet):
         )
 
 
+
+# ---------------------------------------------------------------------------
+# audit subcommand
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False))
+@click.option("--fail-on",
+    default="high", show_default=True,
+    type=click.Choice(["none", "medium", "high"], case_sensitive=False),
+    help=(
+        "Exit code 1 threshold. high: only on high-severity findings. "
+        "medium: on medium+ findings. none: always exit 0."
+    ),
+)
+@click.option("--fmt", "--format", "fmt",
+    default="text", show_default=True,
+    type=click.Choice(["text", "json"], case_sensitive=False),
+    help="Output format: text (human-readable) or json (structured).",
+)
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output (only print findings).",
+)
+def audit(path, fail_on, fmt, quiet):
+    """
+    Run all analysis checks in one shot (no API key needed).
+
+    \b
+    Runs four analysis steps and aggregates findings:
+      1. Complexity   -- cyclomatic complexity per function
+      2. Dead Code    -- functions never referenced elsewhere
+      3. Doc Drift    -- docs stale relative to source
+      4. Dep Health   -- dependency duplicates, outdated, license conflicts
+
+    \b
+    Exit codes:
+      0 -- no findings above threshold (or --fail-on none)
+      1 -- findings at or above the --fail-on severity level
+
+    \b
+    Examples:
+      repoforge audit .
+      repoforge audit . --fail-on medium
+      repoforge audit . --fmt json
+      repoforge audit . --fail-on none --fmt json
+      repoforge audit /path/to/repo --quiet
+    """
+    import json as _json
+    import sys
+    from pathlib import Path
+
+    from .analysis import analyze_complexity, detect_dead_code
+    from .ci import detect_doc_drift
+    from .dep_health import analyze_dependency_health
+
+    root = Path(path).resolve()
+
+    if not quiet:
+        click.echo(f"Auditing {root} ...", err=True)
+
+    try:
+        from .scanner import scan_repo
+        repo_map = scan_repo(str(root))
+        all_files = [
+            m["path"]
+            for layer in repo_map["layers"].values()
+            for m in layer.get("modules", [])
+        ]
+    except Exception:
+        all_files = [
+            str(p.relative_to(root))
+            for p in root.rglob("*.py")
+            if ".git" not in p.parts
+        ]
+
+    _COMPLEXITY_HIGH = 15
+    _COMPLEXITY_MEDIUM = 10
+
+    file_contents: dict[str, str] = {}
+    for f in all_files[:200]:
+        p = root / f
+        if p.is_file():
+            try:
+                file_contents[f] = p.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                pass
+
+    complexity_report = analyze_complexity(file_contents)
+
+    complexity_findings: list[dict] = []
+    for mod in complexity_report.modules:
+        if mod.max_complexity >= _COMPLEXITY_HIGH:
+            severity = "high"
+        elif mod.max_complexity >= _COMPLEXITY_MEDIUM:
+            severity = "medium"
+        else:
+            continue
+        complexity_findings.append({
+            "type": "complexity",
+            "severity": severity,
+            "file": mod.file,
+            "function": mod.most_complex,
+            "value": int(mod.max_complexity),
+            "threshold": _COMPLEXITY_HIGH if severity == "high" else _COMPLEXITY_MEDIUM,
+            "message": (
+                f"{mod.file}:{mod.most_complex}() -- cyclomatic complexity: "
+                f"{int(mod.max_complexity)} (threshold: "
+                f"{_COMPLEXITY_HIGH if severity == 'high' else _COMPLEXITY_MEDIUM})"
+            ),
+        })
+
+    dead_findings: list[dict] = []
+    try:
+        from .intelligence.doc_chunks import build_all_ast_symbols
+        ast_symbols = build_all_ast_symbols(str(root), all_files)
+        dead_report = detect_dead_code(ast_symbols)
+        for sym in dead_report.unreferenced:
+            dead_findings.append({
+                "type": "dead_code",
+                "severity": "medium",
+                "file": sym.file,
+                "symbol": sym.name,
+                "line": sym.line,
+                "message": f"{sym.file}:{sym.name} -- never referenced",
+            })
+    except Exception as exc:
+        if not quiet:
+            click.echo(f"  [dead code] skipped: {exc}", err=True)
+
+    drift_findings: list[dict] = []
+    docs_dir = root / "docs"
+    if docs_dir.exists():
+        try:
+            drift_report = detect_doc_drift(root, docs_dir=docs_dir)
+            if drift_report.is_stale:
+                drift_findings.append({
+                    "type": "doc_drift",
+                    "severity": "medium",
+                    "file": "docs/",
+                    "message": "docs/ -- source changed, docs stale",
+                })
+        except Exception as exc:
+            if not quiet:
+                click.echo(f"  [doc drift] skipped: {exc}", err=True)
+
+    dep_findings: list[dict] = []
+    try:
+        dep_report = analyze_dependency_health(str(root))
+        if dep_report is not None:
+            for dup in dep_report.duplicates:
+                dep_findings.append({
+                    "type": "dep_health",
+                    "severity": "medium",
+                    "package": dup.name,
+                    "versions": dup.versions,
+                    "message": (
+                        f"{dup.name} -- duplicate versions: "
+                        f"{', '.join(dup.versions[:5])}"
+                    ),
+                })
+            for lc in dep_report.license_conflicts:
+                dep_findings.append({
+                    "type": "dep_health",
+                    "severity": "high",
+                    "package": lc.package,
+                    "license": lc.license,
+                    "message": f"{lc.package} -- {lc.reason}",
+                })
+    except Exception as exc:
+        if not quiet:
+            click.echo(f"  [dep health] skipped: {exc}", err=True)
+
+    all_findings = complexity_findings + dead_findings + drift_findings + dep_findings
+
+    high_count = sum(1 for f in all_findings if f["severity"] == "high")
+    medium_count = sum(1 for f in all_findings if f["severity"] == "medium")
+    total_count = len(all_findings)
+
+    if fmt == "json":
+        output = _json.dumps({
+            "path": str(root),
+            "summary": {
+                "total": total_count,
+                "high": high_count,
+                "medium": medium_count,
+            },
+            "findings": {
+                "complexity": complexity_findings,
+                "dead_code": dead_findings,
+                "doc_drift": drift_findings,
+                "dep_health": dep_findings,
+            },
+        }, indent=2)
+        click.echo(output)
+    else:
+        lines: list[str] = []
+
+        lines.append("\n=== Complexity ===")
+        if complexity_findings:
+            for f in complexity_findings:
+                icon = "x" if f["severity"] == "high" else "!"
+                lines.append(f"  {icon} {f['message']}")
+        else:
+            lines.append("  ok no issues")
+
+        lines.append("\n=== Dead Code ===")
+        if dead_findings:
+            for f in dead_findings:
+                lines.append(f"  x {f['message']}")
+        else:
+            lines.append("  ok no issues")
+
+        lines.append("\n=== Doc Drift ===")
+        if drift_findings:
+            for f in drift_findings:
+                lines.append(f"  x {f['message']}")
+        elif not docs_dir.exists():
+            lines.append("  - docs/ not found, skipped")
+        else:
+            lines.append("  ok docs up to date")
+
+        lines.append("\n=== Dep Health ===")
+        if dep_findings:
+            for f in dep_findings:
+                icon = "x" if f["severity"] == "high" else "!"
+                lines.append(f"  {icon} {f['message']}")
+        else:
+            lines.append("  ok no issues")
+
+        if total_count == 0:
+            summary_line = "\n=== Summary ===\n  0 findings -- exit 0"
+        else:
+            parts = []
+            if high_count:
+                parts.append(f"{high_count} high")
+            if medium_count:
+                parts.append(f"{medium_count} medium")
+            breakdown = ", ".join(parts)
+            threshold_map = {
+                "high": "exit 1 (high findings present)",
+                "medium": "exit 1 (medium+ findings present)",
+                "none": "exit 0 (--fail-on none)",
+            }
+            threshold_label = threshold_map.get(fail_on.lower(), "")
+            summary_line = (
+                f"\n=== Summary ===\n"
+                f"  {total_count} finding(s) ({breakdown}) -- {threshold_label}"
+            )
+        lines.append(summary_line)
+
+        click.echo("\n".join(lines))
+
+    if fail_on.lower() == "none":
+        sys.exit(0)
+
+    should_fail = False
+    if fail_on.lower() == "high" and high_count > 0:
+        should_fail = True
+    elif fail_on.lower() == "medium" and (high_count + medium_count) > 0:
+        should_fail = True
+
+    if should_fail:
+        sys.exit(1)
+
 # ---------------------------------------------------------------------------
 # diagram subcommand
 # ---------------------------------------------------------------------------

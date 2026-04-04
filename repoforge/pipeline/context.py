@@ -18,6 +18,7 @@ def build_all_contexts(
     *,
     chunked: bool = False,
     facts_only: bool = False,
+    embed_diagrams: bool = False,
 ) -> dict:
     """Build all context strings needed by chapter prompt generation.
 
@@ -51,7 +52,7 @@ def build_all_contexts(
     _build_graph(root, result, log)
 
     # 3b'. Build diagrams from graph
-    _build_diagrams(root, all_files, result, log)
+    _build_diagrams(root, all_files, result, log, force=embed_diagrams)
 
     # 3b. Build semantic context
     _build_semantic(root, all_files, result, log)
@@ -78,11 +79,28 @@ def build_all_contexts(
     return result
 
 
-def _build_diagrams(root: Path, all_files: list, result: dict, log) -> None:
-    """Build Mermaid architecture diagrams from the graph (if available)."""
+def _build_diagrams(root: Path, all_files: list, result: dict, log, *, force: bool = False) -> None:
+    """Build Mermaid architecture diagrams from the graph (if available).
+
+    When force=True, attempts to build a graph even if one hasn't been built yet
+    (e.g., when --diagrams flag is passed). Guarantees a diagram_ctx is set
+    or an error is logged.
+    """
     _graph = result.get("_graph")
+
     if _graph is None:
-        return
+        if not force:
+            return
+        # --diagrams flag: attempt to build graph on demand
+        try:
+            from ..graph import build_graph_v2
+            log("🔗 Building dependency graph for diagrams...")
+            _graph = build_graph_v2(str(root))
+            result["_graph"] = _graph
+            log("   ✅ Graph ready for diagram generation")
+        except (ImportError, OSError, ValueError, RuntimeError) as e:
+            log(f"   ⚠️  Graph build failed, diagrams will be limited: {e}")
+            # Still proceed — generate_all_diagrams handles empty/None graph gracefully
 
     try:
         from ..diagrams import generate_all_diagrams
