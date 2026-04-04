@@ -5,22 +5,22 @@ All tests run regardless of whether rg is installed —
 they test both the rg path and the fallback path.
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
+
 from repoforge.ripgrep import (
-    rg_available,
-    list_files,
+    _fallback_extract_definitions,
+    _fallback_extract_imports,
+    _fallback_list_files,
+    _fallback_summary_hints,
     extract_definitions,
     extract_imports,
     extract_summary_hints,
+    list_files,
     repo_stats,
-    _fallback_list_files,
-    _fallback_extract_definitions,
-    _fallback_extract_imports,
-    _fallback_summary_hints,
+    rg_available,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

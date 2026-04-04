@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from .system import _base_system, _base_system_facts_only
 from .context import (
     _repo_context,
     _repo_context_facts_only,
 )
-
+from .system import _base_system, _base_system_facts_only
 
 # ---------------------------------------------------------------------------
 # Chapter 4: 04-core-mechanisms.md — Deep dive

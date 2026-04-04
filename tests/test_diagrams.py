@@ -933,6 +933,7 @@ class TestCLIDiagramsCommand:
 
     def test_diagrams_help(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -943,6 +944,7 @@ class TestCLIDiagramsCommand:
 
     def test_diagrams_writes_file(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
@@ -958,9 +960,11 @@ class TestCLIDiagramsCommand:
 
     def test_diagrams_default_output_name(self, tmp_path):
         """Default output is diagrams.md in the current working directory."""
-        from click.testing import CliRunner
-        from repoforge.cli import main
         import os
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
 
         repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
         runner = CliRunner()
@@ -973,6 +977,7 @@ class TestCLIDiagramsCommand:
 
     def test_diagrams_output_contains_header(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
@@ -989,6 +994,7 @@ class TestCLIDiagramsCommand:
     def test_diagrams_in_main_help(self):
         """'diagrams' command is listed in the main help."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -998,6 +1004,7 @@ class TestCLIDiagramsCommand:
 
     def test_diagrams_max_nodes_option(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         repo_dir = str(__import__("pathlib").Path(__file__).parent.parent)
@@ -1020,6 +1027,7 @@ class TestDocsDiagramsFlag:
 
     def test_docs_help_shows_diagrams_flag(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -1030,6 +1038,7 @@ class TestDocsDiagramsFlag:
     def test_docs_dry_run_with_diagrams_flag(self, tmp_path):
         """--diagrams flag is accepted without error in dry-run mode."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -1041,7 +1050,7 @@ class TestDocsDiagramsFlag:
 
     def test_generate_docs_accepts_embed_diagrams(self, tmp_path):
         """generate_docs() accepts embed_diagrams without raising."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
         # Write a minimal repo
         (tmp_path / "main.py").write_text("def hello(): pass\n")
@@ -1067,8 +1076,9 @@ class TestDocsDiagramsFlag:
     def test_build_all_contexts_accepts_embed_diagrams(self, tmp_path):
         """build_all_contexts() accepts embed_diagrams parameter without raising."""
         from pathlib import Path
-        from repoforge.scanner import scan_repo
+
         from repoforge.pipeline.context import build_all_contexts
+        from repoforge.scanner import scan_repo
 
         (tmp_path / "main.py").write_text("def hello(): pass\n")
         repo_map = scan_repo(str(tmp_path))
@@ -1085,6 +1095,7 @@ class TestDocsDiagramsFlag:
     def test_write_diagrams_file_with_empty_ctx(self, tmp_path):
         """_write_diagrams_file returns None when no diagram context is available."""
         from pathlib import Path
+
         from repoforge.docs_generator import _write_diagrams_file
 
         out = tmp_path / "docs"
@@ -1104,6 +1115,7 @@ class TestDocsDiagramsFlag:
     def test_write_diagrams_file_with_content(self, tmp_path):
         """_write_diagrams_file writes diagrams.md when diagram_ctx is present."""
         from pathlib import Path
+
         from repoforge.docs_generator import _write_diagrams_file
 
         out = tmp_path / "docs"

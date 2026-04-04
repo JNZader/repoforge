@@ -1,10 +1,10 @@
 """Tests for tree-sitter source code compression (repoforge.intelligence.compressor)."""
 
-import pytest
 from unittest.mock import patch
 
-from repoforge.intelligence.compressor import compress_file, compress_batch, compression_stats
+import pytest
 
+from repoforge.intelligence.compressor import compress_batch, compress_file, compression_stats
 
 # ---------------------------------------------------------------------------
 # Python compression

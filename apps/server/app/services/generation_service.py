@@ -27,10 +27,9 @@ import structlog
 from sqlalchemy import select, update
 
 from app.config import settings
-from app.models import Generation, GenerationEvent, async_session_factory
-from app.models import ProviderKey
-from app.services.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+from app.models import Generation, GenerationEvent, ProviderKey, async_session_factory
 from app.services import repo_cloner
+from app.services.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 from app.services.crypto import decrypt_key, derive_user_key
 from app.services.session_keys import session_key_store
 
@@ -192,7 +191,7 @@ class GenerationService:
                 await self._emit(generation_id, "phase_changed", phase="scanning")
                 await self._update_status(generation_id, "scanning")
 
-                from repoforge.scanner import scan_repo, classify_complexity
+                from repoforge.scanner import classify_complexity, scan_repo
 
                 repo_map = await asyncio.to_thread(scan_repo, str(clone_dir))
                 complexity = classify_complexity(repo_map)

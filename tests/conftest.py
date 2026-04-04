@@ -1,8 +1,9 @@
 """Shared fixtures for the repoforge test suite."""
 
 import os
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture

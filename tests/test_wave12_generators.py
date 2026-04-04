@@ -5,14 +5,13 @@ from pathlib import Path
 
 import pytest
 
+from repoforge.facts import FactItem
 from repoforge.generators import (
-    generate_changelog,
     generate_api_reference,
+    generate_changelog,
     generate_onboarding,
 )
 from repoforge.intelligence.ast_extractor import ASTSymbol
-from repoforge.facts import FactItem
-
 
 # ── helpers ──────────────────────────────────────────────────────────────
 

@@ -1,7 +1,8 @@
 """Tests for Go AST extractor — tree-sitter based."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from repoforge.intelligence.lang_go import GoASTExtractor
 

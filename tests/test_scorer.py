@@ -10,9 +10,9 @@ Tests cover:
 """
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures: crafted SKILL.md content
@@ -715,6 +715,7 @@ class TestReportMarkdown:
 class TestCLIScore:
     def test_score_help(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["score", "--help"])
@@ -726,6 +727,7 @@ class TestCLIScore:
     def test_score_existing_skills(self):
         """Score the project's own generated skills."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         skills_dir = Path(repo_dir) / ".claude" / "skills"
@@ -738,6 +740,7 @@ class TestCLIScore:
 
     def test_score_custom_directory(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -747,6 +750,7 @@ class TestCLIScore:
 
     def test_score_json_format(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -758,6 +762,7 @@ class TestCLIScore:
 
     def test_score_markdown_format(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -768,6 +773,7 @@ class TestCLIScore:
 
     def test_score_missing_directory(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -778,6 +784,7 @@ class TestCLIScore:
     def test_min_score_pass(self, skills_directory):
         """All skills score above 0.1, so --min-score 0.1 should pass."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -788,6 +795,7 @@ class TestCLIScore:
     def test_min_score_fail(self, skills_directory):
         """BAD_SKILL is in the directory and scores low, so --min-score 0.99 should fail."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -799,6 +807,7 @@ class TestCLIScore:
 class TestCLIScoreFlag:
     def test_skills_help_shows_score_flag(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -808,6 +817,7 @@ class TestCLIScoreFlag:
     def test_skills_dry_run_with_score(self, tmp_path):
         """--score with --dry-run should not crash (score is skipped in dry-run)."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()

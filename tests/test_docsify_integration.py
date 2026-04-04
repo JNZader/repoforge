@@ -10,13 +10,12 @@ from pathlib import Path
 import pytest
 
 from repoforge.docsify import (
-    build_docsify_files,
-    _build_sidebar,
     _build_index_html,
-    _theme_url,
+    _build_sidebar,
     _language_to_code,
+    _theme_url,
+    build_docsify_files,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -176,9 +176,13 @@ def _build_doc_chunks(
 ) -> None:
     try:
         from ..intelligence.doc_chunks import (
-            chunk_endpoints, chunk_data_models, chunk_mcp_tools,
-            chunk_cli_commands, chunk_architecture, chunk_module_summary,
             build_all_ast_symbols,
+            chunk_architecture,
+            chunk_cli_commands,
+            chunk_data_models,
+            chunk_endpoints,
+            chunk_mcp_tools,
+            chunk_module_summary,
         )
         log("🧩 Building documentation chunks (chunked mode)...")
 
@@ -216,14 +220,16 @@ def _build_facts_only(
     root: Path, all_files: list, repo_map: dict, result: dict, log,
 ) -> None:
     from ..graph_context import (
-        build_facts_only_context, build_facts_only_context_for_chapter,
-        filter_facts_for_chapter, format_facts_section,
+        build_facts_only_context,
+        build_facts_only_context_for_chapter,
+        filter_facts_for_chapter,
+        format_facts_section,
     )
 
     try:
-        from ..intelligence.compressor import compress_batch
-        from ..graph_context import _compute_ranks
         from ..graph import is_test_file
+        from ..graph_context import _compute_ranks
+        from ..intelligence.compressor import compress_batch
 
         log("🔬 Facts-only mode: compressing top file signatures...")
         _fo_facts = result["_facts"]

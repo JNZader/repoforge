@@ -26,28 +26,27 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .scanner import scan_repo, classify_complexity
-from .llm import build_llm, LLM
-from .prompts import (
-    skill_prompt,
-    layer_skill_prompt,
-    agent_prompt,
-    orchestrator_prompt,
-    build_skill_registry,
-    hooks_prompt,
-)
-from .adapters import resolve_targets, run_adapters, ADAPTER_TARGETS
+from .adapters import ADAPTER_TARGETS, resolve_targets, run_adapters
 from .disclosure import build_discovery_index
-from .plugins import build_plugin_manifest, write_plugin, commands_prompt
 from .graph_context import (
     build_graph_context_from_graph,
-    build_short_graph_context,
+    build_module_facts_context,
     build_module_graph_context,
     build_semantic_context,
-    build_module_facts_context,
+    build_short_graph_context,
     format_facts_section,
 )
-
+from .llm import LLM, build_llm
+from .plugins import build_plugin_manifest, commands_prompt, write_plugin
+from .prompts import (
+    agent_prompt,
+    build_skill_registry,
+    hooks_prompt,
+    layer_skill_prompt,
+    orchestrator_prompt,
+    skill_prompt,
+)
+from .scanner import classify_complexity, scan_repo
 
 logger = logging.getLogger(__name__)
 
@@ -479,7 +478,7 @@ def generate_artifacts(
     # 10. Security scan (opt-in via --scan flag or scan parameter)
     # -----------------------------------------------------------------------
     if scan and not dry_run:
-        from .security import scan_generated_output, SecurityScanner
+        from .security import SecurityScanner, scan_generated_output
         log("\n🔒 Running security scan on generated output...")
         scan_result = scan_generated_output(str(root))
         if scan_result.findings:

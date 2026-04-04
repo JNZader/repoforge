@@ -10,13 +10,13 @@ Tests cover:
 """
 
 import json
+
 import pytest
 
-from repoforge.graph_query import QueryResult, query_callers, query_callees, query_imports
-from repoforge.symbols.graph import SymbolGraph, CallEdge
+from repoforge.graph import CodeGraph, Edge, Node
+from repoforge.graph_query import QueryResult, query_callees, query_callers, query_imports
 from repoforge.symbols.extractor import Symbol
-from repoforge.graph import CodeGraph, Node, Edge
-
+from repoforge.symbols.graph import CallEdge, SymbolGraph
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -238,6 +238,7 @@ class TestQueryImports:
 class TestCLIQuery:
     def test_query_help_shows_options(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "--help"])
@@ -251,6 +252,7 @@ class TestCLIQuery:
 
     def test_query_callers_missing_symbol(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "--query", "callers"])
@@ -258,6 +260,7 @@ class TestCLIQuery:
 
     def test_query_callees_missing_symbol(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "--query", "callees"])
@@ -265,6 +268,7 @@ class TestCLIQuery:
 
     def test_query_imports_missing_file(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "--query", "imports"])
@@ -272,9 +276,11 @@ class TestCLIQuery:
 
     def test_query_callers_real_repo(self):
         """Run callers query on the repoforge codebase itself."""
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -288,9 +294,11 @@ class TestCLIQuery:
         assert isinstance(data["results"], list)
 
     def test_query_callees_real_repo(self):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -303,9 +311,11 @@ class TestCLIQuery:
         assert isinstance(data["results"], list)
 
     def test_query_imports_real_repo(self):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -319,9 +329,11 @@ class TestCLIQuery:
         assert isinstance(data["results"], list)
 
     def test_query_nonexistent_symbol(self):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -334,9 +346,11 @@ class TestCLIQuery:
         assert data["results"] == []
 
     def test_query_output_to_file(self, tmp_path):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         output_file = str(tmp_path / "query.json")
         runner = CliRunner()
@@ -358,7 +372,7 @@ class TestCLIQuery:
 
 class TestPublicAPI:
     def test_imports_from_init(self):
-        from repoforge import QueryResult, query_callers, query_callees, query_imports
+        from repoforge import QueryResult, query_callees, query_callers, query_imports
         assert QueryResult is not None
         assert query_callers is not None
         assert query_callees is not None

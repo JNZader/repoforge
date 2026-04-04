@@ -2,17 +2,16 @@
 
 import pytest
 
-from repoforge.intelligence.ast_extractor import ASTSymbol
 from repoforge.analysis import (
-    detect_dead_code,
-    analyze_complexity,
-    extract_code_examples,
-    DeadCodeReport,
-    ComplexityReport,
-    ModuleComplexity,
     CodeExample,
+    ComplexityReport,
+    DeadCodeReport,
+    ModuleComplexity,
+    analyze_complexity,
+    detect_dead_code,
+    extract_code_examples,
 )
-
+from repoforge.intelligence.ast_extractor import ASTSymbol
 
 # ── helpers ──────────────────────────────────────────────────────────────
 

@@ -14,9 +14,9 @@ Tests cover:
 """
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -798,6 +798,7 @@ class TestCommandsPrompt:
 class TestCLIPluginFlag:
     def test_skills_help_shows_plugin_flag(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -806,6 +807,7 @@ class TestCLIPluginFlag:
 
     def test_skills_accepts_plugin(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -820,6 +822,7 @@ class TestCLIPluginFlag:
 
     def test_skills_accepts_no_plugin(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -835,6 +838,7 @@ class TestCLIPluginFlag:
     def test_default_is_no_plugin(self, tmp_path):
         """Without --plugin, plugin should not be generated."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -917,8 +921,9 @@ class TestGeneratorPluginIntegration:
 class TestPluginConfigOverride:
     def test_config_enables_plugin(self, tmp_path):
         """generate_plugin: true in repoforge.yaml should enable plugin."""
-        from repoforge.generator import generate_artifacts
         import yaml
+
+        from repoforge.generator import generate_artifacts
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -938,8 +943,9 @@ class TestPluginConfigOverride:
 
     def test_config_disabled_stays_off(self, tmp_path):
         """generate_plugin: false in config should keep plugin off."""
-        from repoforge.generator import generate_artifacts
         import yaml
+
+        from repoforge.generator import generate_artifacts
 
         repo = tmp_path / "repo"
         repo.mkdir()

@@ -1,18 +1,19 @@
 """Tests for skills_from_docs.ingest module."""
 
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from repoforge.skills_from_docs.ingest import (
+    _extract_youtube_video_id,
     detect_source_type,
-    read_local_dir,
     extract_notebook,
     extract_pdf,
     fetch_youtube_transcript,
-    _extract_youtube_video_id,
     ingest,
+    read_local_dir,
 )
 from repoforge.skills_from_docs.types import SourceType
 
@@ -184,6 +185,7 @@ class TestExtractPdf:
         with patch.dict("sys.modules", {"pdfplumber": None}):
             # Force reimport to trigger ImportError
             import importlib
+
             import repoforge.skills_from_docs.ingest as mod
             # We can't easily force ImportError via sys.modules=None in all Pythons,
             # so test via direct function behavior

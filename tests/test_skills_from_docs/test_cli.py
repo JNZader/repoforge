@@ -1,7 +1,8 @@
 """Tests for skills-from-docs CLI subcommand."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 from click.testing import CliRunner
 
 from repoforge.cli import main

@@ -6,9 +6,9 @@ that import each other, builds a v2 graph, and verifies that all
 dependencies are detected including transitive blast radius.
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixture: multi-language project with cross-file imports

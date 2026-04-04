@@ -14,10 +14,10 @@ Tests cover:
 - Helper functions (_is_test_module, _test_target_name, _source_test_name)
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from click.testing import CliRunner
+from unittest.mock import MagicMock, patch
 
+import pytest
+from click.testing import CliRunner
 
 # ---------------------------------------------------------------------------
 # Fixtures: mock scanner data
@@ -119,7 +119,7 @@ class TestAnalysisPrompt:
 
 class TestPromptTypes:
     def test_all_types_present(self):
-        from repoforge.prompts_cmd import PROMPT_TYPES, _BUILDERS
+        from repoforge.prompts_cmd import _BUILDERS, PROMPT_TYPES
 
         assert len(PROMPT_TYPES) == 7
         for t in PROMPT_TYPES:
@@ -364,8 +364,8 @@ class TestCLI:
 class TestPublicAPI:
     def test_exports_available(self):
         from repoforge import (
-            AnalysisPrompt,
             PROMPT_TYPES,
+            AnalysisPrompt,
             generate_prompts,
             render_prompts_markdown,
             write_individual_prompts,

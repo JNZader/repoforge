@@ -1,6 +1,7 @@
 """Tests for symbol graph Mermaid rendering."""
 
 import pytest
+
 from repoforge.symbols.extractor import Symbol
 from repoforge.symbols.graph import CallEdge, SymbolGraph
 from repoforge.symbols.renderer import render_symbol_mermaid

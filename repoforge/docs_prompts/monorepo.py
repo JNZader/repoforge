@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from .system import _base_system
-from .context import _repo_context
-from .classify import classify_layer, _layer_repo_map
 from .chapters import (
     ADAPTIVE_CHAPTERS,
     _dispatch_prompt,
+)
+from .chapters import (
     get_chapter_prompts as _single_project_get_chapter_prompts,
 )
-
+from .classify import _layer_repo_map, classify_layer
+from .context import _repo_context
+from .system import _base_system
 
 # ===========================================================================
 # MONOREPO HIERARCHICAL DOCUMENTATION

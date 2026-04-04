@@ -13,18 +13,18 @@ Tests cover:
 """
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 from repoforge.checker import (
     CheckResult,
     CodeRef,
+    ReferenceChecker,
     RefStatus,
     RefType,
-    ReferenceChecker,
     check_docs,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -313,6 +313,7 @@ class TestCLIIntegration:
 
     def test_check_command_exists(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -322,6 +323,7 @@ class TestCLIIntegration:
 
     def test_check_missing_docs_dir(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -331,6 +333,7 @@ class TestCLIIntegration:
 
     def test_check_with_docs(self, sample_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -340,6 +343,7 @@ class TestCLIIntegration:
 
     def test_check_fail_on_broken(self, sample_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -353,6 +357,7 @@ class TestCLIIntegration:
 
     def test_check_json_output(self, sample_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()

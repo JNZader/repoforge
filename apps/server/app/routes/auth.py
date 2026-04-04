@@ -11,10 +11,9 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.middleware.auth import CurrentUser
-from app.middleware.rate_limit import AUTH_LIMIT, API_LIMIT, limiter
+from app.middleware.rate_limit import API_LIMIT, AUTH_LIMIT, limiter
 from app.models import User, async_session_factory
 from app.models.schemas import AuthValidateResponse, UserInfo
-
 from app.services.github_oauth import (
     exchange_code_for_token,
     generate_state,

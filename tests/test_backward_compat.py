@@ -8,8 +8,9 @@ Ensures that:
 """
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = str(Path(__file__).parent.parent)
 
@@ -233,6 +234,7 @@ class TestCLIBackwardCompat:
     def test_cli_default_uses_v1(self):
         """repoforge graph -w . (no --v2) should use v1 name-matching."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "-w", REPO_ROOT, "-q"])
@@ -243,6 +245,7 @@ class TestCLIBackwardCompat:
     def test_cli_v1_json_valid(self):
         """v1 JSON output via CLI should be valid JSON."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -256,6 +259,7 @@ class TestCLIBackwardCompat:
     def test_cli_v1_mermaid_valid(self):
         """v1 Mermaid output via CLI should start with graph LR."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -272,6 +276,7 @@ class TestCLIBackwardCompat:
         blast radius with it.
         """
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
 
@@ -296,6 +301,7 @@ class TestCLIBackwardCompat:
     def test_cli_v2_produces_output(self):
         """repoforge graph -w . --v2 should produce valid output."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -307,6 +313,7 @@ class TestCLIBackwardCompat:
     def test_cli_v1_and_v2_both_succeed(self):
         """Both v1 and v2 should succeed on the same workspace."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         r1 = runner.invoke(main, ["graph", "-w", REPO_ROOT, "-q"])

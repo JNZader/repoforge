@@ -10,8 +10,8 @@ from __future__ import annotations
 import logging
 from pathlib import PurePosixPath
 
-from .ast_extractor import ASTLanguageExtractor, ASTSymbol
 from ..facts import FactItem
+from .ast_extractor import ASTLanguageExtractor, ASTSymbol
 
 logger = logging.getLogger(__name__)
 
@@ -109,11 +109,11 @@ def get_ast_registry() -> ASTExtractorRegistry | None:
         _ast_registry = ASTExtractorRegistry()
 
         from .lang_go import GoASTExtractor
-        from .lang_python import PythonASTExtractor
-        from .lang_typescript import TypeScriptASTExtractor
-        from .lang_javascript import JavaScriptASTExtractor
         from .lang_java import JavaASTExtractor
+        from .lang_javascript import JavaScriptASTExtractor
+        from .lang_python import PythonASTExtractor
         from .lang_rust import RustASTExtractor
+        from .lang_typescript import TypeScriptASTExtractor
 
         _ast_registry.register(GoASTExtractor())
         _ast_registry.register(PythonASTExtractor())

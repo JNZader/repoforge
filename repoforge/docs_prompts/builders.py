@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from .system import _base_system, _base_system_facts_only
 from .context import (
     _format_stack,
     _repo_context,
     _repo_context_light,
 )
-
+from .system import _base_system, _base_system_facts_only
 
 # ---------------------------------------------------------------------------
 # Chapter 0: index.md — Navigation hub

@@ -5,18 +5,16 @@ Maps file extensions to language-specific regex-based extractors.
 Used by the graph builder to select the right parser for each file.
 """
 
-from .registry import ExtractorRegistry
-from .types import ExportInfo, Extractor, ImportInfo
-
 # ---------------------------------------------------------------------------
 # Language extractors
 # ---------------------------------------------------------------------------
-
 from .go import GoExtractor
 from .java import JavaExtractor
 from .javascript import JavaScriptExtractor
 from .python_ext import PythonExtractor
+from .registry import ExtractorRegistry
 from .rust import RustExtractor
+from .types import ExportInfo, Extractor, ImportInfo
 from .typescript import TypeScriptExtractor
 
 # ---------------------------------------------------------------------------

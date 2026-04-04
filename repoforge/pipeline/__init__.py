@@ -2,7 +2,7 @@
 
 from .context import build_all_contexts
 from .generate import generate_chapter, postprocess_chapter
-from .write import write_chapter, write_docsify, write_corrections_log
+from .write import write_chapter, write_corrections_log, write_docsify
 
 __all__ = [
     "build_all_contexts",

@@ -7,8 +7,8 @@ health endpoints, error handling, and router registration.
 import asyncio
 import re
 import time
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import structlog
@@ -23,10 +23,10 @@ from app.config import settings
 from app.middleware.logging_config import configure_logging
 from app.middleware.rate_limit import limiter
 from app.models.database import Base, async_session_factory, engine
+from app.routes.analytics import router as analytics_router
 from app.routes.auth import router as auth_router
 from app.routes.generate import router as generate_router
 from app.routes.history import router as history_router
-from app.routes.analytics import router as analytics_router
 from app.routes.providers import router as providers_router
 from app.services.generation_service import generation_service
 from app.services.session_keys import session_key_cleanup_loop

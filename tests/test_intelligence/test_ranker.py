@@ -2,9 +2,8 @@
 
 import pytest
 
-from repoforge.graph import CodeGraph, Node, Edge
+from repoforge.graph import CodeGraph, Edge, Node
 from repoforge.intelligence.ranker import pagerank, rank_files
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -2,8 +2,7 @@
 
 import pytest
 
-from repoforge.refinement import refine_chapter, RefinementResult
-
+from repoforge.refinement import RefinementResult, refine_chapter
 
 GOOD_CONTENT = """# Architecture
 

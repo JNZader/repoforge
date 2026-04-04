@@ -17,9 +17,9 @@ Tests cover:
 - Edge cases (empty files, only frontmatter, large files)
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures: crafted content for testing compression passes
@@ -746,6 +746,7 @@ class TestCompressionReport:
 class TestCLICompress:
     def test_compress_help(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["compress", "--help"])
@@ -757,6 +758,7 @@ class TestCLICompress:
 
     def test_compress_skills_directory(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -767,6 +769,7 @@ class TestCLICompress:
 
     def test_compress_dry_run(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         # Read original content
@@ -786,6 +789,7 @@ class TestCLICompress:
 
     def test_compress_aggressive(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -795,6 +799,7 @@ class TestCLICompress:
 
     def test_compress_missing_directory(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -804,6 +809,7 @@ class TestCLICompress:
 
     def test_compress_empty_directory(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         empty = tmp_path / "empty"
         empty.mkdir()
@@ -821,6 +827,7 @@ class TestCLICompress:
 class TestCLICompressFlag:
     def test_skills_help_shows_compress_flag(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -831,6 +838,7 @@ class TestCLICompressFlag:
     def test_skills_dry_run_with_compress(self, tmp_path):
         """--compress with --dry-run should not crash."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -929,7 +937,7 @@ class TestEdgeCases:
 
 class TestPublicAPI:
     def test_imports_from_init(self):
-        from repoforge import SkillCompressor, CompressionResult, compress_file, compress_directory
+        from repoforge import CompressionResult, SkillCompressor, compress_directory, compress_file
         assert SkillCompressor is not None
         assert CompressionResult is not None
         assert compress_file is not None

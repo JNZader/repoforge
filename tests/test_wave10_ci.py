@@ -6,13 +6,12 @@ from pathlib import Path
 import pytest
 
 from repoforge.ci import (
+    DriftReport,
+    GateResult,
     detect_changed_files,
     detect_doc_drift,
     quality_gate,
-    DriftReport,
-    GateResult,
 )
-
 
 # ── detect_changed_files ─────────────────────────────────────────────────
 

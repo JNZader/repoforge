@@ -13,14 +13,14 @@ Usage:
     markdown = render_coverage_markdown(reports)
 """
 
+from .detector import auto_detect_and_parse, detect_coverage_files
 from .model import CoverageFile, CoverageReport
 from .parsers import (
     parse_cobertura,
-    parse_lcov,
     parse_coverage_py_json,
     parse_jacoco,
+    parse_lcov,
 )
-from .detector import auto_detect_and_parse, detect_coverage_files
 from .renderer import render_coverage_markdown
 
 __all__ = [

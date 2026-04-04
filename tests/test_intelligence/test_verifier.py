@@ -2,24 +2,23 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
 import json
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from repoforge.facts import FactItem
 from repoforge.intelligence.ast_extractor import ASTSymbol
 from repoforge.intelligence.verifier import (
+    DEFAULT_VERIFIER_MODEL,
+    FALLBACK_VERIFIER_MODEL,
+    _apply_verification_corrections,
     _build_verification_prompt,
     _format_facts_for_verification,
     _parse_verification_response,
-    _apply_verification_corrections,
     _resolve_verifier_model,
     verify_chapter,
-    DEFAULT_VERIFIER_MODEL,
-    FALLBACK_VERIFIER_MODEL,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

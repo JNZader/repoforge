@@ -14,19 +14,18 @@ Usage:
   python -m eval.harness --compare v1 v2         # diff two prompt versions
 """
 
+import argparse
+import json
 import re
 import sys
-import json
-import argparse
-from pathlib import Path
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 # Add parent to path when running directly
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from repoforge.prompts import skill_prompt, layer_skill_prompt, agent_prompt
-
+from repoforge.prompts import agent_prompt, layer_skill_prompt, skill_prompt
 
 # ---------------------------------------------------------------------------
 # Synthetic repo snapshots (no real repos needed)

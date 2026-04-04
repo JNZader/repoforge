@@ -5,12 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from repoforge.graph import CodeGraph, Node, Edge
+from repoforge.graph import CodeGraph, Edge, Node
 from repoforge.graph_context import (
     CodeSnippet,
     select_code_snippets,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -5,8 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from repoforge.facts import FactItem, FACT_PATTERNS, extract_facts
-
+from repoforge.facts import FACT_PATTERNS, FactItem, extract_facts
 
 # ---------------------------------------------------------------------------
 # Helpers

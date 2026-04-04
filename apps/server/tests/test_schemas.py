@@ -1,9 +1,8 @@
 """Tests for Pydantic request/response schemas."""
 
 import pytest
-from pydantic import ValidationError
-
 from app.models.schemas import GenerateRequest
+from pydantic import ValidationError
 
 
 def _make_request(**overrides) -> dict:

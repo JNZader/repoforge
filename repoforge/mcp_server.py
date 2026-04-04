@@ -39,9 +39,9 @@ from pathlib import Path
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
+    Resource,
     TextContent,
     Tool,
-    Resource,
 )
 
 logger = logging.getLogger(__name__)
@@ -227,7 +227,7 @@ def _tool_drift(args: dict) -> str:
 
 
 def _tool_analyze(args: dict) -> str:
-    from .analysis import detect_dead_code, analyze_complexity
+    from .analysis import analyze_complexity, detect_dead_code
     from .intelligence.doc_chunks import build_all_ast_symbols
 
     root = args["working_dir"]
@@ -280,10 +280,10 @@ def _tool_analyze(args: dict) -> str:
 
 def _tool_context(args: dict) -> str:
     """Extract rich project context for the host agent to use."""
-    from .scanner import scan_repo
     from .facts import extract_facts
-    from .graph_context import format_api_surface, format_facts_section, build_short_graph_context
+    from .graph_context import build_short_graph_context, format_api_surface, format_facts_section
     from .knowledge import detect_architecture_patterns, generate_architecture_mermaid
+    from .scanner import scan_repo
 
     root = args["working_dir"]
     repo_map = scan_repo(root)

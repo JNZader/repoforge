@@ -1,7 +1,8 @@
 """Tests for symbol extraction from source code."""
 
 import pytest
-from repoforge.symbols.extractor import Symbol, extract_symbols, detect_language
+
+from repoforge.symbols.extractor import Symbol, detect_language, extract_symbols
 
 
 class TestDetectLanguage:

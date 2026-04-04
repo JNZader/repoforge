@@ -1,6 +1,7 @@
 """Tests for Wave 3: Cross-file symbol linking."""
 
 import pytest
+
 from repoforge.intelligence.ast_extractor import ASTSymbol
 from repoforge.intelligence.symbol_linker import SymbolLinker
 

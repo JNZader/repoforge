@@ -1,7 +1,6 @@
 """Tests for the circuit breaker service."""
 
 import pytest
-
 from app.services.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 
 

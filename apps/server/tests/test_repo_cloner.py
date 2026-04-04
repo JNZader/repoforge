@@ -1,7 +1,6 @@
 """Tests for the repo cloner URL validation."""
 
 import pytest
-
 from app.services.repo_cloner import _validate_url
 
 

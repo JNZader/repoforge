@@ -6,10 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from repoforge.graph import CodeGraph, Node, Edge
+from repoforge.graph import CodeGraph, Edge, Node
 from repoforge.intelligence.ast_extractor import ASTSymbol
-from repoforge.intelligence.budget import select_context, ContextItem
-
+from repoforge.intelligence.budget import ContextItem, select_context
 
 # ---------------------------------------------------------------------------
 # Helpers

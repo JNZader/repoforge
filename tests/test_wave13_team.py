@@ -4,17 +4,16 @@ import pytest
 
 from repoforge.profiles import (
     PROFILES,
-    get_profile,
-    apply_profile,
     ProfileConfig,
+    apply_profile,
+    get_profile,
 )
 from repoforge.style import (
-    StyleRule,
     DEFAULT_RULES,
-    check_style,
+    StyleRule,
     StyleViolation,
+    check_style,
 )
-
 
 # ── Config profiles ──────────────────────────────────────────────────────
 

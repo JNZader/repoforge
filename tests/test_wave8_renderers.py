@@ -6,13 +6,12 @@ from pathlib import Path
 import pytest
 
 from repoforge.renderers import (
-    RendererProtocol,
-    MarkdownRenderer,
-    LlmsTxtRenderer,
     JsonRenderer,
+    LlmsTxtRenderer,
+    MarkdownRenderer,
+    RendererProtocol,
     get_renderer,
 )
-
 
 SAMPLE_CHAPTERS = [
     {"file": "01-overview.md", "title": "Overview", "content": "# Overview\n\nProject overview."},

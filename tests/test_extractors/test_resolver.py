@@ -15,11 +15,10 @@ Tests cover:
 import pytest
 
 from repoforge.extractors.resolver import (
-    resolve_import,
     resolve_go_import,
+    resolve_import,
     resolve_python_import,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures: available file sets

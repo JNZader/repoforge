@@ -2,8 +2,7 @@
 
 import pytest
 
-from repoforge.scoring import DocScorer, DocScore
-
+from repoforge.scoring import DocScore, DocScorer
 
 GOOD_CHAPTER = """# Architecture
 

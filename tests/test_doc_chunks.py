@@ -15,9 +15,8 @@ Tests cover:
 
 import pytest
 
-from repoforge.intelligence.ast_extractor import ASTSymbol
 from repoforge.facts import FactItem
-
+from repoforge.intelligence.ast_extractor import ASTSymbol
 
 # ---------------------------------------------------------------------------
 # Fixtures

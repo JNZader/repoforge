@@ -428,8 +428,8 @@ def build_graph_v2(root_dir: str, files: list[str] | None = None) -> CodeGraph:
     """
     from .extractors import get_extractor
     from .extractors.resolver import (
-        resolve_import,
         resolve_go_import,
+        resolve_import,
         resolve_python_import,
     )
 

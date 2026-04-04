@@ -4,8 +4,7 @@ import os
 
 import pytest
 
-from repoforge.llm import build_llm, AUTO_DETECT_ORDER, _auto_detect_model
-
+from repoforge.llm import AUTO_DETECT_ORDER, _auto_detect_model, build_llm
 
 # ── gateway provider ─────────────────────────────────────────────────────
 

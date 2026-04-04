@@ -3,16 +3,15 @@
 import json
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from repoforge.mcp_tools import (
-    get_mcp_tool_definitions,
     get_mcp_resource_definitions,
+    get_mcp_tool_definitions,
 )
 from repoforge.watch import FileWatcher, WatchEvent, _format_events, _make_watch_logger
-
 
 # ── MCP tool definitions ─────────────────────────────────────────────────
 

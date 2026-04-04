@@ -11,14 +11,13 @@ Tests cover:
 import pytest
 
 from repoforge.exporter import (
-    export_llm_view,
     _build_tree,
     _discover_all_files,
-    _prioritize_files,
     _estimate_tokens,
+    _prioritize_files,
     _xml_escape,
+    export_llm_view,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -385,6 +384,7 @@ class TestHelpers:
 class TestExportCLI:
     def test_cli_export_to_stdout(self, sample_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -394,6 +394,7 @@ class TestExportCLI:
 
     def test_cli_export_to_file(self, sample_repo, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         output = tmp_path / "out.md"
@@ -408,6 +409,7 @@ class TestExportCLI:
 
     def test_cli_export_xml(self, sample_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -419,6 +421,7 @@ class TestExportCLI:
 
     def test_cli_export_no_contents(self, sample_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -431,6 +434,7 @@ class TestExportCLI:
 
     def test_cli_export_max_tokens(self, sample_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -441,6 +445,7 @@ class TestExportCLI:
 
     def test_cli_help(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()

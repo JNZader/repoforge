@@ -11,9 +11,10 @@ prompt quality against known patterns:
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from repoforge.prompts import skill_prompt, layer_skill_prompt, agent_prompt
+from repoforge.prompts import agent_prompt, layer_skill_prompt, skill_prompt
 
 # ---------------------------------------------------------------------------
 # Real module snapshots (extracted from the actual repo)

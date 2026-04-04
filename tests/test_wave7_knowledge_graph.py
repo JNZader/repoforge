@@ -2,11 +2,11 @@
 
 import pytest
 
-from repoforge.graph import CodeGraph, Node, Edge
+from repoforge.graph import CodeGraph, Edge, Node
 from repoforge.knowledge import (
+    ArchitecturePattern,
     detect_architecture_patterns,
     generate_architecture_mermaid,
-    ArchitecturePattern,
 )
 
 

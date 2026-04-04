@@ -12,25 +12,25 @@ Tests cover:
 - Integration: skills generator includes blast radius per module
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from repoforge.graph import CodeGraph, Node, Edge, build_graph_v2
+import pytest
+
+from repoforge.facts import FactItem
+from repoforge.graph import CodeGraph, Edge, Node, build_graph_v2
 from repoforge.graph_context import (
+    build_facts_only_context,
     build_graph_context,
     build_graph_context_from_graph,
-    format_graph_context,
-    build_short_graph_context,
+    build_module_facts_context,
     build_module_graph_context,
     build_semantic_context,
+    build_short_graph_context,
     format_facts_section,
+    format_graph_context,
     format_snippets_section,
-    build_module_facts_context,
-    build_facts_only_context,
 )
-from repoforge.facts import FactItem
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -506,7 +506,7 @@ class TestSemanticContextFallback:
 
     def test_extracted_facts_rule_in_skill_system_prompt(self):
         """The skills system prompt should mention the Extracted Facts rule."""
-        from repoforge.prompts import SKILL_SYSTEM, LAYER_SKILL_SYSTEM
+        from repoforge.prompts import LAYER_SKILL_SYSTEM, SKILL_SYSTEM
         assert "Extracted Facts" in SKILL_SYSTEM
         assert "Extracted Facts" in LAYER_SKILL_SYSTEM
 

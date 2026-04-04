@@ -8,18 +8,17 @@ call resolution via import analysis.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import json
-from collections import defaultdict
-
 from .extractor import (
+    _CALL_RE,
     SKIP_NAMES,
     Symbol,
-    _CALL_RE,
     detect_language,
     extract_symbols,
 )

@@ -12,12 +12,11 @@ from click.testing import CliRunner
 from repoforge.cli import main
 from repoforge.import_docs import (
     _sanitize_name,
+    fetch_github_docs,
     fetch_npm_readme,
     fetch_pypi_description,
-    fetch_github_docs,
     import_docs,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

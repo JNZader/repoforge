@@ -17,38 +17,37 @@ except ImportError:
     pass
 
 # Build parser is always available (no extra deps)
+# AST types are always importable (no native deps)
+from .ast_extractor import ASTLanguageExtractor, ASTSymbol  # noqa: F401
+
+# Token-budgeted context selection (always available)
+from .budget import ContextItem, select_context  # noqa: F401
 from .build_parser import BuildInfo, parse_build_files  # noqa: F401
 
-# AST types are always importable (no native deps)
-from .ast_extractor import ASTSymbol, ASTLanguageExtractor  # noqa: F401
+# Source code compression (tree-sitter for full, fallback for basic)
+from .compressor import compress_batch, compress_file, compression_stats  # noqa: F401
+
+# Pre-digested documentation chunks (always available)
+from .doc_chunks import (  # noqa: F401
+    build_all_ast_symbols,
+    chunk_architecture,
+    chunk_cli_commands,
+    chunk_data_models,
+    chunk_endpoints,
+    chunk_mcp_tools,
+    chunk_module_summary,
+)
 
 # Registry convenience functions (gracefully return empty when tree-sitter unavailable)
 from .extractor_registry import (  # noqa: F401
-    get_ast_registry,
-    ast_extract_symbols,
     ast_extract_endpoints,
     ast_extract_schemas,
+    ast_extract_symbols,
+    get_ast_registry,
 )
 
 # PageRank scoring (always available — no tree-sitter needed)
 from .ranker import pagerank, rank_files  # noqa: F401
-
-# Token-budgeted context selection (always available)
-from .budget import select_context, ContextItem  # noqa: F401
-
-# Source code compression (tree-sitter for full, fallback for basic)
-from .compressor import compress_file, compress_batch, compression_stats  # noqa: F401
-
-# Pre-digested documentation chunks (always available)
-from .doc_chunks import (  # noqa: F401
-    chunk_endpoints,
-    chunk_data_models,
-    chunk_mcp_tools,
-    chunk_cli_commands,
-    chunk_architecture,
-    chunk_module_summary,
-    build_all_ast_symbols,
-)
 
 __all__ = [
     "INTELLIGENCE_AVAILABLE",

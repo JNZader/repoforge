@@ -30,9 +30,9 @@ Usage:
 
 import os
 from dataclasses import dataclass, field
-from typing import Optional, Iterator
-import litellm
+from typing import Iterator, Optional
 
+import litellm
 
 # Silence LiteLLM's verbose success logging
 litellm.success_callback = []

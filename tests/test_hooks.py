@@ -9,9 +9,9 @@ Tests cover:
 - CLI --with-hooks flag
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -299,8 +299,9 @@ class TestGeneratorHooksIntegration:
 class TestHooksConfigOverride:
     def test_config_enables_hooks(self, tmp_path):
         """generate_hooks: true in repoforge.yaml should enable hooks."""
-        from repoforge.generator import generate_artifacts
         import yaml
+
+        from repoforge.generator import generate_artifacts
 
         # Create a minimal repo with repoforge.yaml
         repo = tmp_path / "repo"
@@ -321,8 +322,9 @@ class TestHooksConfigOverride:
 
     def test_cli_flag_overrides_config(self, tmp_path):
         """CLI with_hooks=False should take precedence over config."""
-        from repoforge.generator import generate_artifacts
         import yaml
+
+        from repoforge.generator import generate_artifacts
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -346,8 +348,9 @@ class TestHooksConfigOverride:
 
     def test_config_disabled_stays_off(self, tmp_path):
         """generate_hooks: false in config should keep hooks off."""
-        from repoforge.generator import generate_artifacts
         import yaml
+
+        from repoforge.generator import generate_artifacts
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -373,6 +376,7 @@ class TestHooksConfigOverride:
 class TestCLIHooksFlag:
     def test_skills_help_shows_hooks_flag(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -381,6 +385,7 @@ class TestCLIHooksFlag:
 
     def test_skills_accepts_with_hooks(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -395,6 +400,7 @@ class TestCLIHooksFlag:
 
     def test_skills_accepts_no_hooks(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -410,6 +416,7 @@ class TestCLIHooksFlag:
     def test_default_is_no_hooks(self, tmp_path):
         """Without --with-hooks, hooks should not be generated."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()

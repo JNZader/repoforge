@@ -5,8 +5,9 @@ Tests build_graph_v2 and get_blast_radius_v2 against the real project
 to verify that Python file-to-file dependencies are correctly detected.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 # The real repoforge project root
 REPO_ROOT = str(Path(__file__).parent.parent)

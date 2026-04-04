@@ -24,8 +24,8 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .cache import hash_content, compute_repo_snapshot
-from .scoring import DocScorer, DocScore
+from .cache import compute_repo_snapshot, hash_content
+from .scoring import DocScore, DocScorer
 
 logger = logging.getLogger(__name__)
 

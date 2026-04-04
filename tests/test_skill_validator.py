@@ -15,9 +15,9 @@ Tests cover:
 """
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from repoforge.cli import main
@@ -29,7 +29,6 @@ from repoforge.skill_validator import (
     ViolationLevel,
     validate_skill,
 )
-
 
 # ---------------------------------------------------------------------------
 # Content fixtures

@@ -5,43 +5,45 @@ This package was split from a single docs_prompts.py module.
 All public symbols are re-exported here for backwards compatibility.
 """
 
-from .system import _base_system, _base_system_facts_only
-from .context import (
-    _format_stack,
-    _format_layers,
-    _format_modules,
-    _build_directory_tree,
-    _format_entry_points,
-    _format_config_files,
-    _repo_context,
-    _repo_context_light,
-    _repo_context_facts_only,
-)
 from .builders import (
+    architecture_prompt,
     index_prompt,
     overview_prompt,
     quickstart_prompt,
-    architecture_prompt,
 )
 from .builders_extra import (
+    api_reference_prompt,
     core_mechanisms_prompt,
     data_models_prompt,
-    api_reference_prompt,
     dev_guide_prompt,
 )
-from .classify import classify_project, classify_layer, _layer_repo_map
 from .chapters import (
-    UNIVERSAL_CHAPTERS,
     ADAPTIVE_CHAPTERS,
-    _dispatch_prompt,
+    UNIVERSAL_CHAPTERS,
     _adaptive_prompt,
+    _dispatch_prompt,
+)
+from .chapters import (
     get_chapter_prompts as _original_get_chapter_prompts,
 )
+from .classify import _layer_repo_map, classify_layer, classify_project
+from .context import (
+    _build_directory_tree,
+    _format_config_files,
+    _format_entry_points,
+    _format_layers,
+    _format_modules,
+    _format_stack,
+    _repo_context,
+    _repo_context_facts_only,
+    _repo_context_light,
+)
 from .monorepo import (
-    _monorepo_root_chapters,
     _layer_chapters,
+    _monorepo_root_chapters,
     get_monorepo_chapter_prompts,
 )
+from .system import _base_system, _base_system_facts_only
 
 
 def get_chapter_prompts(repo_map: dict, language: str, project_name: str,

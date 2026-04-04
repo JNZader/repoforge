@@ -13,11 +13,10 @@ Scores skills across 7 dimensions (no LLM needed):
 Works standalone: can score any SKILL.md, not just RepoForge-generated ones.
 """
 
-import re
 import json
-from pathlib import Path
+import re
 from dataclasses import dataclass, field
-
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Data model

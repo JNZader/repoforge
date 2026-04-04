@@ -17,7 +17,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from .graph import CodeGraph, Node, Edge
+from .graph import CodeGraph, Edge, Node
 
 logger = logging.getLogger(__name__)
 

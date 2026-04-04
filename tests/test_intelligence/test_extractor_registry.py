@@ -2,14 +2,14 @@
 
 import pytest
 
+from repoforge.intelligence.ast_extractor import ASTSymbol
 from repoforge.intelligence.extractor_registry import (
     ASTExtractorRegistry,
-    get_ast_registry,
-    ast_extract_symbols,
     ast_extract_endpoints,
     ast_extract_schemas,
+    ast_extract_symbols,
+    get_ast_registry,
 )
-from repoforge.intelligence.ast_extractor import ASTSymbol
 
 
 class TestASTExtractorRegistry:

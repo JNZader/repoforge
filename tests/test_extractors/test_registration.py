@@ -17,7 +17,6 @@ from repoforge.extractors.python_ext import PythonExtractor
 from repoforge.extractors.rust import RustExtractor
 from repoforge.extractors.typescript import TypeScriptExtractor
 
-
 # ---------------------------------------------------------------------------
 # Registration verification
 # ---------------------------------------------------------------------------

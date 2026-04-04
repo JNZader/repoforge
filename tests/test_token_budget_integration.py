@@ -11,13 +11,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from repoforge.generator import (
-    _estimate_prompt_tokens,
-    _generate,
     _CHARS_PER_TOKEN,
     _DEFAULT_INPUT_TOKEN_BUDGET,
+    _estimate_prompt_tokens,
+    _generate,
 )
 from repoforge.llm import LLM
-
 
 # ---------------------------------------------------------------------------
 # Helpers

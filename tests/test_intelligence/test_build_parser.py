@@ -6,20 +6,20 @@ internal package discovery, and graceful degradation on missing/malformed files.
 """
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 from repoforge.intelligence.build_parser import (
     BuildInfo,
-    parse_build_files,
+    _discover_go_packages,
+    _discover_python_packages,
+    _parse_cargo_toml,
     _parse_go_mod,
     _parse_package_json,
     _parse_pyproject_toml,
-    _parse_cargo_toml,
-    _discover_go_packages,
-    _discover_python_packages,
+    parse_build_files,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -19,8 +19,8 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from .facts import FactItem, extract_facts
 from .graph import CodeGraph, build_graph_v2, get_blast_radius_v2, is_test_file
-from .facts import extract_facts, FactItem
 from .intelligence.ast_extractor import ASTSymbol
 
 logger = logging.getLogger(__name__)

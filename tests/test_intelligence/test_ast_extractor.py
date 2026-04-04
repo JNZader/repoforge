@@ -3,13 +3,13 @@
 import pytest
 
 from repoforge.intelligence.ast_extractor import (
-    ASTSymbol,
     ASTLanguageExtractor,
-    get_parser,
-    parse_source,
-    node_text,
+    ASTSymbol,
     find_children,
     find_first_child,
+    get_parser,
+    node_text,
+    parse_source,
 )
 
 

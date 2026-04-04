@@ -10,13 +10,13 @@ Usage via CLI:
   repoforge skills --serve -o .claude
 """
 
-import os
 import json
-from pathlib import Path
-from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
-import urllib.parse
+import os
 import threading
+import urllib.parse
 import webbrowser
+from http.server import BaseHTTPRequestHandler, HTTPServer, SimpleHTTPRequestHandler
+from pathlib import Path
 
 
 def serve_docs(output_dir: str = "docs", port: int = 8000, open_browser: bool = True):

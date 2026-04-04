@@ -4,8 +4,7 @@ from dataclasses import fields
 
 import pytest
 
-from repoforge.ir import ChapterSpec, GeneratedChapter, DocumentationResult
-
+from repoforge.ir import ChapterSpec, DocumentationResult, GeneratedChapter
 
 # ── IR dataclasses ───────────────────────────────────────────────────────
 
@@ -104,7 +103,7 @@ class TestPipelineImports:
         assert callable(postprocess_chapter)
 
     def test_write_importable(self):
-        from repoforge.pipeline.write import write_chapter, write_docsify, write_corrections_log
+        from repoforge.pipeline.write import write_chapter, write_corrections_log, write_docsify
         assert callable(write_chapter)
         assert callable(write_docsify)
         assert callable(write_corrections_log)
@@ -194,14 +193,14 @@ class TestLineCountLimits:
             assert lines <= 400, f"{mod.__name__} has {lines} lines (max 400)"
 
     def test_prompts_files_under_limit(self):
-        import repoforge.docs_prompts.system as sys_mod
-        import repoforge.docs_prompts.context as ctx_mod
+        import repoforge.docs_prompts.adaptive as adp
         import repoforge.docs_prompts.builders as bld
         import repoforge.docs_prompts.builders_extra as bld_x
         import repoforge.docs_prompts.chapters as ch
         import repoforge.docs_prompts.classify as clf
-        import repoforge.docs_prompts.adaptive as adp
+        import repoforge.docs_prompts.context as ctx_mod
         import repoforge.docs_prompts.monorepo as mono
+        import repoforge.docs_prompts.system as sys_mod
 
         for mod in [sys_mod, ctx_mod, bld, bld_x, ch, clf, adp, mono]:
             lines = len(open(mod.__file__).readlines())

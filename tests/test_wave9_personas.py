@@ -3,12 +3,11 @@
 import pytest
 
 from repoforge.personas import (
-    Persona,
     PERSONAS,
-    get_persona,
+    Persona,
     apply_persona,
+    get_persona,
 )
-
 
 # ── Persona registry ─────────────────────────────────────────────────────
 

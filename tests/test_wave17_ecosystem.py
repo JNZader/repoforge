@@ -6,12 +6,11 @@ from pathlib import Path
 import pytest
 
 from repoforge.ecosystem import (
-    get_package_metadata,
-    get_available_extras,
-    get_plugin_registry,
     PluginInfo,
+    get_available_extras,
+    get_package_metadata,
+    get_plugin_registry,
 )
-
 
 # ── Package metadata ─────────────────────────────────────────────────────
 

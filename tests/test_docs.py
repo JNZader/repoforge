@@ -7,9 +7,9 @@ Tests cover:
 - docs_generator: dry-run, project name inference
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -313,8 +313,8 @@ class TestDocsPrompts:
 
 class TestDocsify:
     def test_generates_three_files(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "TestProject")
         generated = build_docsify_files(tmp_path, "TestProject", chapters)
@@ -326,8 +326,8 @@ class TestDocsify:
         assert "index.html" in names
 
     def test_all_files_exist_on_disk(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "TestProject")
         generated = build_docsify_files(tmp_path, "TestProject", chapters)
@@ -336,8 +336,8 @@ class TestDocsify:
             assert Path(f).exists(), f"{f} was not created"
 
     def test_sidebar_contains_chapter_links(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "TestProject")
         build_docsify_files(tmp_path, "TestProject", chapters)
@@ -349,8 +349,8 @@ class TestDocsify:
         assert "[Overview](01-overview)" in sidebar
 
     def test_sidebar_contains_project_name(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "MyAwesomeApp")
         build_docsify_files(tmp_path, "MyAwesomeApp", chapters)
@@ -359,8 +359,8 @@ class TestDocsify:
         assert "MyAwesomeApp" in sidebar
 
     def test_index_html_is_valid_html(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "TestProject")
         build_docsify_files(tmp_path, "TestProject", chapters)
@@ -373,8 +373,8 @@ class TestDocsify:
         assert "homepage:" in html
 
     def test_index_html_contains_project_name(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "CoolProject")
         build_docsify_files(tmp_path, "CoolProject", chapters)
@@ -383,8 +383,8 @@ class TestDocsify:
         assert "CoolProject" in html
 
     def test_spanish_sets_lang_attribute(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "Spanish", "Proyecto")
         build_docsify_files(tmp_path, "Proyecto", chapters, language="Spanish")
@@ -393,8 +393,8 @@ class TestDocsify:
         assert 'lang="es"' in html
 
     def test_nojekyll_is_empty(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "Test")
         build_docsify_files(tmp_path, "Test", chapters)
@@ -403,8 +403,8 @@ class TestDocsify:
         assert nojekyll == ""
 
     def test_dark_theme(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "Test")
         build_docsify_files(tmp_path, "Test", chapters, theme="dark")
@@ -413,8 +413,8 @@ class TestDocsify:
         assert "dark.css" in html
 
     def test_search_plugin_included(self, tmp_path, minimal_repo_map):
-        from repoforge.docsify import build_docsify_files
         from repoforge.docs_prompts import get_chapter_prompts
+        from repoforge.docsify import build_docsify_files
 
         chapters = get_chapter_prompts(minimal_repo_map, "English", "Test")
         build_docsify_files(tmp_path, "Test", chapters)
@@ -429,9 +429,10 @@ class TestDocsify:
 
 class TestDocsGenerator:
     def test_dry_run_returns_dict(self, tmp_path):
-        from repoforge.docs_generator import generate_docs
         # Use own project dir as test repo
         import os
+
+        from repoforge.docs_generator import generate_docs
         repo_dir = str(Path(__file__).parent.parent)
         result = generate_docs(
             working_dir=repo_dir,
@@ -516,6 +517,7 @@ class TestDocsGenerator:
 class TestProjectNameInference:
     def test_from_package_json(self, tmp_path):
         import json
+
         from repoforge.docs_generator import _infer_project_name
 
         (tmp_path / "package.json").write_text(json.dumps({"name": "my-cool-app"}))
@@ -570,6 +572,7 @@ class TestLinkStyle:
 
     def test_cli_link_style_flag_exists(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -579,6 +582,7 @@ class TestLinkStyle:
 
     def test_cli_link_style_accepts_wiki(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()

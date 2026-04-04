@@ -19,7 +19,6 @@ from __future__ import annotations
 import re
 from datetime import date
 
-
 # All valid target identifiers (order = display order)
 ALL_TARGETS = ("claude", "opencode", "cursor", "codex", "gemini", "copilot")
 

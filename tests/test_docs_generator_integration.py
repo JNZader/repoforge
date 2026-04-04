@@ -7,18 +7,17 @@ Only the LLM completion calls are mocked.
 
 import subprocess
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from repoforge.docs_generator import (
-    generate_docs,
     _infer_project_name,
+    _make_logger,
     _prettify_name,
     _rel,
-    _make_logger,
+    generate_docs,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

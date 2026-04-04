@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
-from .system import _base_system, _base_system_facts_only
-from .context import _repo_context
+from .adaptive import _adaptive_prompt
 from .builders import (
+    architecture_prompt,
     index_prompt,
     overview_prompt,
     quickstart_prompt,
-    architecture_prompt,
 )
 from .builders_extra import (
+    api_reference_prompt,
     core_mechanisms_prompt,
     data_models_prompt,
-    api_reference_prompt,
     dev_guide_prompt,
 )
 from .classify import classify_project
-from .adaptive import _adaptive_prompt
-
+from .context import _repo_context
+from .system import _base_system, _base_system_facts_only
 
 # ===========================================================================
 # PROJECT CLASSIFICATION + ADAPTIVE CHAPTERS

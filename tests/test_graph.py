@@ -20,8 +20,8 @@ Tests cover:
 """
 
 import json
-import pytest
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures: mock RepoMaps
@@ -809,6 +809,7 @@ class TestEdgeCases:
 class TestCLIGraph:
     def test_graph_help(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "--help"])
@@ -824,9 +825,11 @@ class TestCLIGraph:
 
     def test_graph_summary_default(self):
         """Default format should be summary."""
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "-w", repo_dir, "-q"])
@@ -835,9 +838,11 @@ class TestCLIGraph:
         assert "Dependencies:" in result.output
 
     def test_graph_mermaid_format(self):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -847,9 +852,11 @@ class TestCLIGraph:
         assert "graph LR" in result.output
 
     def test_graph_json_format(self):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -861,9 +868,11 @@ class TestCLIGraph:
         assert "edges" in data
 
     def test_graph_dot_format(self):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -873,9 +882,11 @@ class TestCLIGraph:
         assert "digraph CodeGraph" in result.output
 
     def test_graph_output_to_file(self, tmp_path):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         output_file = str(tmp_path / "graph.json")
         runner = CliRunner()
@@ -889,9 +900,11 @@ class TestCLIGraph:
         assert "nodes" in data
 
     def test_graph_blast_radius_nonexistent(self):
-        from click.testing import CliRunner
-        from repoforge.cli import main
         from pathlib import Path
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -903,6 +916,7 @@ class TestCLIGraph:
     def test_graph_in_main_help(self):
         """Graph should appear in the main help text."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["--help"])
@@ -916,7 +930,7 @@ class TestCLIGraph:
 
 class TestPublicAPI:
     def test_imports_from_init(self):
-        from repoforge import CodeGraph, Node, Edge, build_graph, build_graph_from_workspace
+        from repoforge import CodeGraph, Edge, Node, build_graph, build_graph_from_workspace
         assert CodeGraph is not None
         assert Node is not None
         assert Edge is not None

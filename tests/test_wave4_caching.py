@@ -7,12 +7,11 @@ import pytest
 
 from repoforge.cache import (
     CacheStore,
-    hash_file,
-    hash_content,
     compute_repo_snapshot,
     diff_snapshots,
+    hash_content,
+    hash_file,
 )
-
 
 # ── hash functions ───────────────────────────────────────────────────────
 

@@ -17,9 +17,8 @@ Output sections:
 from pathlib import Path
 from typing import Optional
 
+from .ripgrep import SUPPORTED_EXTENSIONS, extract_definitions
 from .scanner import scan_repo
-from .ripgrep import extract_definitions, SUPPORTED_EXTENSIONS
-
 
 # ---------------------------------------------------------------------------
 # Constants

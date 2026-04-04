@@ -5,9 +5,9 @@ Validates that generated prompts produce output compatible with:
   - Gentleman-Skills format (frontmatter, structure)
   - agent-teams-lite (skill-registry, delegate-only orchestrator)
 """
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures

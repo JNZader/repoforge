@@ -13,21 +13,20 @@ from pathlib import Path
 import pytest
 
 from repoforge.scanner import (
-    scan_repo,
-    classify_complexity,
-    _detect_tech_stack,
-    _detect_layers,
-    _find_entry_points,
-    _find_config_files,
-    _ext_to_language,
-    _enrich_python,
-    _enrich_js,
-    _extract_first_comment,
-    _load_config,
     LAYER_PATTERNS,
     SUPPORTED_EXTENSIONS,
+    _detect_layers,
+    _detect_tech_stack,
+    _enrich_js,
+    _enrich_python,
+    _ext_to_language,
+    _extract_first_comment,
+    _find_config_files,
+    _find_entry_points,
+    _load_config,
+    classify_complexity,
+    scan_repo,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

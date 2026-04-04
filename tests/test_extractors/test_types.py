@@ -12,7 +12,6 @@ import pytest
 
 from repoforge.extractors.types import ExportInfo, Extractor, ImportInfo
 
-
 # ---------------------------------------------------------------------------
 # ImportInfo
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 import pytest
 
-from repoforge.skills_from_docs.generate import generate_skill_md, _to_kebab_case
+from repoforge.skills_from_docs.generate import _to_kebab_case, generate_skill_md
 from repoforge.skills_from_docs.types import CodeExample, DocContent, DocSection
 
 

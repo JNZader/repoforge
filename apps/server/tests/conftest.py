@@ -22,10 +22,9 @@ os.environ.setdefault("DEBUG", "true")
 import jwt
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-
 from app.config import settings
 from app.main import app
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture(scope="session")

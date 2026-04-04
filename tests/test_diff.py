@@ -19,7 +19,6 @@ from repoforge.diff import (
 )
 from repoforge.symbols.extractor import Symbol
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -336,6 +335,7 @@ class TestDiffEntitiesIntegration:
 class TestDiffCLI:
     def test_diff_command_help(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -345,6 +345,7 @@ class TestDiffCLI:
 
     def test_diff_command_runs(self, git_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -354,6 +355,7 @@ class TestDiffCLI:
 
     def test_diff_command_json(self, git_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
@@ -366,6 +368,7 @@ class TestDiffCLI:
 
     def test_diff_command_invalid_ref(self, git_repo):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()

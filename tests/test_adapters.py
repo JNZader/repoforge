@@ -15,9 +15,9 @@ Tests cover:
 - Generator integration with targets (dry-run)
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -521,12 +521,12 @@ class TestResolveTargets:
         assert result == ["claude", "opencode"]
 
     def test_all_shorthand(self):
-        from repoforge.adapters import resolve_targets, ALL_TARGETS
+        from repoforge.adapters import ALL_TARGETS, resolve_targets
         result = resolve_targets("all")
         assert result == list(ALL_TARGETS)
 
     def test_all_with_mixed_case(self):
-        from repoforge.adapters import resolve_targets, ALL_TARGETS
+        from repoforge.adapters import ALL_TARGETS, resolve_targets
         result = resolve_targets("ALL")
         assert result == list(ALL_TARGETS)
 
@@ -614,7 +614,7 @@ class TestRunAdapters:
         assert result == {}
 
     def test_all_adapter_targets(self, sample_skills, sample_agents, sample_repo_map):
-        from repoforge.adapters import run_adapters, ADAPTER_TARGETS
+        from repoforge.adapters import ADAPTER_TARGETS, run_adapters
         result = run_adapters(
             list(ADAPTER_TARGETS), sample_skills, sample_agents, sample_repo_map,
         )
@@ -628,6 +628,7 @@ class TestRunAdapters:
 class TestCLITargetsFlag:
     def test_skills_help_shows_targets(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -635,6 +636,7 @@ class TestCLITargetsFlag:
 
     def test_skills_accepts_targets(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -648,6 +650,7 @@ class TestCLITargetsFlag:
 
     def test_skills_accepts_all_targets(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -662,6 +665,7 @@ class TestCLITargetsFlag:
     def test_default_no_targets_flag(self, tmp_path):
         """Without --targets, should use default claude,opencode."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -769,8 +773,9 @@ class TestGeneratorTargetsIntegration:
 class TestTargetsConfigOverride:
     def test_config_targets_used(self, tmp_path):
         """targets from repoforge.yaml should be used when CLI flag absent."""
-        from repoforge.generator import generate_artifacts
         import yaml
+
+        from repoforge.generator import generate_artifacts
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -792,8 +797,9 @@ class TestTargetsConfigOverride:
 
     def test_cli_targets_override_config(self, tmp_path):
         """CLI --targets should take precedence over config."""
-        from repoforge.generator import generate_artifacts
         import yaml
+
+        from repoforge.generator import generate_artifacts
 
         repo = tmp_path / "repo"
         repo.mkdir()

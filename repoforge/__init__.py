@@ -12,16 +12,29 @@ from .adapters import (
     adapt_for_gemini,
     resolve_targets,
 )
-from .diff import (
-    DiffEntry,
-    DiffResult,
-    diff_entities,
-)
 from .compressor import (
     CompressionResult,
     SkillCompressor,
     compress_directory,
     compress_file,
+)
+from .coverage import (
+    CoverageFile,
+    CoverageReport,
+    auto_detect_and_parse,
+    detect_coverage_files,
+    parse_cobertura,
+    parse_coverage_py_json,
+    parse_jacoco,
+    parse_lcov,
+    render_coverage_markdown,
+)
+from .dep_health import (
+    DependencyHealthReport,
+    DuplicateDep,
+    LicenseConflict,
+    OutdatedDep,
+    analyze_dependency_health,
 )
 from .diagrams import (
     generate_all_diagrams,
@@ -31,6 +44,11 @@ from .diagrams import (
     generate_erd_diagram,
     generate_k8s_diagram,
     generate_openapi_diagram,
+)
+from .diff import (
+    DiffEntry,
+    DiffResult,
+    diff_entities,
 )
 from .disclosure import (
     build_discovery_index,
@@ -56,9 +74,15 @@ from .graph import (
 )
 from .graph_query import (
     QueryResult,
-    query_callers,
     query_callees,
+    query_callers,
     query_imports,
+)
+from .import_docs import (
+    fetch_github_docs,
+    fetch_npm_readme,
+    fetch_pypi_description,
+    import_docs,
 )
 from .incremental import (
     ChapterEntry,
@@ -79,44 +103,20 @@ from .plugins import (
     manifest_to_markdown,
     write_plugin,
 )
-from .scorer import SkillScore, SkillScorer
-from .dep_health import (
-    DependencyHealthReport,
-    DuplicateDep,
-    LicenseConflict,
-    OutdatedDep,
-    analyze_dependency_health,
+from .prompts_cmd import (
+    PROMPT_TYPES,
+    AnalysisPrompt,
+    generate_prompts,
+    render_prompts_markdown,
+    write_individual_prompts,
 )
+from .scorer import SkillScore, SkillScorer
 from .security import (
     Finding,
     ScanResult,
     SecurityScanner,
     Severity,
     scan_generated_output,
-)
-from .coverage import (
-    CoverageFile,
-    CoverageReport,
-    auto_detect_and_parse,
-    detect_coverage_files,
-    parse_cobertura,
-    parse_coverage_py_json,
-    parse_jacoco,
-    parse_lcov,
-    render_coverage_markdown,
-)
-from .import_docs import (
-    fetch_github_docs,
-    fetch_npm_readme,
-    fetch_pypi_description,
-    import_docs,
-)
-from .prompts_cmd import (
-    AnalysisPrompt,
-    PROMPT_TYPES,
-    generate_prompts,
-    render_prompts_markdown,
-    write_individual_prompts,
 )
 from .server import serve_docs, serve_skills
 from .watch import FileWatcher, WatchEvent, watch_docs

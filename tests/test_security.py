@@ -15,9 +15,9 @@ Tests cover:
 """
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures: crafted content for testing security patterns
@@ -881,7 +881,7 @@ class TestScanGeneratedOutput:
         assert result.passed is True
 
     def test_scan_workspace_returns_scanresult(self, workspace_with_output):
-        from repoforge.security import scan_generated_output, ScanResult
+        from repoforge.security import ScanResult, scan_generated_output
         result = scan_generated_output(str(workspace_with_output))
         assert isinstance(result, ScanResult)
 
@@ -893,6 +893,7 @@ class TestScanGeneratedOutput:
 class TestCLIScan:
     def test_scan_help(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["scan", "--help"])
@@ -904,6 +905,7 @@ class TestCLIScan:
 
     def test_scan_target_directory(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -914,6 +916,7 @@ class TestCLIScan:
 
     def test_scan_json_format(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -925,6 +928,7 @@ class TestCLIScan:
 
     def test_scan_markdown_format(self, skills_directory):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -936,6 +940,7 @@ class TestCLIScan:
     def test_scan_fail_on_critical(self, skills_directory):
         """Skills directory has no prompt injection → should pass on critical."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -947,6 +952,7 @@ class TestCLIScan:
     def test_scan_fail_on_high(self, skills_directory):
         """Skills directory has destructive commands → should fail on high."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -957,6 +963,7 @@ class TestCLIScan:
     def test_scan_with_allowlist(self, tmp_path):
         """Allowlist should skip specified rules."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         # Create file with email (SEC-020)
@@ -984,6 +991,7 @@ class TestCLIScan:
 
     def test_scan_missing_target_dir(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -993,6 +1001,7 @@ class TestCLIScan:
 
     def test_scan_workspace_auto_detect(self, workspace_with_output):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -1003,6 +1012,7 @@ class TestCLIScan:
 
     def test_scan_empty_workspace(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -1019,6 +1029,7 @@ class TestCLIScan:
 class TestCLIScanFlag:
     def test_skills_help_shows_scan_flag(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -1028,6 +1039,7 @@ class TestCLIScanFlag:
     def test_skills_dry_run_with_scan(self, tmp_path):
         """--scan with --dry-run should not crash."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -1154,9 +1166,9 @@ class TestEdgeCases:
 class TestPublicAPI:
     def test_imports_from_init(self):
         from repoforge import (
-            SecurityScanner,
-            ScanResult,
             Finding,
+            ScanResult,
+            SecurityScanner,
             Severity,
             scan_generated_output,
         )

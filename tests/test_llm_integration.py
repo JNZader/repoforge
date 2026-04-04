@@ -7,21 +7,20 @@ response parsing, error handling.
 """
 
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from repoforge.llm import (
+    AUTO_DETECT_ORDER,
+    DEFAULT_MODEL,  # noqa: F401
     LLM,
-    build_llm,
+    PROVIDER_PRESETS,  # noqa: F401
     _auto_detect_model,
     _find_preset,
     _is_reasoning_model,
-    PROVIDER_PRESETS,  # noqa: F401
-    AUTO_DETECT_ORDER,
-    DEFAULT_MODEL,  # noqa: F401
+    build_llm,
 )
-
 
 # ---------------------------------------------------------------------------
 # LLM dataclass

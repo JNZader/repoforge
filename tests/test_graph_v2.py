@@ -13,9 +13,9 @@ Tests cover:
 
 import json
 import os
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures: tmp multi-language project
@@ -423,6 +423,7 @@ class TestBackwardCompat:
 class TestCLIV2:
     def test_graph_help_shows_v2_flag(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["graph", "--help"])
@@ -433,6 +434,7 @@ class TestCLIV2:
 
     def test_graph_v2_summary(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -442,6 +444,7 @@ class TestCLIV2:
 
     def test_graph_v2_json(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -456,6 +459,7 @@ class TestCLIV2:
     def test_graph_v1_still_works(self):
         """Default (no --v2) should use v1."""
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()

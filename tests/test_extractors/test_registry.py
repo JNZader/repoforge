@@ -15,7 +15,6 @@ import pytest
 from repoforge.extractors.registry import ExtractorRegistry
 from repoforge.extractors.types import ExportInfo, ImportInfo
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

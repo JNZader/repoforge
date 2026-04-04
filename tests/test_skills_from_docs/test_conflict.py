@@ -1,12 +1,13 @@
 """Tests for skills_from_docs.conflict module."""
 
-import pytest
 from pathlib import Path
 
+import pytest
+
 from repoforge.skills_from_docs.conflict import (
-    check_conflicts,
     _extract_rules,
     _rules_conflict,
+    check_conflicts,
 )
 
 

@@ -6,9 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from repoforge.ripgrep import SUPPORTED_EXTENSIONS, _fallback_list_files
 from repoforge.scanner import _load_repoignore
-from repoforge.ripgrep import _fallback_list_files, SUPPORTED_EXTENSIONS
-
 
 # ── _load_repoignore ────────────────────────────────────────────────────
 
@@ -107,6 +106,7 @@ class TestCliVerboseLogging:
 
     def test_default_is_warning(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()

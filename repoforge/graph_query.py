@@ -20,7 +20,6 @@ from dataclasses import dataclass, field
 from .graph import CodeGraph
 from .symbols.graph import SymbolGraph
 
-
 # ---------------------------------------------------------------------------
 # Result model
 # ---------------------------------------------------------------------------

@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from .scoring import DocScorer, DocScore
+from .scoring import DocScore, DocScorer
 
 logger = logging.getLogger(__name__)
 

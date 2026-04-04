@@ -12,8 +12,10 @@ Usage:
 from pathlib import Path
 
 from .ripgrep import (
-    FactItem,
     FACT_PATTERNS,
+    FactItem,
+)
+from .ripgrep import (
     extract_facts as _extract_facts_raw,
 )
 

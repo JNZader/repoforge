@@ -4,16 +4,15 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy.ext.asyncio import create_async_engine
-
 from app.config import settings
 
 # Import all models so Alembic sees them for autogenerate
 from app.models.database import Base
-from app.models.user import User  # noqa: F401
-from app.models.provider_key import ProviderKey  # noqa: F401
 from app.models.generation import Generation, GenerationEvent  # noqa: F401
+from app.models.provider_key import ProviderKey  # noqa: F401
 from app.models.usage_stat import UsageStat  # noqa: F401
+from app.models.user import User  # noqa: F401
+from sqlalchemy.ext.asyncio import create_async_engine
 
 # Alembic Config object
 config = context.config

@@ -6,7 +6,6 @@ import pytest
 
 from repoforge.coverage.detector import auto_detect_and_parse, detect_coverage_files
 
-
 MINIMAL_COBERTURA = """\
 <?xml version="1.0" ?>
 <coverage line-rate="0.8">

@@ -14,9 +14,9 @@ Tests cover:
 - Prompt integration (tiered instructions appended)
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures: crafted SKILL.md content with tier markers
@@ -299,14 +299,14 @@ class TestExtractTier:
         assert "name: partial" in result
 
     def test_level1_is_small(self):
-        from repoforge.disclosure import extract_tier, estimate_tokens
+        from repoforge.disclosure import estimate_tokens, extract_tier
         result = extract_tier(TIERED_SKILL, level=1)
         tokens = estimate_tokens(result)
         # L1 should be lightweight (~50-200 tokens including frontmatter)
         assert tokens < 400
 
     def test_level2_is_medium(self):
-        from repoforge.disclosure import extract_tier, estimate_tokens
+        from repoforge.disclosure import estimate_tokens, extract_tier
         result = extract_tier(TIERED_SKILL, level=2)
         tokens = estimate_tokens(result)
         # L2 adds quick reference but is still compact
@@ -605,6 +605,7 @@ class TestScorerTierBonus:
 class TestCLIDisclosureFlag:
     def test_help_shows_disclosure(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -615,6 +616,7 @@ class TestCLIDisclosureFlag:
 
     def test_disclosure_tiered_dry_run(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -628,6 +630,7 @@ class TestCLIDisclosureFlag:
 
     def test_disclosure_full_dry_run(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -641,6 +644,7 @@ class TestCLIDisclosureFlag:
 
     def test_default_disclosure_is_tiered(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -814,7 +818,7 @@ class TestEdgeCases:
             assert len(result.strip()) > 0
 
     def test_extract_tier_levels_are_cumulative(self):
-        from repoforge.disclosure import extract_tier, estimate_tokens
+        from repoforge.disclosure import estimate_tokens, extract_tier
         l1 = extract_tier(TIERED_SKILL, level=1)
         l2 = extract_tier(TIERED_SKILL, level=2)
         l3 = extract_tier(TIERED_SKILL, level=3)

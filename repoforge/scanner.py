@@ -14,11 +14,12 @@ File discovery + definition extraction uses ripgrep when installed
 Falls back to pure Python rglob + regex automatically.
 """
 
-import json
 import ast
+import json
 import logging
 from pathlib import Path
 from typing import Optional
+
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -197,8 +198,8 @@ def scan_repo(
         }
     }
     """
-    from .ripgrep import repo_stats
     from .intelligence import parse_build_files
+    from .ripgrep import repo_stats
 
     root = Path(working_dir).resolve()
     config = config or _load_config(root)
@@ -328,10 +329,10 @@ def _merge_build_packages(
     (or create a 'build_modules' layer).
     """
     from .ripgrep import (
-        list_files,
         extract_definitions,
         extract_imports,
         extract_summary_hints,
+        list_files,
         rg_available,
     )
 
@@ -540,10 +541,10 @@ def _scan_layer(
     extra_ignore: Optional[set[str]] = None,
 ) -> list:
     from .ripgrep import (
-        list_files,
         extract_definitions,
         extract_imports,
         extract_summary_hints,
+        list_files,
         rg_available,
     )
 

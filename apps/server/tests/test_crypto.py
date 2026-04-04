@@ -1,9 +1,7 @@
 """Tests for the crypto service (AES-256-GCM encryption)."""
 
 import pytest
-
 from app.services.crypto import decrypt_key, derive_user_key, encrypt_key, mask_key
-
 
 # Use a fixed 32-byte test key
 _TEST_MASTER_KEY = bytes.fromhex(

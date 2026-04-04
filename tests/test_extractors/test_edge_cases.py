@@ -11,9 +11,9 @@ Tests that extractors and graph builder handle gracefully:
 - Non-existent import targets
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixture: edge case project

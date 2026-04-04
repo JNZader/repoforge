@@ -3,12 +3,11 @@
 import pytest
 
 from repoforge.ux import (
+    DiffResult,
     ProgressTracker,
     diff_docs,
-    DiffResult,
     format_summary,
 )
-
 
 # ── ProgressTracker ──────────────────────────────────────────────────────
 

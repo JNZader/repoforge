@@ -974,8 +974,8 @@ def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_
                     file=sys.stderr,
                 )
 
+            from .graph_query import query_callees, query_callers
             from .symbols import build_symbol_graph
-            from .graph_query import query_callers, query_callees
 
             sym_graph = build_symbol_graph(workspace)
 

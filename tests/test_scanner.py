@@ -2,14 +2,14 @@
 tests/test_scanner.py - Tests for the deterministic scanner (no LLM needed).
 """
 
-import os
 import ast
-from pathlib import Path
-import pytest
+import os
 import tempfile
+from pathlib import Path
 
-from repoforge.scanner import scan_repo, _detect_tech_stack, _enrich_python
+import pytest
 
+from repoforge.scanner import _detect_tech_stack, _enrich_python, scan_repo
 
 # ---------------------------------------------------------------------------
 # Fixtures

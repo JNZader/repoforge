@@ -10,9 +10,9 @@ Tests cover:
 - Integration with docs (chapter capping)
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -481,6 +481,7 @@ class TestDocsIntegration:
 class TestCLIComplexity:
     def test_skills_help_shows_complexity(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["skills", "--help"])
@@ -489,6 +490,7 @@ class TestCLIComplexity:
 
     def test_docs_help_shows_complexity(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["docs", "--help"])
@@ -497,6 +499,7 @@ class TestCLIComplexity:
 
     def test_skills_accepts_complexity_flag(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -511,6 +514,7 @@ class TestCLIComplexity:
 
     def test_docs_accepts_complexity_flag(self, tmp_path):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         repo_dir = str(Path(__file__).parent.parent)
         runner = CliRunner()
@@ -525,6 +529,7 @@ class TestCLIComplexity:
 
     def test_invalid_complexity_rejected(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
         runner = CliRunner()
         result = runner.invoke(main, [

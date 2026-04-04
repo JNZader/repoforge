@@ -9,7 +9,6 @@ patterns — no native dependencies (no tree-sitter).
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
-
 # ---------------------------------------------------------------------------
 # Extracted Data
 # ---------------------------------------------------------------------------

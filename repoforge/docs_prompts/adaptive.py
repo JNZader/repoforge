@@ -6,8 +6,8 @@ chapters. This module generates the (system, user) prompt pair for each.
 
 from __future__ import annotations
 
-from .system import _base_system
 from .context import _repo_context
+from .system import _base_system
 
 
 def _adaptive_prompt(chapter_file: str, repo_map: dict, language: str,

@@ -5,10 +5,9 @@ from __future__ import annotations
 import pytest
 
 from repoforge.facts import FactItem
-from repoforge.intelligence.build_parser import BuildInfo
 from repoforge.intelligence.ast_extractor import ASTSymbol
-from repoforge.intelligence.post_process import post_process_chapter, Correction
-
+from repoforge.intelligence.build_parser import BuildInfo
+from repoforge.intelligence.post_process import Correction, post_process_chapter
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -3,13 +3,14 @@
 import json
 
 import pytest
+
 from repoforge.symbols.extractor import Symbol
 from repoforge.symbols.graph import (
     CallEdge,
     SymbolGraph,
-    build_symbol_graph,
     _extract_calls_in_body,
     _resolve_call,
+    build_symbol_graph,
 )
 
 
@@ -238,6 +239,7 @@ class TestCallsBlastRadiusIncompatibility:
 
     def test_blast_radius_with_calls_exits(self):
         from click.testing import CliRunner
+
         from repoforge.cli import main
 
         runner = CliRunner()
