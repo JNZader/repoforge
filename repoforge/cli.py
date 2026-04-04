@@ -94,6 +94,7 @@ def main(verbose):
       prompts          Generate reusable analysis prompts from codebase scan (no API key needed)
       check            Validate code references in generated docs (no API key needed)
       diff             Entity-level semantic diff between two git refs (no API key needed)
+      validate-skills  Validate SKILL.md files against standard format (no API key needed)
 
     \b
     Examples:
@@ -300,11 +301,16 @@ SUPPORTED_LANGUAGES = [
     default="backtick", show_default=True,
     type=click.Choice(["backtick", "wiki"], case_sensitive=False),
     help="Code reference style in docs. 'wiki' uses [[wikilinks]] for a knowledge graph.")
+@click.option("--diagrams/--no-diagrams", "embed_diagrams", default=False, show_default=True,
+    help=(
+        "Generate Mermaid architecture diagrams and embed them in the Architecture chapter. "
+        "Also writes diagrams.md alongside the generated docs."
+    ))
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
          chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental,
-         watch, watch_interval, link_style):
+         watch, watch_interval, link_style, embed_diagrams):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -332,6 +338,12 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
     \b
     To publish on GitHub Pages:
       Push to GitHub → Settings → Pages → Source: /docs on main branch
+
+    \b
+    Diagram embedding (--diagrams):
+      Generates Mermaid diagrams from code analysis and injects them into
+      03-architecture.md. Also writes diagrams.md to the output directory.
+      Use 'repoforge diagrams' for standalone diagram generation.
     """
     from .docs_generator import generate_docs
     from .server import serve_docs
@@ -376,6 +388,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             facts_only=facts_only,
             incremental=incremental,
             link_style=link_style,
+            embed_diagrams=embed_diagrams,
         )
 
     if do_serve or serve_only:
@@ -1330,6 +1343,91 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, i
 
 
 # ---------------------------------------------------------------------------
+# diagrams subcommand (plural) — generates all 3 diagram types to a .md file
+# ---------------------------------------------------------------------------
+
+@main.command(name="diagrams")
+@click.option("-w", "--workspace",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("-o", "--output",
+    default="diagrams.md", show_default=True,
+    help="Output markdown file path.",
+    type=click.Path(),
+)
+@click.option("--max-nodes", default=40, show_default=True, type=int,
+    help="Max nodes in dependency diagram.")
+@click.option("--max-depth", default=3, show_default=True, type=int,
+    help="Max depth for directory/call flow diagrams.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def diagrams_cmd(workspace, output, max_nodes, max_depth, quiet):
+    """
+    Generate all Mermaid architecture diagrams to a combined markdown file.
+
+    \b
+    Produces three diagram types:
+      dependency  — Module dependency flowchart (imports/exports)
+      directory   — Project directory hierarchy
+      callflow    — Sequence diagram from entry point call chains
+
+    \b
+    Output is a single markdown file with fenced ```mermaid blocks,
+    ready to embed in documentation or README files.
+
+    \b
+    Examples:
+      repoforge diagrams -w .                   # writes diagrams.md
+      repoforge diagrams -w . -o docs/arch.md   # custom output path
+      repoforge diagrams -w . --max-nodes 60    # larger dependency graph
+    """
+    import sys
+    from pathlib import Path
+
+    root = Path(workspace).resolve()
+
+    if not quiet:
+        print(f"Generating all diagrams for {workspace} ...", file=sys.stderr)
+
+    from .diagrams import generate_all_diagrams
+    from .graph import build_graph_v2
+    from .ripgrep import list_files
+
+    try:
+        code_graph = build_graph_v2(str(root))
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        click.echo(f"Error building dependency graph: {e}", err=True)
+        sys.exit(1)
+
+    files = list_files(str(root))
+    try:
+        files = [str(Path(f).relative_to(root)) for f in files]
+    except ValueError:
+        pass
+
+    content = generate_all_diagrams(
+        str(root), code_graph, files,
+        max_dep_nodes=max_nodes, max_dir_depth=max_depth,
+        max_call_depth=max_depth,
+    )
+
+    # Add a header
+    project_name = root.name.replace("-", " ").replace("_", " ").title()
+    header = f"# {project_name} — Architecture Diagrams\n\n"
+    header += "_Auto-generated by [RepoForge](https://github.com/your/repoforge). Do not edit manually._\n\n"
+    full_output = header + content
+
+    out_path = Path(output) if Path(output).is_absolute() else Path.cwd() / output
+    out_path.write_text(full_output, encoding="utf-8")
+
+    if not quiet:
+        print(f"Written to {out_path}", file=sys.stderr)
+        print(f"Sections: {full_output.count('```mermaid')} diagram(s)", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
 # import-docs subcommand
 # ---------------------------------------------------------------------------
 
@@ -1616,6 +1714,107 @@ def prompts(working_dir, output_dir, prompt_types, quiet):
     else:
         md = render_prompts_markdown(result)
         click.echo(md)
+
+
+# ---------------------------------------------------------------------------
+# validate-skills subcommand
+# ---------------------------------------------------------------------------
+
+
+@main.command(name="validate-skills")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--strict", is_flag=True, default=False,
+    help="Also require ## Examples section in each SKILL.md.")
+@click.option("--max-lines", default=400, show_default=True, type=int,
+    help="Maximum allowed lines per SKILL.md file.")
+@click.option("--fmt", "fmt",
+    default="text", show_default=True,
+    type=click.Choice(["text", "json"], case_sensitive=False),
+    help="Output format for the report.")
+@click.option("--fail-on",
+    default="error", show_default=True,
+    type=click.Choice(["error", "warning"], case_sensitive=False),
+    help="Exit code 1 when violations at this level (or above) are found.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def validate_skills(path, strict, max_lines, fmt, fail_on, quiet):
+    """
+    Validate SKILL.md files against the standard format (no API key needed).
+
+    \b
+    Scans PATH recursively for *.md files that contain YAML frontmatter with
+    a 'name:' field, then runs deterministic checks on each file:
+      - YAML frontmatter with required keys: name, description, version
+      - Required sections: ## Critical Rules
+      - File size within --max-lines limit
+      - No forbidden syntax (Templater <% blocks, raw HTML tags)
+      - (--strict) ## Examples section presence
+
+    \b
+    Exit codes:
+      0 — all files passed (or no SKILL.md files found)
+      1 — one or more violations found at --fail-on level
+
+    \b
+    Examples:
+      repoforge validate-skills                          # scan current dir
+      repoforge validate-skills ~/.claude/skills/        # scan specific dir
+      repoforge validate-skills --strict                 # also require Examples
+      repoforge validate-skills --max-lines 300          # stricter size limit
+      repoforge validate-skills --fmt json               # JSON output for CI
+      repoforge validate-skills --fail-on warning        # fail on any issue
+    """
+    import sys
+    from pathlib import Path as _Path
+
+    from .skill_validator import SkillValidator
+
+    target = _Path(path).resolve()
+
+    if not quiet:
+        click.echo(f"Scanning {target} for SKILL.md files ...", err=True)
+
+    validator = SkillValidator(
+        max_lines=max_lines,
+        strict=strict,
+        fail_on=fail_on,
+    )
+
+    if target.is_file():
+        from .skill_validator import FileResult, ValidationResult
+        file_result = validator.validate_file(target)
+        result = ValidationResult(
+            files_scanned=1,
+            results=[file_result],
+        )
+    else:
+        result = validator.validate_directory(target)
+
+    report = validator.report(result, fmt=fmt)
+    click.echo(report)
+
+    if not quiet and result.files_scanned > 0:
+        click.echo(
+            f"\nSummary: {result.files_scanned} file(s) scanned, "
+            f"{result.total_errors} error(s), "
+            f"{result.total_warnings} warning(s)",
+            err=True,
+        )
+
+    # Exit code
+    if fail_on == "warning":
+        should_fail = result.total_errors > 0 or result.total_warnings > 0
+    else:
+        should_fail = result.total_errors > 0
+
+    if should_fail:
+        if not quiet:
+            click.echo(
+                f"\nValidation failed: {result.total_errors} error(s), "
+                f"{result.total_warnings} warning(s).",
+                err=True,
+            )
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
