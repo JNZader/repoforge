@@ -22,8 +22,17 @@ from .extractor import (
     detect_language,
     extract_symbols,
 )
+from .index import SymbolIndex
 
 logger = logging.getLogger(__name__)
+
+# Confidence ordering: higher index = higher confidence.
+CONFIDENCE_ORDER: dict[str, int] = {
+    "heuristic": 0,
+    "linked": 1,
+    "imported": 2,
+    "direct": 3,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -40,6 +49,9 @@ class CallEdge:
 
     callee: str
     """Callee symbol id (file::name)."""
+
+    confidence: str = "direct"
+    """Resolution confidence: 'direct' | 'imported' | 'heuristic' | 'linked'."""
 
 
 @dataclass
@@ -71,6 +83,30 @@ class SymbolGraph:
         """Get symbols that call this symbol."""
         return [e.caller for e in self.edges if e.callee == symbol_id]
 
+    def filter_edges(self, min_confidence: str = "heuristic") -> "SymbolGraph":
+        """Return a new SymbolGraph with only edges at or above *min_confidence*.
+
+        Confidence ordering (high to low): direct > imported > linked > heuristic.
+        All symbols are preserved; only edges are filtered.
+
+        Args:
+            min_confidence: Minimum confidence level to keep. Defaults to
+                ``"heuristic"`` (keep everything).
+
+        Returns:
+            New :class:`SymbolGraph` instance with the filtered edge set.
+        """
+        threshold = CONFIDENCE_ORDER.get(min_confidence, 0)
+        filtered = [
+            e for e in self.edges
+            if CONFIDENCE_ORDER.get(e.confidence, 0) >= threshold
+        ]
+        new_graph = SymbolGraph(
+            symbols=dict(self.symbols),
+            edges=filtered,
+        )
+        return new_graph
+
     def to_json(self) -> str:
         """Export as JSON (symbols + edges arrays, D3/Cytoscape-compatible).
 
@@ -90,7 +126,7 @@ class SymbolGraph:
                 for s in self.symbols.values()
             ],
             "edges": [
-                {"caller": e.caller, "callee": e.callee}
+                {"caller": e.caller, "callee": e.callee, "confidence": e.confidence}
                 for e in self.edges
             ],
         }
@@ -350,8 +386,6 @@ def build_symbol_graph(
     # Phase 1: Extract symbols from all files + read content
     file_contents: dict[str, str] = {}
     file_symbols: dict[str, list[Symbol]] = {}
-    # name → [symbol_id] index for resolution
-    name_index: dict[str, list[str]] = {}
 
     for file_path in files:
         lang = detect_language(file_path)
@@ -373,7 +407,10 @@ def build_symbol_graph(
 
         for sym in symbols:
             graph.add_symbol(sym)
-            name_index.setdefault(sym.name, []).append(sym.id)
+
+    # Build SymbolIndex for fast resolution
+    all_symbols = [sym for syms in file_symbols.values() for sym in syms]
+    symbol_index = SymbolIndex.from_symbols(all_symbols)
 
     # Phase 2: Build import maps for cross-file resolution
     file_import_maps: dict[str, dict[str, str]] = {}
@@ -401,49 +438,115 @@ def build_symbol_graph(
 
             calls = _extract_calls_in_body(content, sym)
             for call_name in calls:
-                resolved = _resolve_call(
-                    call_name, file_path, import_map,
-                    name_index, file_symbols,
+                result = _resolve_call(
+                    call_name, file_path, import_map, symbol_index,
                 )
-                if resolved:
-                    graph.add_edge(CallEdge(caller=sym.id, callee=resolved))
+                if result:
+                    callee_id, confidence = result
+                    graph.add_edge(
+                        CallEdge(
+                            caller=sym.id,
+                            callee=callee_id,
+                            confidence=confidence,
+                        ),
+                    )
+
+    # Phase 4 (optional): SymbolLinker bridge for cross-file type resolution
+    _apply_symbol_linker(graph, file_contents)
 
     return graph
+
+
+def _apply_symbol_linker(
+    graph: SymbolGraph,
+    file_contents: dict[str, str],
+) -> None:
+    """Optionally enhance edges with SymbolLinker cross-file type resolution.
+
+    If the ``intelligence`` module is available, runs SymbolLinker to resolve
+    additional cross-file relationships and marks them ``confidence="linked"``.
+    This is a best-effort enhancement — if the module is missing the graph
+    is returned unmodified.
+    """
+    try:
+        from ..intelligence.ast_extractor import ASTSymbol
+        from ..intelligence.symbol_linker import SymbolLinker
+    except (ImportError, ModuleNotFoundError):
+        return
+
+    # Convert file_contents into ASTSymbol dicts for the linker.
+    # We only create minimal ASTSymbol objects from graph symbols to allow
+    # SymbolLinker.resolve_type() to work for cross-file type matching.
+    ast_symbols: dict[str, list[ASTSymbol]] = {}
+    for sym in graph.symbols.values():
+        ast_sym = ASTSymbol(
+            name=sym.name,
+            kind=sym.kind,
+            signature=f"{sym.kind} {sym.name}",
+            line=sym.line,
+            file=sym.file,
+        )
+        ast_symbols.setdefault(sym.file, []).append(ast_sym)
+
+    try:
+        linker = SymbolLinker(ast_symbols)
+    except Exception:  # noqa: BLE001
+        logger.debug("SymbolLinker init failed, skipping linked resolution")
+        return
+
+    # For each symbol that appears in calls but was resolved as "heuristic",
+    # try to validate via SymbolLinker type resolution.
+    for edge in list(graph.edges):
+        if edge.confidence != "heuristic":
+            continue
+        callee_sym = graph.symbols.get(edge.callee)
+        if callee_sym is None:
+            continue
+        resolved = linker.resolve_type(callee_sym.name)
+        if resolved is not None and resolved.file == callee_sym.file:
+            # SymbolLinker confirms this resolution — upgrade confidence
+            idx = graph.edges.index(edge)
+            graph.edges[idx] = CallEdge(
+                caller=edge.caller,
+                callee=edge.callee,
+                confidence="linked",
+            )
 
 
 def _resolve_call(
     call_name: str,
     caller_file: str,
     import_map: dict[str, str],
-    name_index: dict[str, list[str]],
-    file_symbols: dict[str, list[Symbol]],
-) -> str | None:
-    """Resolve a function call name to a symbol id.
+    index: SymbolIndex,
+) -> tuple[str, str] | None:
+    """Resolve a function call name to a ``(symbol_id, confidence)`` tuple.
 
-    Resolution order:
-    1. Same-file symbol with matching name
-    2. Imported symbol (via import_map → target file → symbol)
-    3. Any symbol with matching name (first match)
+    Uses :class:`SymbolIndex.resolve` which implements the strategy ordering:
+
+    1. Same-file → confidence ``"direct"``
+    2. Imported  → confidence ``"imported"``
+    3. Unique-global → confidence ``"heuristic"``
+
+    Args:
+        call_name: The bare function/class name being called.
+        caller_file: Relative path of the file containing the call.
+        import_map: Mapping of imported name → source file for *caller_file*.
+        index: Pre-built :class:`SymbolIndex` over all project symbols.
+
+    Returns:
+        ``(symbol_id, confidence_str)`` on success, or ``None`` if unresolved.
     """
-    # 1. Same-file match
-    same_file_id = f"{caller_file}::{call_name}"
-    if same_file_id in name_index.get(call_name, []):
-        return same_file_id
+    # SymbolIndex.resolve handles the three strategies in order.
+    resolved = index.resolve(call_name, from_file=caller_file, imports=import_map)
+    if resolved is None:
+        return None
 
-    # 2. Import-based match
-    if call_name in import_map:
-        target_file = import_map[call_name]
-        target_id = f"{target_file}::{call_name}"
-        if call_name in name_index and target_id in name_index[call_name]:
-            return target_id
+    # Determine which strategy matched so we can tag confidence.
+    if resolved.file == caller_file:
+        return (resolved.id, "direct")
 
-    # 3. Global match (first definition wins)
-    candidates = name_index.get(call_name, [])
-    if candidates:
-        # Prefer non-same-file to avoid false self-references
-        for cid in candidates:
-            if not cid.startswith(f"{caller_file}::"):
-                return cid
-        return candidates[0]
+    if call_name in import_map and import_map[call_name] == resolved.file:
+        return (resolved.id, "imported")
 
-    return None
+    # Unique-global fallback
+    return (resolved.id, "heuristic")

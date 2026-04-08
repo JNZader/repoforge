@@ -6,6 +6,7 @@ import pytest
 
 from repoforge.symbols.extractor import Symbol
 from repoforge.symbols.graph import (
+    CONFIDENCE_ORDER,
     CallEdge,
     SymbolGraph,
     _extract_calls_in_body,
@@ -246,3 +247,94 @@ class TestCallsBlastRadiusIncompatibility:
         result = runner.invoke(main, ["graph", "--type", "calls", "--blast-radius", "foo.py"])
         assert result.exit_code != 0
         assert "not supported" in result.output or "not supported" in (result.output + str(result.exception or ""))
+
+
+class TestCallEdgeConfidence:
+    """Phase 2 — confidence field on CallEdge."""
+
+    def test_default_confidence_is_direct(self):
+        edge = CallEdge(caller="a::f", callee="b::g")
+        assert edge.confidence == "direct"
+
+    def test_explicit_confidence(self):
+        for level in ("direct", "imported", "heuristic", "linked"):
+            edge = CallEdge(caller="a::f", callee="b::g", confidence=level)
+            assert edge.confidence == level
+
+    def test_confidence_preserved_in_dedup(self):
+        """add_edge dedup checks caller+callee; confidence should not create duplicates."""
+        g = SymbolGraph()
+        g.add_edge(CallEdge(caller="a::f", callee="b::g", confidence="imported"))
+        g.add_edge(CallEdge(caller="a::f", callee="b::g", confidence="direct"))
+        # Dedup keeps the first one added
+        assert len(g.edges) == 1
+        assert g.edges[0].confidence == "imported"
+
+    def test_json_includes_confidence(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="f", kind="function", file="a.py", line=1, end_line=2))
+        g.add_symbol(Symbol(name="g", kind="function", file="b.py", line=1, end_line=2))
+        g.add_edge(CallEdge(caller="a.py::f", callee="b.py::g", confidence="imported"))
+        data = json.loads(g.to_json())
+        edge = data["edges"][0]
+        assert edge["confidence"] == "imported"
+
+    def test_json_default_confidence_is_direct(self):
+        g = SymbolGraph()
+        g.add_symbol(Symbol(name="f", kind="function", file="a.py", line=1, end_line=2))
+        g.add_symbol(Symbol(name="g", kind="function", file="a.py", line=3, end_line=4))
+        g.add_edge(CallEdge(caller="a.py::f", callee="a.py::g"))
+        data = json.loads(g.to_json())
+        assert data["edges"][0]["confidence"] == "direct"
+
+
+class TestFilterEdges:
+    """Phase 2 — filter_edges method on SymbolGraph."""
+
+    @pytest.fixture()
+    def graph_with_mixed_edges(self):
+        g = SymbolGraph()
+        for name in ("a", "b", "c", "d", "e"):
+            g.add_symbol(Symbol(name=name, kind="function", file="x.py", line=1, end_line=2))
+        g.edges.extend([
+            CallEdge(caller="x.py::a", callee="x.py::b", confidence="direct"),
+            CallEdge(caller="x.py::a", callee="x.py::c", confidence="imported"),
+            CallEdge(caller="x.py::a", callee="x.py::d", confidence="linked"),
+            CallEdge(caller="x.py::a", callee="x.py::e", confidence="heuristic"),
+        ])
+        return g
+
+    def test_filter_heuristic_keeps_all(self, graph_with_mixed_edges):
+        filtered = graph_with_mixed_edges.filter_edges(min_confidence="heuristic")
+        assert len(filtered.edges) == 4
+
+    def test_filter_linked_drops_heuristic(self, graph_with_mixed_edges):
+        filtered = graph_with_mixed_edges.filter_edges(min_confidence="linked")
+        confidences = {e.confidence for e in filtered.edges}
+        assert "heuristic" not in confidences
+        assert len(filtered.edges) == 3
+
+    def test_filter_imported_keeps_imported_and_direct(self, graph_with_mixed_edges):
+        filtered = graph_with_mixed_edges.filter_edges(min_confidence="imported")
+        confidences = {e.confidence for e in filtered.edges}
+        assert confidences == {"direct", "imported"}
+        assert len(filtered.edges) == 2
+
+    def test_filter_direct_keeps_only_direct(self, graph_with_mixed_edges):
+        filtered = graph_with_mixed_edges.filter_edges(min_confidence="direct")
+        assert len(filtered.edges) == 1
+        assert filtered.edges[0].confidence == "direct"
+
+    def test_filter_preserves_all_symbols(self, graph_with_mixed_edges):
+        filtered = graph_with_mixed_edges.filter_edges(min_confidence="direct")
+        assert len(filtered.symbols) == len(graph_with_mixed_edges.symbols)
+        assert set(filtered.symbols.keys()) == set(graph_with_mixed_edges.symbols.keys())
+
+    def test_filter_returns_new_graph(self, graph_with_mixed_edges):
+        filtered = graph_with_mixed_edges.filter_edges(min_confidence="direct")
+        assert filtered is not graph_with_mixed_edges
+
+    def test_confidence_ordering_is_correct(self):
+        assert CONFIDENCE_ORDER["direct"] > CONFIDENCE_ORDER["imported"]
+        assert CONFIDENCE_ORDER["imported"] > CONFIDENCE_ORDER["linked"]
+        assert CONFIDENCE_ORDER["linked"] > CONFIDENCE_ORDER["heuristic"]

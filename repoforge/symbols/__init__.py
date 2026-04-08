@@ -8,12 +8,14 @@ for symbol-level architecture documentation.
 
 from .extractor import Symbol, extract_symbols
 from .graph import CallEdge, SymbolGraph, build_symbol_graph
+from .index import SymbolIndex
 from .renderer import render_symbol_mermaid
 
 __all__ = [
     "CallEdge",
     "Symbol",
     "SymbolGraph",
+    "SymbolIndex",
     "build_symbol_graph",
     "extract_symbols",
     "render_symbol_mermaid",
