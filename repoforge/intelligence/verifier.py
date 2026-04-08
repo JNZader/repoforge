@@ -18,7 +18,7 @@ import re
 from typing import Optional
 
 from ..facts import FactItem
-from ..llm import LLM, build_llm
+from ..llm import LLM, LLMProvider, build_llm
 from .ast_extractor import ASTSymbol
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def verify_chapter(
     chapter_content: str,
     facts: list[FactItem],
     ast_symbols: dict[str, list[ASTSymbol]] | None,
-    llm: LLM,
+    llm: LLMProvider,
     model: str | None = None,
 ) -> tuple[str, list[str]]:
     """Verify a documentation chapter against verified source code facts.

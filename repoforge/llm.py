@@ -30,13 +30,26 @@ Usage:
 
 import os
 from dataclasses import dataclass, field
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Protocol, runtime_checkable
 
 import litellm
 
 # Silence LiteLLM's verbose success logging
 litellm.success_callback = []
 litellm.set_verbose = False
+
+
+# ---------------------------------------------------------------------------
+# LLM Provider Protocol — structural typing for all LLM backends
+# ---------------------------------------------------------------------------
+
+@runtime_checkable
+class LLMProvider(Protocol):
+    """Structural interface for any LLM backend (LiteLLM, CLI adapter, etc.)."""
+
+    def complete(self, prompt: str, system: Optional[str] = None) -> str: ...
+
+    def stream(self, prompt: str, system: Optional[str] = None) -> Iterator[str]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -183,9 +196,9 @@ def build_llm(
     api_base: Optional[str] = None,
     max_tokens: Optional[int] = None,
     temperature: Optional[float] = None,
-) -> LLM:
+) -> LLMProvider:
     """
-    Build an LLM instance.
+    Build an LLM provider instance.
 
     Model string format (LiteLLM convention):
         "claude-haiku-3-5"                  -> Anthropic
@@ -195,12 +208,28 @@ def build_llm(
         "github/gpt-4o-mini"                -> GitHub Models
         "gemini/gemini-1.5-flash"           -> Google
         "mistral/mistral-small"             -> Mistral
+        "cli/claude"                        -> CLI adapter (Claude Code)
+        "cli/codex"                         -> CLI adapter (Codex)
+        "cli/opencode"                      -> CLI adapter (OpenCode)
 
     If model is None, auto-detects from available env vars.
     """
     # Auto-detect if no model specified
     if not model:
         model = _auto_detect_model()
+
+    # CLI adapter: "cli/<tool>" → CliLLMAdapter
+    if model.startswith("cli/"):
+        from .cli_adapter import CLI_REGISTRY, CliLLMAdapter
+
+        tool_name = model.split("/", 1)[1]
+        if tool_name not in CLI_REGISTRY:
+            available = ", ".join(sorted(CLI_REGISTRY.keys()))
+            raise ValueError(
+                f"Unknown CLI tool '{tool_name}'. "
+                f"Available tools: {available}"
+            )
+        return CliLLMAdapter(CLI_REGISTRY[tool_name])
 
     # Normalize: "github/gpt-4o-mini" -> prefix="github"
     prefix = model.split("/")[0].lower()

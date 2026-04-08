@@ -36,7 +36,7 @@ from .graph_context import (
     build_short_graph_context,
     format_facts_section,
 )
-from .llm import LLM, build_llm
+from .llm import LLM, LLMProvider, build_llm
 from .plugins import build_plugin_manifest, commands_prompt, write_plugin
 from .prompts import (
     agent_prompt,
@@ -557,7 +557,7 @@ def _estimate_prompt_tokens(text: str) -> int:
 
 
 def _generate(
-    llm: LLM,
+    llm: LLMProvider,
     system: str,
     user: str,
     dry_run: bool,
