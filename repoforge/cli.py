@@ -13,6 +13,8 @@ Six modes:
   repoforge prompts          [options] — Generate reusable analysis prompts from codebase scan (no API key needed)
   repoforge check            [options] — Validate code references in generated docs (no API key needed)
   repoforge diff             REF_A REF_B — Entity-level semantic diff between git refs (no API key needed)
+  repoforge index            [options] — Build semantic search index from codebase entities (requires API key)
+  repoforge query            QUERY     — Search the semantic index for matching entities (requires API key)
 
 Quick usage:
   repoforge skills -w /my/repo --model claude-haiku-3-5
@@ -2082,6 +2084,209 @@ def validate_skills(path, strict, max_lines, fmt, fail_on, quiet):
                 err=True,
             )
         sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# index subcommand — build semantic search index
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("-w", "--workspace",
+    default=".", show_default=True,
+    help="Path to the repo root.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option("-o", "--output-dir", "output_dir",
+    default=".repoforge/search_index/", show_default=True,
+    help="Directory to save the search index.",
+    type=click.Path(),
+)
+@click.option("--model", "embedding_model",
+    default=None,
+    help="Embedding model (litellm format). Default: text-embedding-3-small.",
+)
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def index(workspace, output_dir, embedding_model, quiet):
+    """
+    Build a semantic search index from codebase entities (requires API key).
+
+    \b
+    Scans the repo, extracts symbols and modules, builds a graph,
+    generates embeddings via litellm, and saves a FAISS index to disk.
+
+    \b
+    Requires: pip install repoforge-ai[search]
+
+    \b
+    Examples:
+      repoforge index -w .
+      repoforge index -w . -o my_index/
+      repoforge index -w . --model text-embedding-3-large
+    """
+    import sys
+    from pathlib import Path
+
+    from .search import SEARCH_AVAILABLE
+
+    if not SEARCH_AVAILABLE:
+        click.echo(
+            "Error: faiss-cpu is required for semantic search.\n"
+            "Install with: pip install repoforge-ai[search]",
+            err=True,
+        )
+        sys.exit(1)
+
+    from .graph import build_graph_v2
+    from .search import Embedder, SearchIndex
+    from .search.prepare import prepare_all
+    from .symbols import build_symbol_graph
+
+    root = str(Path(workspace).resolve())
+
+    # 1. Extract symbols
+    if not quiet:
+        print("Extracting symbols...", file=sys.stderr)
+    sym_graph = build_symbol_graph(root)
+    symbols = list(sym_graph.symbols.values())
+
+    # 2. Build file-level graph for nodes
+    if not quiet:
+        print("Building dependency graph...", file=sys.stderr)
+    code_graph = build_graph_v2(root)
+    nodes = list(code_graph.nodes)
+
+    # 3. Prepare searchable text entities
+    entities = prepare_all(symbols=symbols, nodes=nodes)
+
+    if not entities:
+        click.echo("No entities found to index.", err=True)
+        sys.exit(1)
+
+    ids = [e[0] for e in entities]
+    types = [e[1] for e in entities]
+    texts = [e[2] for e in entities]
+
+    n_symbols = sum(1 for t in types if t == "symbol")
+    n_nodes = sum(1 for t in types if t == "node")
+
+    if not quiet:
+        print(
+            f"Indexing {n_symbols} symbols, {n_nodes} nodes...",
+            file=sys.stderr,
+        )
+
+    # 4. Build index
+    embedder_kwargs = {}
+    if embedding_model:
+        embedder_kwargs["model"] = embedding_model
+    embedder = Embedder(**embedder_kwargs)
+    search_index = SearchIndex(embedder=embedder)
+    search_index.add(texts=texts, ids=ids, types=types)
+
+    # 5. Save
+    out = Path(output_dir)
+    search_index.save(out)
+
+    if not quiet:
+        print(
+            f"Index saved to {out} ({search_index.size} vectors, dim={search_index.dimension})",
+            file=sys.stderr,
+        )
+
+
+# ---------------------------------------------------------------------------
+# query subcommand — search the semantic index
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.argument("query_text")
+@click.option("--top-k", default=10, show_default=True, type=int,
+    help="Maximum number of results.")
+@click.option("--index-dir",
+    default=".repoforge/search_index/", show_default=True,
+    help="Directory containing the search index.",
+    type=click.Path(),
+)
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output results as JSON.")
+@click.option("--model", "embedding_model",
+    default=None,
+    help="Embedding model (must match the model used to build the index).",
+)
+def query(query_text, top_k, index_dir, as_json, embedding_model):
+    """
+    Search the semantic index for matching entities.
+
+    \b
+    Loads a pre-built index from disk, embeds the query, and returns
+    the most similar codebase entities.
+
+    \b
+    Requires: pip install repoforge-ai[search]
+
+    \b
+    Examples:
+      repoforge query "authentication logic"
+      repoforge query "database connection" --top-k 5
+      repoforge query "user service" --json
+    """
+    import json as json_mod
+    import sys
+    from pathlib import Path
+
+    from .search import SEARCH_AVAILABLE
+
+    if not SEARCH_AVAILABLE:
+        click.echo(
+            "Error: faiss-cpu is required for semantic search.\n"
+            "Install with: pip install repoforge-ai[search]",
+            err=True,
+        )
+        sys.exit(1)
+
+    from .search import Embedder, SearchIndex
+
+    idx_path = Path(index_dir)
+    if not idx_path.exists():
+        click.echo(
+            f"Error: Index not found at {idx_path}\n"
+            "Run 'repoforge index' first to build the search index.",
+            err=True,
+        )
+        sys.exit(1)
+
+    embedder_kwargs = {}
+    if embedding_model:
+        embedder_kwargs["model"] = embedding_model
+    embedder = Embedder(**embedder_kwargs)
+
+    search_index = SearchIndex.load(idx_path, embedder=embedder)
+    results = search_index.search(query_text, top_k=top_k)
+
+    if not results:
+        click.echo("No results found.", err=True)
+        sys.exit(0)
+
+    if as_json:
+        output = json_mod.dumps(
+            [
+                {
+                    "score": r.score,
+                    "entity_type": r.entity_type,
+                    "entity_id": r.entity_id,
+                    "text": r.text,
+                }
+                for r in results
+            ],
+            indent=2,
+            ensure_ascii=False,
+        )
+        click.echo(output)
+    else:
+        for r in results:
+            snippet = r.text[:80].replace("\n", " ")
+            click.echo(f"{r.score:.4f} | {r.entity_type:8s} | {r.entity_id} | {snippet}")
 
 
 # ---------------------------------------------------------------------------

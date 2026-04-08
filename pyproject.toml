@@ -54,8 +54,11 @@ pdf = [
 youtube = [
     "youtube-transcript-api>=1.0.0",
 ]
+search = [
+    "faiss-cpu>=1.7.0",
+]
 all = [
-    "repoforge-ai[dev,intelligence,pdf,youtube]",
+    "repoforge-ai[dev,intelligence,pdf,youtube,search]",
 ]
 
 [project.scripts]
