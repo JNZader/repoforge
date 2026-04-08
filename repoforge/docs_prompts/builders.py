@@ -105,6 +105,11 @@ def overview_prompt(repo_map: dict, language: str, project_name: str,
 5. **Configuration files** — list each config file and its purpose.
 6. **Key dependencies** — table of the most important external packages per layer (from imports in modules).
 
+**CONTENT BOUNDARIES — avoid duplication across chapters:**
+- Do NOT include full HTTP endpoint tables — a brief mention is fine, link to the API Reference chapter.
+- Do NOT include full MCP tool/command listings — a brief mention is fine, link to Core Mechanisms or API Reference.
+- Focus on structure, stack, and entry points — leave detailed API surface to dedicated chapters.
+
 Be specific. Use actual paths. No generic descriptions.
 Language: {language}
 """
@@ -162,6 +167,11 @@ def quickstart_prompt(repo_map: dict, language: str, project_name: str,
    If multiple entry points, explain each.
 5. **Verify it works** — what to check to confirm it's running (URL, output, command).
 6. **Common issues** — 2-3 most likely setup problems and their fixes.
+
+**CONTENT BOUNDARIES — avoid duplication across chapters:**
+- Do NOT list all MCP tools or API endpoints — reference the Overview or API Reference chapters.
+- Do NOT reproduce full endpoint tables — just show the commands needed to verify the setup works.
+- Focus on installation, running, and verification steps only.
 
 All code blocks must have language tags (```bash, ```python, etc.).
 Keep commands realistic — infer from actual entry points detected.
@@ -244,6 +254,11 @@ You may adjust labels for readability but keep the structure accurate.
 6. **Key design decisions** — bullet list of architectural choices and their rationale
    (infer from tech stack: why React vs Vue? why FastAPI? monorepo structure, etc.)
 7. **Inter-layer dependencies** — what each layer imports/calls from others.
+
+**CONTENT BOUNDARIES — avoid duplication across chapters:**
+- Do NOT include full HTTP endpoint tables — reference the API Reference chapter for endpoint details.
+- Do NOT list all MCP tools or commands — reference Core Mechanisms for tool details.
+- Focus on layers, data flow, design decisions, and diagrams — leave API surface to dedicated chapters.
 
 Base everything on the actual layers and modules detected. Don't invent services.
 Language: {language}

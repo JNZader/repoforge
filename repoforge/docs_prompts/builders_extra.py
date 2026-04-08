@@ -69,6 +69,11 @@ def core_mechanisms_prompt(repo_map: dict, language: str, project_name: str,
 `# Core Mechanisms` → identify 2-3 key workflows from entry points and facts.
 Per mechanism: `## Name` with purpose, key files (actual paths), Mermaid flow diagram, code pattern (from real exports — no invented bodies), integration points.
 End with cross-cutting concerns (error handling, logging, config).
+**CONTENT BOUNDARIES — avoid duplication across chapters:**
+- Do NOT include full HTTP endpoint tables — reference the API Reference chapter.
+- Do NOT list all MCP tools in a table — describe the mechanism/pattern, not an exhaustive inventory.
+- Focus on workflows, patterns, and how mechanisms work — leave complete listings to API Reference.
+
 Depth > breadth. Language: {language}
 """
     return _base_system(language), user
@@ -150,6 +155,10 @@ that are not in this extracted data.
 `# Data Models` → overview of modeling approach (infer from imports).
 Per model: `## ModelName` with purpose, fields table (Field|Type|Description), relationships.
 Add Mermaid ER diagram if multiple models. Note validation patterns.
+**CONTENT BOUNDARIES — avoid duplication across chapters:**
+- Do NOT include HTTP endpoint tables — reference the API Reference chapter.
+- Focus on data structures, schemas, relationships, and validation — not request/response flows.
+
 If no models detected, document key data structures. Mark inferred fields.
 Language: {language}
 """
@@ -218,6 +227,11 @@ handler names that are not in this extracted data. Format this data into proper 
    - Response: structure (if inferrable from models)
    - Example: a curl or fetch snippet
 
+**CONTENT BOUNDARIES — this IS the canonical location for API details:**
+- Include full endpoint tables with methods, paths, parameters, and responses.
+- Include full MCP tool listings if applicable.
+- Other chapters will reference THIS chapter for API details — be thorough here.
+
 IMPORTANT: Be transparent. If you cannot determine exact paths/parameters from static analysis,
 say "Path inferred from function name" and mark uncertain fields. Do NOT invent endpoint details.
 Language: {language}
@@ -266,6 +280,10 @@ def dev_guide_prompt(repo_map: dict, language: str, project_name: str,
 `# Developer Guide` → dev setup (hot reload, debug, test runner), project conventions (from actual names/paths), how to add a feature ({layer_hint}), testing (runner, patterns), common tasks table (dev server, tests, build, lint), code style tools.
 {('Include a "## Dependency Health" section with the analysis data provided above.' if dep_health_context else '')}
 {('Include a "## Test Coverage" section with the coverage data provided above.' if coverage_context else '')}
+**CONTENT BOUNDARIES — avoid duplication across chapters:**
+- Do NOT include endpoint tables or MCP tool listings — reference the API Reference chapter.
+- Focus on dev workflow, tooling, conventions, and contribution patterns.
+
 Be specific to THIS project. Language: {language}
 """
     return _base_system(language), user

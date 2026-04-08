@@ -46,7 +46,8 @@ def post_process_chapter(
 ) -> tuple[str, list[Correction]]:
     """Apply deterministic corrections to a generated documentation chapter.
 
-    Runs seven correction passes in order:
+    Runs eight correction passes in order:
+      0. Chain-of-thought stripping (remove LLM "thinking" preamble)
       1. Port replacement
       2. Version replacement
       3. URL placeholder cleanup
@@ -67,6 +68,7 @@ def post_process_chapter(
     """
     corrections: list[Correction] = []
 
+    content = _strip_cot_preamble(content, corrections)
     content = _fix_ports(content, facts, corrections)
     content = _fix_versions(content, build_info, corrections)
     content = _fix_url_placeholders(content, build_info, corrections)
@@ -76,6 +78,81 @@ def post_process_chapter(
     content = _validate_code_blocks(content, ast_symbols, facts, corrections)
 
     return content, corrections
+
+
+# ---------------------------------------------------------------------------
+# 0. Chain-of-thought preamble stripping
+# ---------------------------------------------------------------------------
+
+# Patterns that match LLM "thinking out loud" lines at the start of output.
+# These leak from CLI-based providers (and occasionally API providers) when
+# the model reasons before generating the actual document.
+_COT_LINE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r'^(?:Now\s+I\s+have|I\s+have\s+(?:all\s+)?(?:the\s+|enough\s+)?(?:information|data|everything|context))', re.IGNORECASE),
+    re.compile(r'^(?:Let\s+me\s+(?:write|generate|create|produce|draft|start|begin|now))', re.IGNORECASE),
+    re.compile(r'^(?:I\'ll\s+(?:write|generate|create|produce|draft|start|begin|now))', re.IGNORECASE),
+    re.compile(r'^(?:I\s+need\s+to\s+(?:write|generate|create|produce|draft))', re.IGNORECASE),
+    re.compile(r'^(?:Based\s+on\s+(?:the|this|all|my)\s+.*?(?:I\'ll|let\s+me|I\s+will|I\s+can))', re.IGNORECASE),
+    re.compile(r'^(?:OK|Okay|Alright|Right|Sure|Great|Perfect)[,.]?\s+(?:let\s+me|I\'ll|now)', re.IGNORECASE),
+    re.compile(r'^(?:Here\s+is|Here\'s)\s+the\s+(?:generated|requested|complete|full|final)', re.IGNORECASE),
+    re.compile(r'^(?:Looking\s+at\s+(?:the|this))', re.IGNORECASE),
+    re.compile(r'^(?:After\s+(?:reviewing|analyzing|examining|looking))', re.IGNORECASE),
+    re.compile(r'^(?:First,?\s+(?:let\s+me|I\'ll|I\s+need))', re.IGNORECASE),
+]
+
+
+def _strip_cot_preamble(
+    content: str,
+    corrections: list[Correction],
+) -> str:
+    """Strip chain-of-thought 'thinking' lines from the beginning of content.
+
+    LLM providers (especially CLI-based ones) sometimes emit reasoning lines
+    before the actual markdown document. This function removes those leading
+    lines, stopping as soon as it hits a markdown heading or real content.
+    """
+    lines = content.split("\n")
+    stripped_count = 0
+    cot_count = 0  # Track actual CoT lines (not just blank lines)
+
+    for line in lines:
+        stripped_line = line.strip()
+
+        # Empty lines at the start are safe to skip (but only if we find CoT after)
+        if not stripped_line:
+            stripped_count += 1
+            continue
+
+        # Stop at markdown headings — that's real content
+        if stripped_line.startswith("#"):
+            break
+
+        # Stop at markdown structural elements (lists, tables, code blocks, etc.)
+        if stripped_line.startswith(("- ", "* ", "1.", "|", "```", "---", ">")):
+            break
+
+        # Check if this line matches a CoT pattern
+        is_cot = any(p.search(stripped_line) for p in _COT_LINE_PATTERNS)
+        if is_cot:
+            stripped_count += 1
+            cot_count += 1
+            continue
+
+        # Non-empty, non-CoT, non-heading line — stop stripping
+        break
+
+    # Only apply stripping if we actually found CoT lines (not just blank lines)
+    if cot_count > 0:
+        removed_lines = lines[:stripped_count]
+        content = "\n".join(lines[stripped_count:]).lstrip("\n")
+        corrections.append(Correction(
+            original="\n".join(l for l in removed_lines if l.strip()),
+            corrected="[removed]",
+            reason=f"Stripped {stripped_count} chain-of-thought preamble line(s) from LLM output",
+            line=1,
+        ))
+
+    return content
 
 
 # ---------------------------------------------------------------------------
