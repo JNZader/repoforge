@@ -120,7 +120,7 @@ ADAPTIVE_CHAPTERS: dict[str, list[dict]] = {
 # Maps chapter file -> prompt function (new chapters + existing ones)
 # ---------------------------------------------------------------------------
 
-def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
+def _dispatch_prompt(chapter_file: str, repo_map, language: str,
                      project_name: str, project_type: str,
                      active_chapters: list[dict],
                      graph_context: str = "",
@@ -175,7 +175,7 @@ def _dispatch_prompt(chapter_file: str, repo_map: dict, language: str,
 # Main entry point (single-project, non-monorepo)
 # ---------------------------------------------------------------------------
 
-def get_chapter_prompts(repo_map: dict, language: str, project_name: str,
+def get_chapter_prompts(repo_map, language: str, project_name: str,
                         graph_context: str = "",
                         short_graph_context: str = "",
                         doc_chunks: dict | None = None,

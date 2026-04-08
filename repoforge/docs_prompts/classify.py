@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-def classify_project(repo_map: dict) -> str:
+def classify_project(repo_map) -> str:
     """
     Classify a project into one of the known types based on structural signals.
 

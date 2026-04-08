@@ -1089,8 +1089,9 @@ class TestDocsDiagramsFlag:
             tmp_path, repo_map, log,
             embed_diagrams=False,
         )
-        assert isinstance(ctx, dict)
-        assert "diagram_ctx" in ctx
+        from repoforge.ir.context import ContextBundle
+        assert isinstance(ctx, ContextBundle)
+        assert hasattr(ctx, "diagram_ctx")
 
     def test_write_diagrams_file_with_empty_ctx(self, tmp_path):
         """_write_diagrams_file returns None when no diagram context is available."""

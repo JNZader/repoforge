@@ -6,47 +6,43 @@ and facts-only per-chapter contexts from the scanned repo.
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
+
+from ..ir.context import ContextBundle
+from ..ir.repo import RepoMap
 
 logger = logging.getLogger(__name__)
 
 
 def build_all_contexts(
     root: Path,
-    repo_map: dict,
+    repo_map: Union[dict, RepoMap],
     log,
     *,
     chunked: bool = False,
     facts_only: bool = False,
     embed_diagrams: bool = False,
-) -> dict:
+) -> ContextBundle:
     """Build all context strings needed by chapter prompt generation.
 
-    Returns a dict with keys: graph_ctx, short_graph_ctx, semantic_ctx,
-    facts_ctx, api_surface_ctx, doc_chunks, fo_context_by_chapter, _graph,
-    _facts, _pp_build_info, _pp_ast_symbols.
+    Returns a ContextBundle instance. Supports dict-style access via
+    ``ctx["semantic_ctx"]`` for backwards compatibility.
     """
-    all_files = [
-        m["path"]
-        for layer in repo_map["layers"].values()
-        for m in layer.get("modules", [])
-    ]
+    # Extract all file paths — works for both RepoMap and raw dict
+    if isinstance(repo_map, RepoMap):
+        all_files = [
+            m.path
+            for layer in repo_map.layers.values()
+            for m in layer.modules
+        ]
+    else:
+        all_files = [
+            m["path"]
+            for layer in repo_map["layers"].values()
+            for m in layer.get("modules", [])
+        ]
 
-    result = {
-        "graph_ctx": "",
-        "short_graph_ctx": "",
-        "diagram_ctx": "",
-        "semantic_ctx": "",
-        "facts_ctx": "",
-        "api_surface_ctx": "",
-        "doc_chunks": {},
-        "fo_context_by_chapter": None,
-        "_graph": None,
-        "_facts": [],
-        "_all_files": all_files,
-        "dep_health_ctx": "",
-        "coverage_ctx": "",
-    }
+    result = ContextBundle(_all_files=all_files)
 
     # 3b. Build dependency graph
     _build_graph(root, result, log)
@@ -79,14 +75,14 @@ def build_all_contexts(
     return result
 
 
-def _build_diagrams(root: Path, all_files: list, result: dict, log, *, force: bool = False) -> None:
+def _build_diagrams(root: Path, all_files: list, result: ContextBundle, log, *, force: bool = False) -> None:
     """Build Mermaid architecture diagrams from the graph (if available).
 
     When force=True, attempts to build a graph even if one hasn't been built yet
     (e.g., when --diagrams flag is passed). Guarantees a diagram_ctx is set
     or an error is logged.
     """
-    _graph = result.get("_graph")
+    _graph = result._graph
 
     if _graph is None:
         if not force:
@@ -96,7 +92,7 @@ def _build_diagrams(root: Path, all_files: list, result: dict, log, *, force: bo
             from ..graph import build_graph_v2
             log("🔗 Building dependency graph for diagrams...")
             _graph = build_graph_v2(str(root))
-            result["_graph"] = _graph
+            result._graph = _graph
             log("   ✅ Graph ready for diagram generation")
         except (ImportError, OSError, ValueError, RuntimeError) as e:
             log(f"   ⚠️  Graph build failed, diagrams will be limited: {e}")
@@ -105,7 +101,7 @@ def _build_diagrams(root: Path, all_files: list, result: dict, log, *, force: bo
     try:
         from ..diagrams import generate_all_diagrams
         log("📊 Generating architecture diagrams...")
-        result["diagram_ctx"] = generate_all_diagrams(
+        result.diagram_ctx = generate_all_diagrams(
             str(root), _graph, all_files,
         )
         log("   ✅ Diagrams generated")
@@ -114,16 +110,16 @@ def _build_diagrams(root: Path, all_files: list, result: dict, log, *, force: bo
         log(f"   ⚠️  Diagram generation skipped: {e}")
 
 
-def _build_graph(root: Path, result: dict, log) -> None:
+def _build_graph(root: Path, result: ContextBundle, log) -> None:
     from ..graph_context import build_graph_context_from_graph, build_short_graph_context
 
     try:
         from ..graph import build_graph_v2
         log("🔗 Building dependency graph...")
         _graph = build_graph_v2(str(root))
-        result["graph_ctx"] = build_graph_context_from_graph(_graph)
-        result["short_graph_ctx"] = build_short_graph_context(_graph)
-        result["_graph"] = _graph
+        result.graph_ctx = build_graph_context_from_graph(_graph)
+        result.short_graph_ctx = build_short_graph_context(_graph)
+        result._graph = _graph
         module_count = len([n for n in _graph.nodes if n.node_type == "module"])
         edge_count = len([e for e in _graph.edges if e.edge_type in ("imports", "depends_on")])
         log(f"   ✅ Graph: {module_count} modules, {edge_count} dependencies")
@@ -132,20 +128,20 @@ def _build_graph(root: Path, result: dict, log) -> None:
         log(f"   ⚠️  Graph analysis skipped: {e}")
 
 
-def _build_semantic(root: Path, all_files: list, result: dict, log) -> None:
+def _build_semantic(root: Path, all_files: list, result: ContextBundle, log) -> None:
     from ..graph_context import build_semantic_context, format_facts_section
 
     try:
         log("🔍 Extracting semantic facts...")
-        result["semantic_ctx"] = build_semantic_context(
+        result.semantic_ctx = build_semantic_context(
             str(root), all_files,
-            graph=result["_graph"],
+            graph=result._graph,
             include_snippets=True,
         )
         from ..facts import extract_facts as _extract_facts
         _facts = _extract_facts(str(root), all_files)
-        result["facts_ctx"] = format_facts_section(_facts)
-        result["_facts"] = _facts
+        result.facts_ctx = format_facts_section(_facts)
+        result._facts = _facts
         if _facts:
             log(f"   ✅ Facts: {len(_facts)} items extracted")
         else:
@@ -155,16 +151,16 @@ def _build_semantic(root: Path, all_files: list, result: dict, log) -> None:
         log(f"   ⚠️  Semantic context extraction skipped: {e}")
 
 
-def _build_api_surface(root: Path, all_files: list, result: dict, log) -> None:
+def _build_api_surface(root: Path, all_files: list, result: ContextBundle, log) -> None:
     from ..graph_context import format_api_surface
 
     try:
         if all_files:
             api_surface_ctx = format_api_surface(
-                str(root), all_files, graph=result["_graph"],
+                str(root), all_files, graph=result._graph,
             )
             if api_surface_ctx:
-                result["api_surface_ctx"] = api_surface_ctx
+                result.api_surface_ctx = api_surface_ctx
                 log("   ✅ API Surface extracted for all chapters")
     except (ImportError, OSError, ValueError, RuntimeError) as e:
         # API surface extraction failures — degrade gracefully
@@ -172,7 +168,7 @@ def _build_api_surface(root: Path, all_files: list, result: dict, log) -> None:
 
 
 def _build_doc_chunks(
-    root: Path, all_files: list, repo_map: dict, result: dict, log,
+    root: Path, all_files: list, repo_map: Union[dict, RepoMap], result: ContextBundle, log,
 ) -> None:
     try:
         from ..intelligence.doc_chunks import (
@@ -190,15 +186,18 @@ def _build_doc_chunks(
         if ast_symbols:
             log(f"   ✅ AST symbols: {sum(len(v) for v in ast_symbols.values())} symbols from {len(ast_symbols)} files")
 
-        _facts = result["_facts"]
-        _build_info = repo_map.get("build_info", {})
+        _facts = result._facts
+        if isinstance(repo_map, RepoMap):
+            _build_info = repo_map.build_info.to_dict() if repo_map.build_info else {}
+        else:
+            _build_info = repo_map.get("build_info", {})
 
         doc_chunks = {
             "endpoints": chunk_endpoints(_facts, ast_symbols),
             "data_models": chunk_data_models(_facts, ast_symbols),
             "mcp_tools": chunk_mcp_tools(ast_symbols, _facts),
             "cli_commands": chunk_cli_commands(_facts, ast_symbols),
-            "architecture": chunk_architecture(result["graph_ctx"], _build_info),
+            "architecture": chunk_architecture(result.graph_ctx, _build_info),
         }
 
         module_summaries = []
@@ -208,7 +207,7 @@ def _build_doc_chunks(
                 module_summaries.append(summary)
         doc_chunks["module_summaries"] = "\n\n".join(module_summaries) if module_summaries else ""
 
-        result["doc_chunks"] = doc_chunks
+        result.doc_chunks = doc_chunks
         non_empty = sum(1 for v in doc_chunks.values() if v)
         log(f"   ✅ Chunks: {non_empty}/{len(doc_chunks)} non-empty")
     except (ImportError, OSError, ValueError, KeyError) as e:
@@ -217,7 +216,7 @@ def _build_doc_chunks(
 
 
 def _build_facts_only(
-    root: Path, all_files: list, repo_map: dict, result: dict, log,
+    root: Path, all_files: list, repo_map: Union[dict, RepoMap], result: ContextBundle, log,
 ) -> None:
     from ..graph_context import (
         build_facts_only_context,
@@ -232,9 +231,12 @@ def _build_facts_only(
         from ..intelligence.compressor import compress_batch
 
         log("🔬 Facts-only mode: compressing top file signatures...")
-        _fo_facts = result["_facts"]
-        _fo_build_info = repo_map.get("build_info", {})
-        _graph = result["_graph"]
+        _fo_facts = result._facts
+        if isinstance(repo_map, RepoMap):
+            _fo_build_info = repo_map.build_info.to_dict() if repo_map.build_info else {}
+        else:
+            _fo_build_info = repo_map.get("build_info", {})
+        _graph = result._graph
 
         # Pick top files by PageRank — cap at 15
         _top_files = _select_top_files(_graph, all_files, _compute_ranks, is_test_file)
@@ -281,22 +283,22 @@ def _build_facts_only(
         for _ch_file in _all_chapter_files:
             fo_ctx[_ch_file] = build_facts_only_context_for_chapter(
                 _ch_file, str(root), all_files, _fo_facts,
-                result["api_surface_ctx"], _fo_compressed, _fo_build_info,
+                result.api_surface_ctx, _fo_compressed, _fo_build_info,
             )
 
         # Architecture: filtered facts + short graph
         _arch_filtered = filter_facts_for_chapter("03-architecture.md", _fo_facts)
         _arch_facts_ctx = format_facts_section(_arch_filtered)
-        _arch_parts = [p for p in [result["short_graph_ctx"], _arch_facts_ctx] if p]
+        _arch_parts = [p for p in [result.short_graph_ctx, _arch_facts_ctx] if p]
         fo_ctx["03-architecture.md"] = "\n".join(_arch_parts).strip()
 
         fo_ctx["index.md"] = ""
         fo_ctx["_default"] = build_facts_only_context(
             str(root), all_files, _fo_facts,
-            result["api_surface_ctx"], _fo_compressed, _fo_build_info,
+            result.api_surface_ctx, _fo_compressed, _fo_build_info,
         )
 
-        result["fo_context_by_chapter"] = fo_ctx
+        result.fo_context_by_chapter = fo_ctx
         _total = sum(len(v) for v in fo_ctx.values())
         log(f"   ✅ Per-chapter facts-only context built ({len(fo_ctx)} chapters, {_total} total chars)")
     except (ImportError, OSError, ValueError, KeyError) as e:
@@ -304,13 +306,13 @@ def _build_facts_only(
         log(f"   ⚠️  Facts-only context skipped: {e}")
 
 
-def _build_dep_health(root: Path, result: dict, log) -> None:
+def _build_dep_health(root: Path, result: ContextBundle, log) -> None:
     """Analyze dependency health and add markdown context."""
     try:
         from ..dep_health import analyze_dependency_health
         report = analyze_dependency_health(str(root))
         if report is not None:
-            result["dep_health_ctx"] = report.to_markdown()
+            result.dep_health_ctx = report.to_markdown()
             log(
                 f"📦 Dependency health: {report.ecosystem} — "
                 f"{report.direct_count} direct, {report.transitive_count} transitive, "
@@ -323,7 +325,7 @@ def _build_dep_health(root: Path, result: dict, log) -> None:
         log(f"   ⚠️  Dependency health analysis skipped: {e}")
 
 
-def _build_coverage(root: Path, result: dict, log) -> None:
+def _build_coverage(root: Path, result: ContextBundle, log) -> None:
     """Detect and parse coverage reports, render as markdown context."""
     try:
         from ..coverage import auto_detect_and_parse, render_coverage_markdown
@@ -331,7 +333,7 @@ def _build_coverage(root: Path, result: dict, log) -> None:
         if reports:
             total_files = sum(len(r.files) for r in reports)
             formats = ", ".join({r.source_format for r in reports})
-            result["coverage_ctx"] = render_coverage_markdown(reports)
+            result.coverage_ctx = render_coverage_markdown(reports)
             log(f"📈 Coverage: {total_files} files from {formats}")
         else:
             log("📈 Coverage: no coverage reports found")

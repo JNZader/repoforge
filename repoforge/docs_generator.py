@@ -15,7 +15,7 @@ Flow:
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,8 @@ from .incremental import (
 from .incremental import (
     load_manifest as _load_manifest,
 )
+from .ir.context import ContextBundle
+from .ir.repo import RepoMap
 from .llm import build_llm
 from .pipeline.context import build_all_contexts
 from .pipeline.generate import generate_chapter, postprocess_chapter
@@ -92,7 +94,7 @@ def generate_docs(
     repo_map = scan_repo(str(root))
 
     # Apply repoforge.yaml overrides
-    cfg = repo_map.get("repoforge_config", {})
+    cfg = repo_map.repoforge_config
     if cfg.get("language") and language == "English":
         language = cfg["language"]
     if cfg.get("model") and model is None:
@@ -105,11 +107,11 @@ def generate_docs(
         complexity = cfg.get("complexity", "auto")
     cx = classify_complexity(repo_map, override=complexity)
 
-    stats = repo_map.get("stats", {})
+    stats = repo_map.stats
     rg = stats.get("rg_version", None)
     total_files = stats.get("total_files", "?")
-    log(f"🗂  Layers: {', '.join(repo_map['layers'].keys())}")
-    log(f"🔧 Stack:  {', '.join(repo_map['tech_stack']) or 'unknown'}")
+    log(f"🗂  Layers: {', '.join(repo_map.layers.keys())}")
+    log(f"🔧 Stack:  {', '.join(repo_map.tech_stack) or 'unknown'}")
     log(f"📊 Files:  {total_files}  [{'ripgrep ' + rg if rg else 'fallback mode'}]")
     log(f"📐 Complexity: {cx['size']} → max_chapters={cx['max_chapters']}")
 
@@ -135,19 +137,19 @@ def generate_docs(
     # ------------------------------------------------------------------
     # Stage 4: Get chapter list
     # ------------------------------------------------------------------
-    _arch_context = ctx["semantic_ctx"] or ctx["graph_ctx"]
-    _other_parts = [p for p in [ctx["facts_ctx"], ctx["api_surface_ctx"], ctx["short_graph_ctx"]] if p]
+    _arch_context = ctx.semantic_ctx or ctx.graph_ctx
+    _other_parts = [p for p in [ctx.facts_ctx, ctx.api_surface_ctx, ctx.short_graph_ctx] if p]
     _other_context = "\n".join(_other_parts).strip() if _other_parts else ""
 
     all_chapters = get_chapter_prompts(
         repo_map, language, project_name,
         graph_context=_arch_context,
         short_graph_context=_other_context,
-        doc_chunks=ctx["doc_chunks"],
-        facts_only_context_by_chapter=ctx["fo_context_by_chapter"],
-        diagram_context=ctx.get("diagram_ctx", ""),
-        dep_health_context=ctx.get("dep_health_ctx", ""),
-        coverage_context=ctx.get("coverage_ctx", ""),
+        doc_chunks=ctx.doc_chunks,
+        facts_only_context_by_chapter=ctx.fo_context_by_chapter,
+        diagram_context=ctx.diagram_ctx,
+        dep_health_context=ctx.dep_health_ctx,
+        coverage_context=ctx.coverage_ctx,
         link_style=link_style,
     )
     max_ch = cx["max_chapters"]
@@ -200,7 +202,7 @@ def generate_docs(
     # ------------------------------------------------------------------
     do_post_process = not no_verify_docs
     do_verify = verify and not no_verify_docs
-    _pp_facts = ctx["_facts"]
+    _pp_facts = ctx._facts
     _pp_build_info = _load_build_info(root, do_post_process, do_verify, log)
     _pp_ast_symbols = _load_ast_symbols(root, repo_map, chunked, do_post_process, log)
 
@@ -292,16 +294,23 @@ def _load_build_info(root, do_post_process, do_verify, log):
         return None
 
 
-def _load_ast_symbols(root, repo_map, chunked, do_post_process, log):
+def _load_ast_symbols(root, repo_map: Union[dict, RepoMap], chunked, do_post_process, log):
     if not do_post_process:
         return None
     try:
         from .intelligence.doc_chunks import build_all_ast_symbols
-        _all_files = [
-            m["path"]
-            for layer in repo_map["layers"].values()
-            for m in layer.get("modules", [])
-        ]
+        if isinstance(repo_map, RepoMap):
+            _all_files = [
+                m.path
+                for layer in repo_map.layers.values()
+                for m in layer.modules
+            ]
+        else:
+            _all_files = [
+                m["path"]
+                for layer in repo_map["layers"].values()
+                for m in layer.get("modules", [])
+            ]
         return build_all_ast_symbols(str(root), _all_files)
     except (ImportError, OSError, SyntaxError, ValueError):
         # ImportError: doc_chunks not available; OSError: file read
@@ -309,7 +318,7 @@ def _load_ast_symbols(root, repo_map, chunked, do_post_process, log):
         return None
 
 
-def _infer_project_name(root: Path, repo_map: dict) -> str:
+def _infer_project_name(root: Path, repo_map: Union[dict, RepoMap]) -> str:
     """Infer project name from config files or directory name."""
     import json
 
@@ -343,13 +352,13 @@ def _prettify_name(name: str) -> str:
     return name.replace("-", " ").replace("_", " ").title()
 
 
-def _write_diagrams_file(ctx: dict, root: Path, out: Path, project_name: str, log) -> Optional[str]:
+def _write_diagrams_file(ctx: Union[dict, ContextBundle], root: Path, out: Path, project_name: str, log) -> Optional[str]:
     """Write a standalone diagrams.md file to the output directory.
 
     Uses the diagram_ctx already built during context generation. Returns the
     path to the written file, or None if diagrams were not available.
     """
-    diagram_ctx = ctx.get("diagram_ctx", "")
+    diagram_ctx = ctx.diagram_ctx if isinstance(ctx, ContextBundle) else ctx.get("diagram_ctx", "")
     if not diagram_ctx:
         log("   ⚠️  No diagram context available — diagrams.md not written")
         return None

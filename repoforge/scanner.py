@@ -18,9 +18,11 @@ import ast
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import yaml
+
+from .ir.repo import BuildMetadata, LayerInfo, ModuleInfo, RepoMap
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +99,7 @@ DEFAULT_MAX_FILES_PER_LAYER = 500
 # Complexity classification (deterministic, no LLM)
 # ---------------------------------------------------------------------------
 
-def classify_complexity(repo_map: dict, override: str = "auto") -> dict:
+def classify_complexity(repo_map: Union[dict, RepoMap], override: str = "auto") -> dict:
     """
     Classify repo complexity and return routing parameters.
 
@@ -105,18 +107,23 @@ def classify_complexity(repo_map: dict, override: str = "auto") -> dict:
     and large repos get concise, focused output.
 
     Args:
-        repo_map: Output from scan_repo()
+        repo_map: Output from scan_repo() — accepts both RepoMap and legacy dict.
         override: "auto" (detect), or force "small" / "medium" / "large"
 
     Returns:
         Dict with size classification and all routing parameters.
     """
-    total_files = repo_map.get("stats", {}).get("total_files", 0)
-    num_layers = len(repo_map.get("layers", {}))
-    total_modules = sum(
-        len(layer.get("modules", {}))
-        for layer in repo_map.get("layers", {}).values()
-    )
+    if isinstance(repo_map, RepoMap):
+        total_files = repo_map.stats.get("total_files", 0)
+        num_layers = len(repo_map.layers)
+        total_modules = sum(len(layer.modules) for layer in repo_map.layers.values())
+    else:
+        total_files = repo_map.get("stats", {}).get("total_files", 0)
+        num_layers = len(repo_map.get("layers", {}))
+        total_modules = sum(
+            len(layer.get("modules", {}))
+            for layer in repo_map.get("layers", {}).values()
+        )
 
     # Classify
     if override != "auto" and override in ("small", "medium", "large"):
@@ -155,9 +162,9 @@ def scan_repo(
     working_dir: str,
     config: Optional[dict] = None,
     max_files_per_layer: Optional[int] = None,
-) -> dict:
+) -> RepoMap:
     """
-    Scan a repo and return a RepoMap dict.
+    Scan a repo and return a typed RepoMap.
 
     Args:
         working_dir: Path to the repo root.
@@ -168,35 +175,9 @@ def scan_repo(
             files — we now default to 500 because token-budgeted
             selection downstream handles the real output limits.
 
-    RepoMap structure:
-    {
-        "root": str,
-        "tech_stack": list[str],
-        "layers": {
-            "backend": {
-                "path": str,
-                "modules": [
-                    {
-                        "path": str,           # relative path
-                        "name": str,
-                        "language": str,
-                        "exports": list[str],  # public functions/classes
-                        "imports": list[str],  # external deps imported
-                        "summary_hint": str,   # short description from docstring/comments
-                    }
-                ]
-            },
-            ...
-        },
-        "entry_points": list[str],
-        "config_files": list[str],
-        "repoforge_config": dict,   # raw repoforge.yaml content (if found)
-        "stats": {
-            "total_files": int,
-            "rg_available": bool,
-            "rg_version": str | None,
-        }
-    }
+    Returns:
+        A typed RepoMap instance. Supports dict-style access via
+        ``repo_map["layers"]`` for backwards compatibility.
     """
     from .intelligence import parse_build_files
     from .ripgrep import repo_stats
@@ -237,36 +218,52 @@ def scan_repo(
     stats = repo_stats(root)
 
     # Include build metadata in the repo map
-    build_metadata = {}
-    if build_info.language:
-        build_metadata["language"] = build_info.language
-    if build_info.module_path:
-        build_metadata["module_path"] = build_info.module_path
-    if build_info.version:
-        build_metadata["version"] = build_info.version
-    if build_info.go_version:
-        build_metadata["go_version"] = build_info.go_version
+    build_meta: BuildMetadata | None = None
+    if build_info.language or build_info.module_path or build_info.version or build_info.go_version:
+        build_meta = BuildMetadata(
+            language=build_info.language or "",
+            module_path=build_info.module_path or "",
+            version=build_info.version or "",
+            go_version=build_info.go_version or "",
+        )
 
     # Build a complete list of directories for the full project tree.
     # This ensures the directory tree in docs includes ALL directories,
     # even if layer detection or module scanning missed some.
     all_directories = _discover_all_directories(root)
 
-    result = {
-        "root": str(root),
-        "tech_stack": tech_stack,
-        "layers": layers,
-        "entry_points": entry_points,
-        "config_files": config_files,
-        "repoforge_config": config,   # expose so generator/docs_generator can read
-        "stats": stats,
-        "_all_directories": all_directories,
-    }
+    # Convert raw layer dicts to typed LayerInfo objects
+    typed_layers: dict[str, LayerInfo] = {}
+    for layer_name, layer_data in layers.items():
+        if isinstance(layer_data, dict):
+            typed_layers[layer_name] = LayerInfo(
+                path=layer_data["path"],
+                modules=[
+                    ModuleInfo(
+                        path=m["path"],
+                        name=m["name"],
+                        language=m["language"],
+                        exports=list(m.get("exports", [])),
+                        imports=list(m.get("imports", [])),
+                        summary_hint=m.get("summary_hint", ""),
+                    )
+                    for m in layer_data.get("modules", [])
+                ],
+            )
+        else:
+            typed_layers[layer_name] = layer_data  # already LayerInfo
 
-    if build_metadata:
-        result["build_info"] = build_metadata
-
-    return result
+    return RepoMap(
+        root=str(root),
+        tech_stack=tech_stack,
+        layers=typed_layers,
+        entry_points=entry_points,
+        config_files=config_files,
+        repoforge_config=config,
+        stats=stats,
+        all_directories=all_directories,
+        build_info=build_meta,
+    )
 
 
 # ---------------------------------------------------------------------------
