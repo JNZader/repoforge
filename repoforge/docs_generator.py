@@ -14,6 +14,7 @@ Flow:
 
 import logging
 import sys
+import threading
 from pathlib import Path
 from typing import Optional, Union
 
@@ -36,6 +37,7 @@ from .incremental import (
 from .ir.context import ContextBundle
 from .ir.repo import RepoMap
 from .llm import build_llm
+from .performance import BatchExecutor, RateLimiter
 from .pipeline.context import build_all_contexts
 from .pipeline.generate import generate_chapter, postprocess_chapter
 from .pipeline.write import (
@@ -67,6 +69,7 @@ def generate_docs(
     incremental: bool = False,
     link_style: str = "backtick",
     embed_diagrams: bool = False,
+    max_workers: Optional[int] = None,
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -101,6 +104,15 @@ def generate_docs(
         model = cfg["model"]
     if cfg.get("project_name") and project_name is None:
         project_name = cfg["project_name"]
+
+    # Resolve max_workers: CLI override > config > default 4
+    if max_workers is None:
+        parallel_cfg = cfg.get("parallel", {})
+        if isinstance(parallel_cfg, dict):
+            max_workers = parallel_cfg.get("max_workers", 4)
+        else:
+            max_workers = 4
+    max_workers = max(1, int(max_workers))
 
     # Resolve complexity
     if complexity == "auto":
@@ -207,38 +219,70 @@ def generate_docs(
     _pp_ast_symbols = _load_ast_symbols(root, repo_map, chunked, do_post_process, log)
 
     # ------------------------------------------------------------------
-    # Stage 6: Generate each chapter
+    # Stage 6: Generate each chapter (parallel via BatchExecutor)
     # ------------------------------------------------------------------
     out.mkdir(parents=True, exist_ok=True)
     generated = []
     errors = []
     all_corrections: list[dict] = []
 
-    log("\n✍️  Generating documentation...\n")
-    for i, chapter in enumerate(chapters, 1):
+    # Thread-safe log wrapper
+    safe_log = _ThreadSafeLog(log, threading.Lock())
+
+    # Rate limiter — generous default: 50 requests / 60s
+    parallel_cfg = cfg.get("parallel", {}) if isinstance(cfg.get("parallel"), dict) else {}
+    _rl_max = int(parallel_cfg.get("rate_limit_rpm", 50))
+    _rl_window = float(parallel_cfg.get("rate_limit_window", 60))
+    rate_limiter = RateLimiter(max_requests=_rl_max, window_seconds=_rl_window)
+
+    total_chapters = len(chapters)
+
+    def _process_one_chapter(idx_chapter: tuple[int, dict]) -> dict:
+        """Process a single chapter: generate + postprocess + write.
+
+        Returns ``{"path": str, "corrections": list}`` on success
+        or ``{"error": {"file": str, "error": str}}`` on failure.
+        """
+        i, chapter = idx_chapter
         subdir = chapter.get("subdir")
         display = f"{subdir}/{chapter['file']}" if subdir else chapter["file"]
-        log(f"[{i}/{len(chapters)}] {display} — {chapter['title']} ...", end=" ")
+        safe_log(f"[{i}/{total_chapters}] {display} — {chapter['title']} ...", end=" ")
         try:
-            content = generate_chapter(llm, chapter, log)
-            log("✅", end="")
+            rate_limiter.acquire_or_wait()
+            content = generate_chapter(llm, chapter, safe_log)
+            safe_log("✅", end="")
 
             content, corr = postprocess_chapter(
                 content, chapter,
                 facts=_pp_facts, build_info=_pp_build_info,
                 ast_symbols=_pp_ast_symbols,
                 do_post_process=do_post_process, do_verify=do_verify,
-                llm=llm, verify_model=verify_model, log=log,
+                llm=llm, verify_model=verify_model, log=safe_log,
             )
-            all_corrections.extend(corr)
-            log("")
+            safe_log("")
 
             path = write_chapter(content, chapter, out)
-            generated.append(path)
-        except (OSError, ValueError, RuntimeError, KeyError) as e:
-            # OSError: file I/O; ValueError/KeyError: data issues; RuntimeError: LLM or pipeline errors
-            errors.append({"file": chapter["file"], "error": str(e)})
-            log(f"❌ {e}")
+            return {"path": path, "corrections": corr}
+        except Exception as e:
+            safe_log(f"❌ {e}")
+            return {"error": {"file": chapter["file"], "error": str(e)}}
+
+    safe_log(f"\n✍️  Generating documentation (max_workers={max_workers})...\n")
+    executor = BatchExecutor(max_concurrent=max_workers)
+    results = executor.run(
+        list(enumerate(chapters, 1)),
+        _process_one_chapter,
+    )
+
+    # Collect results into generated/errors/all_corrections
+    for result in results:
+        if result is None:
+            continue
+        if "error" in result:
+            errors.append(result["error"])
+        else:
+            generated.append(result["path"])
+            all_corrections.extend(result.get("corrections", []))
 
     # ------------------------------------------------------------------
     # Stage 7: Write corrections log + Docsify files
@@ -403,6 +447,18 @@ def _write_gen_manifest(out, root, git_sha, old_manifest, chapter_deps, generate
 
     write_manifest(out, manifest)
     log(f"\n📦 Manifest written: {_rel(out / '.manifest.json', root)}")
+
+
+class _ThreadSafeLog:
+    """Wrap a ``log()`` closure with a lock for thread-safe output."""
+
+    def __init__(self, log_fn, lock: threading.Lock) -> None:
+        self._log = log_fn
+        self._lock = lock
+
+    def __call__(self, msg: str = "", end: str = "\n") -> None:
+        with self._lock:
+            self._log(msg, end=end)
 
 
 def _make_logger(verbose: bool):

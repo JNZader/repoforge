@@ -1,5 +1,6 @@
 """Tests for Wave 14: Performance — cost estimation, rate limiting, parallel execution."""
 
+import threading
 import time
 
 import pytest
@@ -102,6 +103,59 @@ class TestRateLimiter:
         wait = limiter.wait_time()
         assert wait > 0
         assert wait <= 10
+
+    def test_acquire_or_wait_blocks_then_acquires(self):
+        """Second thread should block until the window expires, then acquire."""
+        limiter = RateLimiter(max_requests=1, window_seconds=0.15)
+        limiter.acquire()  # exhaust the single slot
+
+        acquired_at = []
+
+        def worker():
+            limiter.acquire_or_wait()
+            acquired_at.append(time.monotonic())
+
+        start = time.monotonic()
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join(timeout=2.0)
+
+        assert len(acquired_at) == 1, "Worker should have acquired a slot"
+        elapsed = acquired_at[0] - start
+        # Should have waited roughly the window duration
+        assert elapsed >= 0.10, f"Expected wait >=0.10s, got {elapsed:.3f}s"
+
+    def test_acquire_or_wait_immediate_when_slot_available(self):
+        limiter = RateLimiter(max_requests=5, window_seconds=60)
+        start = time.monotonic()
+        limiter.acquire_or_wait()
+        elapsed = time.monotonic() - start
+        assert elapsed < 0.1, "Should acquire immediately when slots available"
+        assert limiter.remaining == 4
+
+    def test_thread_safety_concurrent_acquire(self):
+        """Concurrent acquire() calls must never exceed max_requests."""
+        max_req = 10
+        limiter = RateLimiter(max_requests=max_req, window_seconds=60)
+        results: list[bool] = []
+        lock = threading.Lock()
+
+        def worker():
+            result = limiter.acquire()
+            with lock:
+                results.append(result)
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5.0)
+
+        assert len(results) == 20
+        acquired = sum(1 for r in results if r)
+        assert acquired == max_req, (
+            f"Expected exactly {max_req} acquisitions, got {acquired}"
+        )
 
 
 # ── Batch executor ───────────────────────────────────────────────────────

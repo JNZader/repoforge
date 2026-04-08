@@ -306,11 +306,13 @@ SUPPORTED_LANGUAGES = [
         "Generate Mermaid architecture diagrams and embed them in the Architecture chapter. "
         "Also writes diagrams.md alongside the generated docs."
     ))
+@click.option("--max-workers", type=int, default=None,
+    help="Max parallel chapter generation workers (default: 4).")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
          chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental,
-         watch, watch_interval, link_style, embed_diagrams):
+         watch, watch_interval, link_style, embed_diagrams, max_workers):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -389,6 +391,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             incremental=incremental,
             link_style=link_style,
             embed_diagrams=embed_diagrams,
+            max_workers=max_workers,
         )
 
     if do_serve or serve_only:

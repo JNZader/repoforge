@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -126,38 +127,54 @@ def estimate_cost(
 
 
 class RateLimiter:
-    """Simple sliding-window rate limiter."""
+    """Thread-safe sliding-window rate limiter."""
 
     def __init__(self, max_requests: int, window_seconds: float) -> None:
         self._max = max_requests
         self._window = window_seconds
         self._timestamps: list[float] = []
+        self._lock = threading.Lock()
 
     def _prune(self) -> None:
+        """Remove expired timestamps. Caller MUST hold ``self._lock``."""
         now = time.monotonic()
         cutoff = now - self._window
         self._timestamps = [t for t in self._timestamps if t > cutoff]
 
     def acquire(self) -> bool:
         """Try to acquire a request slot. Returns False if rate limited."""
-        self._prune()
-        if len(self._timestamps) >= self._max:
-            return False
-        self._timestamps.append(time.monotonic())
-        return True
+        with self._lock:
+            self._prune()
+            if len(self._timestamps) >= self._max:
+                return False
+            self._timestamps.append(time.monotonic())
+            return True
+
+    def acquire_or_wait(self) -> None:
+        """Block until a request slot is available, then acquire it."""
+        while True:
+            with self._lock:
+                self._prune()
+                if len(self._timestamps) < self._max:
+                    self._timestamps.append(time.monotonic())
+                    return
+                wait = self._timestamps[0] + self._window - time.monotonic()
+            time.sleep(max(0.01, wait))
 
     @property
     def remaining(self) -> int:
-        self._prune()
-        return max(0, self._max - len(self._timestamps))
+        with self._lock:
+            self._prune()
+            return max(0, self._max - len(self._timestamps))
 
     def wait_time(self) -> float:
         """Seconds until the next slot is available. 0 if available now."""
-        self._prune()
-        if len(self._timestamps) < self._max:
-            return 0.0
-        oldest = self._timestamps[0]
-        return max(0.0, oldest + self._window - time.monotonic())
+        with self._lock:
+            self._prune()
+            if len(self._timestamps) < self._max:
+                return 0.0
+            oldest = self._timestamps[0]
+            return max(0.0, oldest + self._window - time.monotonic())
 
 
 # ---------------------------------------------------------------------------
