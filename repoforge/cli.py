@@ -295,6 +295,10 @@ SUPPORTED_LANGUAGES = [
     help="Generate only the factual extraction (no LLM prose). Outputs structured facts per chapter.")
 @click.option("--incremental/--no-incremental", default=False, show_default=True,
     help="Only regenerate chapters whose source files changed since last run (uses git diff + manifest).")
+@click.option("--semantic-dedup/--no-semantic-dedup", default=False, show_default=True,
+    help="Use embedding similarity to skip chapters whose source meaning hasn't changed (requires --incremental).")
+@click.option("--semantic-threshold", default=0.95, show_default=True, type=float,
+    help="Cosine similarity threshold for --semantic-dedup (0.0-1.0). Higher = more aggressive skipping.")
 @click.option("--watch", is_flag=True, default=False,
     help="Enter watch mode: poll source files and regenerate docs on change.")
 @click.option("--watch-interval", default=2.0, show_default=True, type=float,
@@ -314,6 +318,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
          chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental,
+         semantic_dedup, semantic_threshold,
          watch, watch_interval, link_style, embed_diagrams, max_workers):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
@@ -391,6 +396,8 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             no_verify_docs=no_verify_docs,
             facts_only=facts_only,
             incremental=incremental,
+            semantic_dedup=semantic_dedup,
+            semantic_threshold=semantic_threshold,
             link_style=link_style,
             embed_diagrams=embed_diagrams,
             max_workers=max_workers,

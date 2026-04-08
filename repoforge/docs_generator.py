@@ -70,6 +70,8 @@ def generate_docs(
     link_style: str = "backtick",
     embed_diagrams: bool = False,
     max_workers: Optional[int] = None,
+    semantic_dedup: bool = False,
+    semantic_threshold: float = 0.95,
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -202,6 +204,20 @@ def generate_docs(
                     "incremental": True,
                 }
             stale = get_stale_chapters(chapters, _manifest, changed, _chapter_deps)
+
+            # Semantic dedup: second-pass filter by embedding similarity
+            if semantic_dedup and stale:
+                from .semantic_filter import SemanticFilter
+                _sem_filter = SemanticFilter(
+                    threshold=semantic_threshold,
+                    cache_dir=out,
+                )
+                pre_count = len(stale)
+                stale = _sem_filter.filter_stale(stale, _chapter_deps, root)
+                sem_skipped = pre_count - len(stale)
+                if sem_skipped:
+                    log(f"🧠 Semantic dedup: {sem_skipped} chapter(s) skipped (similarity >= {semantic_threshold})")
+
             skipped_chapters = [c["file"] for c in chapters if c not in stale]
             if skipped_chapters:
                 log(f"\n♻️  Incremental: {len(stale)} stale, {len(skipped_chapters)} skipped")
@@ -294,6 +310,18 @@ def generate_docs(
     # Stage 7b: Write manifest (for incremental support)
     # ------------------------------------------------------------------
     _write_gen_manifest(out, root, _git_sha, _manifest, _chapter_deps, generated, log)
+
+    # ------------------------------------------------------------------
+    # Stage 7b2: Update semantic cache (when --semantic-dedup is set)
+    # ------------------------------------------------------------------
+    if semantic_dedup and incremental and generated:
+        from .semantic_filter import SemanticFilter
+        _sem_filter = SemanticFilter(
+            threshold=semantic_threshold,
+            cache_dir=out,
+        )
+        _sem_filter.update_cache(generated, _chapter_deps, root)
+        log("🧠 Semantic cache updated")
 
     # ------------------------------------------------------------------
     # Stage 7c: Write standalone diagrams.md (when --diagrams is set)
