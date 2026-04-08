@@ -38,7 +38,7 @@ class CliToolConfig:
     stream_args: Optional[list[str]] = None
     supports_stream: bool = False
     output_patterns: list[re.Pattern] = field(default_factory=list)  # type: ignore[type-arg]
-    timeout: int = 120
+    timeout: int = 300
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ CLI_REGISTRY: dict[str, CliToolConfig] = {
     "claude": CliToolConfig(
         binary="claude",
         prompt_mode="arg",
-        cmd_template=["-p", "--output-format", "text", "--no-input"],
+        cmd_template=["--print", "--output-format", "text"],
         system_flag="--system-prompt",
         stream_args=None,
         supports_stream=True,
@@ -94,10 +94,10 @@ def sanitize_output(text: str, tool_patterns: Optional[list[re.Pattern]] = None)
 class CliLLMAdapter:
     """LLM provider that delegates to a CLI tool via subprocess."""
 
-    def __init__(self, config: CliToolConfig, timeout: int = 120) -> None:
+    def __init__(self, config: CliToolConfig, timeout: Optional[int] = None) -> None:
         self.config = config
         self.model = f"cli/{config.binary}"
-        self.timeout = timeout
+        self.timeout = timeout or config.timeout
         self._validate_binary()
 
     # -- LLMProvider interface --
