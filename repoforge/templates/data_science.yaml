@@ -1,0 +1,62 @@
+name: "Data Science"
+project_type: data_science
+description: "ML / data pipeline / notebooks"
+chapters:
+  - file: "04-data-pipeline.md"
+    title: "Data Pipeline"
+    description: "Data ingestion, transformation, storage"
+    prompt_template: |
+      Generate **04-data-pipeline.md** — the Data Pipeline chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Data Pipeline` heading
+      2. **Pipeline overview** — Mermaid flowchart showing data flow from source to output
+      3. **Data sources** — what data comes in (files, databases, APIs, streams)
+      4. **Transformation steps** — each processing stage with:
+         - Input/output format
+         - Key transformations applied
+         - Relevant code module
+      5. **Data storage** — where processed data is stored
+      6. **Scheduling / triggers** — how/when the pipeline runs
+      7. **Data validation** — any quality checks in the pipeline
+
+      Language: {language}
+    order: 3
+
+  - file: "05-models.md"
+    title: "Models & Training"
+    description: "Model architecture, training, evaluation"
+    prompt_template: |
+      Generate **05-models.md** — the Models & Training chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Models & Training` heading
+      2. **Model overview** — what problem is being solved, what type of model (classification, regression, etc.)
+      3. **Architecture** — model structure (layers, hyperparameters if visible in code)
+      4. **Training process**:
+         - How to run training (command/script)
+         - Key hyperparameters and their defaults
+         - Training data format expected
+      5. **Evaluation** — metrics used, how to evaluate, expected performance
+      6. **Inference** — how to use a trained model for prediction
+      7. **Model artifacts** — where models are saved, format, versioning
+
+      Language: {language}
+    order: 4
+
+  - file: "06-experiments.md"
+    title: "Experiments"
+    description: "Experiment tracking, metrics, results"
+    prompt_template: |
+      Generate **06-experiments.md** — the Experiments chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Experiments` heading
+      2. **Experiment tracking** — what tool is used (MLflow, W&B, DVC, custom) if detectable
+      3. **How to run an experiment** — step by step
+      4. **Key metrics** — what is being tracked and optimized
+      5. **Results** — how to view/compare results
+      6. **Reproducibility** — seeds, environment pinning, data versioning
+
+      Language: {language}
+    order: 5

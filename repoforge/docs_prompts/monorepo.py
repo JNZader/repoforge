@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 from .chapters import (
     ADAPTIVE_CHAPTERS,
     _dispatch_prompt,
@@ -188,6 +190,12 @@ def _layer_chapters(layer_name: str, layer_data: dict, layer_type: str,
     layer_rm = _layer_repo_map(layer_name, layer_data, repo_map)
 
     # Get type-specific chapters (not universal ones — those are at root level)
+    warnings.warn(
+        "ADAPTIVE_CHAPTERS is deprecated, use YAML templates instead. "
+        "See repoforge/templates/ for the new template format.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     type_chapters = ADAPTIVE_CHAPTERS.get(layer_type, ADAPTIVE_CHAPTERS["generic"])
 
     # Layer index page

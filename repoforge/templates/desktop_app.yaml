@@ -1,0 +1,43 @@
+name: "Desktop App"
+project_type: desktop_app
+description: "Electron / Qt / native desktop"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanics"
+    description: "Window management, IPC, lifecycle"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-ui.md"
+    title: "UI & Windows"
+    description: "Windows, dialogs, UI components"
+    prompt_template: |
+      Generate **05-ui.md** — the UI & Windows chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# UI & Windows` heading
+      2. **Window structure** — main window, child windows, dialogs
+      3. **UI framework** — Electron/React, Qt, GTK, Tauri/Svelte, etc.
+      4. **Key UI components** — what they do and where they're defined
+      5. **IPC / communication** — how UI communicates with backend/main process
+      6. **Theme / styling** — dark mode support, theming system
+
+      Language: {language}
+    order: 4
+
+  - file: "06-platform.md"
+    title: "Platform Guide"
+    description: "Platform-specific behavior, packaging"
+    prompt_template: |
+      Generate **06-platform.md** — the Platform Guide for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Platform Guide` heading
+      2. **Supported platforms** — Windows / macOS / Linux and their minimum versions
+      3. **Platform-specific behavior** — things that work differently per OS
+      4. **Packaging & distribution** — how to build installers/packages per platform
+      5. **Auto-update** — if implemented, how it works
+      6. **Native dependencies** — any platform-native requirements
+
+      Language: {language}
+    order: 5

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import warnings
+
 from .adaptive import _adaptive_prompt
 from .builders import (
     architecture_prompt,
@@ -18,6 +21,8 @@ from .builders_extra import (
 from .classify import classify_project
 from .context import _repo_context
 from .system import _base_system, _base_system_facts_only
+
+_log = logging.getLogger(__name__)
 
 # ===========================================================================
 # PROJECT CLASSIFICATION + ADAPTIVE CHAPTERS
@@ -129,11 +134,19 @@ def _dispatch_prompt(chapter_file: str, repo_map, language: str,
                      diagram_context: str = "",
                      dep_health_context: str = "",
                      coverage_context: str = "",
-                     link_style: str = "backtick") -> tuple[str, str]:
-    """Route a chapter file to its prompt function."""
+                     link_style: str = "backtick",
+                     prompt_template: str | None = None) -> tuple[str, str]:
+    """Route a chapter file to its prompt function.
+
+    When *prompt_template* is provided (from a YAML template), it is used
+    as the user prompt via ``str.format_map`` with context variables —
+    but ONLY for chapters that don't already have a dedicated Python
+    prompt builder (universal chapters and well-known adaptive chapters
+    with ``prompt_key`` are resolved first).
+    """
     chunks = doc_chunks or {}
 
-    # Existing prompts (reused across types)
+    # Existing prompts (reused across types) — prompt_key resolution
     if chapter_file == "index.md":
         non_index = [c for c in active_chapters if c["file"] != "index.md"]
         return index_prompt(repo_map, language, project_name, non_index, graph_context=graph_context,
@@ -163,7 +176,31 @@ def _dispatch_prompt(chapter_file: str, repo_map, language: str,
                                  dep_health_context=dep_health_context,
                                  coverage_context=coverage_context)
 
-    # Adaptive chapter prompts
+    # ── YAML prompt_template path ──────────────────────────────────────────
+    # If the chapter came from a YAML template with an inline prompt_template,
+    # render it with repo context and return.  Falls through to the legacy
+    # _adaptive_prompt only when no template text is available.
+    if prompt_template:
+        sys = _base_system(language)
+        ctx = _repo_context(repo_map, graph_context=graph_context)
+        # Build a safe mapping — unknown keys resolve to empty string
+        tpl_vars: dict[str, str] = {
+            "project_name": project_name,
+            "language": language,
+            "context": ctx,
+            "project_type": project_type,
+        }
+
+        class _SafeDict(dict):
+            """Return empty string for missing keys during format_map."""
+            def __missing__(self, key: str) -> str:
+                _log.debug("prompt_template: missing key %r for %s", key, chapter_file)
+                return ""
+
+        user = prompt_template.format_map(_SafeDict(tpl_vars))
+        return sys, user
+
+    # Legacy adaptive chapter prompts (fallback when no YAML template)
     return _adaptive_prompt(chapter_file, repo_map, language, project_name, project_type,
                             graph_context=graph_context, doc_chunks=chunks)
 
@@ -206,8 +243,8 @@ def get_chapter_prompts(repo_map, language: str, project_name: str,
     project_type = classify_project(repo_map)
     chunks = doc_chunks or {}
 
-    # Build chapter list: universal + type-specific
-    type_chapters = ADAPTIVE_CHAPTERS.get(project_type, ADAPTIVE_CHAPTERS["generic"])
+    # ── Resolve adaptive chapters: YAML templates first, hardcoded fallback ──
+    type_chapters, _tpl_prompts = _resolve_adaptive_chapters(project_type)
 
     # Build ordered chapter list:
     # index.md first, then 01-overview -> 03-architecture, then type-specific, then 07-dev-guide
@@ -246,6 +283,9 @@ def get_chapter_prompts(repo_map, language: str, project_name: str,
 
         is_facts_only = ch_system_override is not None
 
+        # Look up prompt_template from YAML if available for this chapter
+        ch_prompt_template = _tpl_prompts.get(chapter_file)
+
         system, user = _dispatch_prompt(
             chapter_file, repo_map, language, project_name,
             project_type, all_chapters, graph_context=ch_graph,
@@ -253,6 +293,7 @@ def get_chapter_prompts(repo_map, language: str, project_name: str,
             diagram_context=diagram_context if is_architecture else "",
             dep_health_context=dep_health_context if chapter_file == "07-dev-guide.md" else "",
             coverage_context=coverage_context if chapter_file == "07-dev-guide.md" else "",
+            prompt_template=ch_prompt_template,
         )
 
         # Override system prompt when using facts-only mode
@@ -273,3 +314,54 @@ def get_chapter_prompts(repo_map, language: str, project_name: str,
         })
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Template resolution helper
+# ---------------------------------------------------------------------------
+
+def _resolve_adaptive_chapters(
+    project_type: str,
+) -> tuple[list[dict], dict[str, str]]:
+    """Resolve adaptive chapters for a project type.
+
+    Tries YAML templates first via ``TemplateLoader``; falls back to the
+    hardcoded ``ADAPTIVE_CHAPTERS`` dict when no template is found.
+
+    Returns:
+        A tuple of ``(type_chapters, prompt_templates)`` where
+        *type_chapters* is a list of chapter dicts (same shape as
+        ``ADAPTIVE_CHAPTERS`` entries) and *prompt_templates* is a mapping
+        of ``chapter_file -> prompt_template`` text for chapters that use
+        inline YAML templates (empty dict when using hardcoded fallback).
+    """
+    from ..template_loader import TemplateLoader
+
+    loader = TemplateLoader()
+    template = loader.get(project_type)
+
+    if template is not None:
+        type_chapters: list[dict] = []
+        prompt_templates: dict[str, str] = {}
+
+        for ch_def in template.chapters:
+            type_chapters.append({
+                "file": ch_def.file,
+                "title": ch_def.title,
+                "description": ch_def.description,
+            })
+            if ch_def.prompt_template:
+                prompt_templates[ch_def.file] = ch_def.prompt_template
+
+        return type_chapters, prompt_templates
+
+    # Fallback to hardcoded dict (no prompt_templates available)
+    _log.debug("No YAML template for %r, falling back to ADAPTIVE_CHAPTERS", project_type)
+    warnings.warn(
+        "ADAPTIVE_CHAPTERS is deprecated, use YAML templates instead. "
+        "See repoforge/templates/ for the new template format.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    fallback = ADAPTIVE_CHAPTERS.get(project_type, ADAPTIVE_CHAPTERS["generic"])
+    return fallback, {}

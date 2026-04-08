@@ -1,0 +1,49 @@
+name: "Library / SDK"
+project_type: library_sdk
+description: "Reusable library / SDK / package"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanics"
+    description: "Internal design, key abstractions"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-api-reference.md"
+    title: "Public API"
+    description: "Full public API surface"
+    prompt_template: |
+      Generate **05-api-reference.md** — the Public API Reference for the library **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Public API Reference` heading
+      2. **Package/module structure** — how the public API is organized
+      3. **For each public export** (use actual exported names from repo map):
+         - Signature with types
+         - Description: what it does, when to use it
+         - Parameters: table with Name | Type | Required | Description
+         - Returns: type and description
+         - Example: minimal working code snippet
+      4. **Error handling** — what exceptions/errors can be raised and when
+      5. **Deprecation notices** — if any deprecated APIs are detected
+
+      Focus on the PUBLIC surface only. Ignore internal/private exports.
+      Language: {language}
+    order: 4
+
+  - file: "06-integration.md"
+    title: "Integration Guide"
+    description: "How to use this library in a project"
+    prompt_template: |
+      Generate **06-integration.md** — the Integration Guide for the library **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Integration Guide` heading
+      2. **Installation** — how to add this library as a dependency (pip, npm, cargo, maven, etc.)
+      3. **Minimal working example** — the simplest possible usage in a code block
+      4. **Common use cases** — 3-4 typical integration scenarios with code examples
+      5. **Framework integrations** — if the library works with specific frameworks, show how
+      6. **Configuration** — any initialization/setup required before using
+      7. **Testing** — how to mock/stub this library in tests
+
+      Language: {language}
+    order: 5

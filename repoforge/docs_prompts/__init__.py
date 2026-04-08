@@ -22,6 +22,7 @@ from .chapters import (
     UNIVERSAL_CHAPTERS,
     _adaptive_prompt,
     _dispatch_prompt,
+    _resolve_adaptive_chapters,
 )
 from .chapters import (
     get_chapter_prompts as _original_get_chapter_prompts,
@@ -128,6 +129,7 @@ __all__ = [
     "ADAPTIVE_CHAPTERS",
     "_dispatch_prompt",
     "_adaptive_prompt",
+    "_resolve_adaptive_chapters",
     "_monorepo_root_chapters",
     "_layer_chapters",
     "get_monorepo_chapter_prompts",

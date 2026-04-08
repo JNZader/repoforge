@@ -1,0 +1,47 @@
+name: "Mobile App"
+project_type: mobile_app
+description: "iOS / Android / React Native / Flutter"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanics"
+    description: "Navigation, lifecycle, permissions"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-screens.md"
+    title: "Screens & Navigation"
+    description: "Screen map, navigation flows"
+    prompt_template: |
+      Generate **05-screens.md** — the Screens & Navigation chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Screens & Navigation` heading
+      2. **Navigation structure** — Mermaid diagram of the screen hierarchy/flow
+      3. **Navigation library** — React Navigation, Expo Router, Flutter Navigator, etc.
+      4. **For each key screen** (infer from module names like *Screen, *Page, *View):
+         - Purpose
+         - Route/path
+         - Key data displayed
+         - Navigation actions (where it can go)
+      5. **Deep linking** — if detected
+      6. **Auth flow** — protected routes, login redirect
+
+      Language: {language}
+    order: 4
+
+  - file: "06-native.md"
+    title: "Native Integrations"
+    description: "Device APIs, push notifications, storage"
+    prompt_template: |
+      Generate **06-native.md** — the Native Integrations chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Native Integrations` heading
+      2. **Permissions** — what device permissions are requested and why
+      3. **Native APIs used** — camera, location, notifications, biometrics, storage, etc.
+      4. **Push notifications** — setup, payload format, handling
+      5. **Offline support** — local storage, sync strategy
+      6. **Platform differences** — iOS vs Android behavior differences if any
+
+      Language: {language}
+    order: 5

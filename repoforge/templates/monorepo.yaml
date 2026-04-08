@@ -1,0 +1,40 @@
+name: "Monorepo"
+project_type: monorepo
+description: "Multiple distinct apps in one repo"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanics"
+    description: "Shared code, inter-service communication"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-data-models.md"
+    title: "Data Models"
+    description: "Shared schemas and contracts"
+    prompt_key: data_models
+    order: 4
+
+  - file: "06-api-reference.md"
+    title: "API Reference"
+    description: "Internal and external API surface"
+    prompt_key: api_reference
+    order: 5
+
+  - file: "06b-service-map.md"
+    title: "Service Map"
+    description: "How services/layers interact"
+    prompt_template: |
+      Generate **06b-service-map.md** — the Service Map for the monorepo **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Service Map` heading
+      2. **Service/layer inventory** — table: Service | Language | Purpose | Port/URL
+      3. **Inter-service communication** — Mermaid diagram of how services call each other
+      4. **Shared packages** — what code is shared across services and where it lives
+      5. **Contracts** — API contracts, shared types, event schemas between services
+      6. **Local development** — how to run all services together (docker-compose, scripts, etc.)
+      7. **Deployment topology** — how services are deployed together
+
+      Language: {language}
+    condition: "layer_count >= 2"
+    order: 6

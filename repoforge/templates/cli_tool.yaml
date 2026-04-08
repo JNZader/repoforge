@@ -1,0 +1,48 @@
+name: "CLI Tool"
+project_type: cli_tool
+description: "Command-line application"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanics"
+    description: "Execution flow, plugin system"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-commands.md"
+    title: "Commands"
+    description: "All commands, flags, and options"
+    prompt_template: |
+      Generate **05-commands.md** — the Commands Reference for the CLI tool **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Commands Reference` heading
+      2. **Usage pattern** — the general invocation pattern: `tool [global-flags] <command> [flags] [args]`
+      3. **Global flags** — flags that apply to all commands (--help, --verbose, --config, etc.)
+      4. **For each command** (infer from exported function names and module names):
+         - Syntax: `tool command [flags] <required-arg> [optional-arg]`
+         - Description: what it does
+         - Flags: table with Flag | Default | Description
+         - Example: 1-2 concrete usage examples
+      5. **Exit codes** — if detectable from the code
+      6. **Environment variables** — any env vars the CLI reads
+
+      Base commands on actual exported function/method names. Mark inferred items clearly.
+      Language: {language}
+    order: 4
+
+  - file: "06-config.md"
+    title: "Configuration"
+    description: "Config files, env vars, defaults"
+    prompt_template: |
+      Generate **06-config.md** — the Configuration Reference for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Configuration` heading
+      2. **Configuration sources** — in priority order (CLI flags > env vars > config file > defaults)
+      3. **Config file** — format (YAML/TOML/JSON/INI), default location, example with all options
+      4. **Environment variables** — table: Variable | Default | Description
+      5. **Per-command config** — any command-specific settings
+      6. **Profiles / environments** — if multiple environments are supported (dev/prod/staging)
+
+      Infer from config file names detected and module exports. Language: {language}
+    order: 5

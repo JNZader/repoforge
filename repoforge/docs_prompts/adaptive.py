@@ -6,6 +6,8 @@ chapters. This module generates the (system, user) prompt pair for each.
 
 from __future__ import annotations
 
+import warnings
+
 from .context import _repo_context
 from .system import _base_system
 
@@ -14,7 +16,18 @@ def _adaptive_prompt(chapter_file: str, repo_map: dict, language: str,
                      project_name: str, project_type: str,
                      graph_context: str = "",
                      doc_chunks: dict | None = None) -> tuple[str, str]:
-    """Generate prompts for project-type-specific chapters."""
+    """Generate prompts for project-type-specific chapters.
+
+    .. deprecated::
+        Use YAML templates instead. This function is the legacy fallback
+        and will be removed in a future release.
+    """
+    warnings.warn(
+        "_adaptive_prompt is deprecated, use YAML templates instead. "
+        "See repoforge/templates/ for the new template format.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     sys = _base_system(language)
     ctx = _repo_context(repo_map, graph_context=graph_context)
 

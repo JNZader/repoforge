@@ -1,0 +1,49 @@
+name: "Frontend SPA"
+project_type: frontend_app
+description: "SPA / web frontend (React, Vue, Angular, Svelte...)"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanics"
+    description: "Routing, state management, data fetching"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-components.md"
+    title: "Components"
+    description: "Key UI components and their props"
+    prompt_template: |
+      Generate **05-components.md** — the Components chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Components` heading
+      2. **Component architecture** — how components are organized (atomic design, feature-based, etc.)
+      3. **For each key component** (use exported component names from repo map):
+         - Purpose and when to use it
+         - Props/inputs: table with Name | Type | Required | Default | Description
+         - Events/outputs emitted
+         - Usage example (JSX/template snippet)
+      4. **Shared/base components** vs **feature components** — how they differ
+      5. **Styling approach** — CSS modules, Tailwind, styled-components, etc.
+
+      Language: {language}
+    order: 4
+
+  - file: "06-state.md"
+    title: "State Management"
+    description: "Global state, stores, context"
+    prompt_template: |
+      Generate **06-state.md** — the State Management chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# State Management` heading
+      2. **State architecture** — global vs local state, what library is used (Redux, Zustand, Pinia, etc.)
+      3. **Store structure** — how state is organized (slices, modules, stores)
+      4. **For each store/slice** (from exported names):
+         - What state it manages
+         - Key actions/mutations
+         - How to read from it
+      5. **Data fetching** — how async data is handled (React Query, SWR, store actions, etc.)
+      6. **State diagram** — Mermaid diagram of key state transitions if applicable
+
+      Language: {language}
+    order: 5

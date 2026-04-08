@@ -51,3 +51,10 @@
 #   Plugin   = Composable package with manifest, skills, commands, metadata
 # Can also be enabled with --plugin flag.
 # generate_plugin: false
+
+# YAML-based chapter templates (replaces hardcoded ADAPTIVE_CHAPTERS).
+# Templates live in repoforge/templates/ by default.
+# You can override the template directory or force a specific project type template.
+# templates:
+#   path: ./my-templates/     # custom template directory (default: built-in templates)
+#   override: web-service      # force a specific template regardless of auto-detection

@@ -1,0 +1,21 @@
+name: "Web Service"
+project_type: web_service
+description: "REST API / GraphQL / gRPC backend"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanisms"
+    description: "Request lifecycle, middleware, auth"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-data-models.md"
+    title: "Data Models"
+    description: "Schemas, entities, database design"
+    prompt_key: data_models
+    order: 4
+
+  - file: "06-api-reference.md"
+    title: "API Reference"
+    description: "Endpoints, methods, request/response"
+    prompt_key: api_reference
+    order: 5

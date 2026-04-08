@@ -1,0 +1,57 @@
+name: "Infrastructure / DevOps"
+project_type: infra_devops
+description: "Terraform / Helm / Ansible / Docker Compose"
+chapters:
+  - file: "04-resources.md"
+    title: "Resources"
+    description: "Infrastructure resources defined"
+    prompt_template: |
+      Generate **04-resources.md** — the Infrastructure Resources chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Infrastructure Resources` heading
+      2. **Resource overview** — Mermaid diagram of all infrastructure components and their relationships
+      3. **For each resource type** (compute, network, storage, database, etc.):
+         - What it is
+         - Configuration highlights
+         - Key settings to know
+      4. **Environments** — prod / staging / dev differences
+      5. **Cost considerations** — which resources drive cost
+
+      Language: {language}
+    order: 3
+
+  - file: "05-variables.md"
+    title: "Variables & Config"
+    description: "Input variables, outputs, secrets"
+    prompt_template: |
+      Generate **05-variables.md** — the Variables & Configuration chapter for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Variables & Configuration` heading
+      2. **Input variables** — table: Name | Type | Default | Required | Description
+      3. **Output values** — what the infra exports for other modules to use
+      4. **Secrets management** — how sensitive values are handled (vault, SSM, env vars)
+      5. **Per-environment config** — how to override for different environments
+      6. **Terraform/Helm/Ansible specifics** — based on what tool is detected
+
+      Language: {language}
+    order: 4
+
+  - file: "06-deployment.md"
+    title: "Deployment Guide"
+    description: "How to apply, rollback, environments"
+    prompt_template: |
+      Generate **06-deployment.md** — the Deployment Guide for **{project_name}**.
+      {context}
+      ## What this document must contain
+      1. `# Deployment Guide` heading
+      2. **Prerequisites** — tools needed, access requirements, credentials
+      3. **First-time setup** — how to initialize/bootstrap from scratch
+      4. **Deploy to each environment** — step-by-step commands
+      5. **Rollback procedure** — how to undo a deployment
+      6. **Drift detection** — how to check if reality matches desired state
+      7. **CI/CD integration** — how deployments are automated
+
+      Language: {language}
+    order: 5

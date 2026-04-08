@@ -1,0 +1,15 @@
+name: "Generic"
+project_type: generic
+description: "Fallback for unknown project types"
+chapters:
+  - file: "04-core-mechanisms.md"
+    title: "Core Mechanisms"
+    description: "Key logic and design patterns"
+    prompt_key: core_mechanisms
+    order: 3
+
+  - file: "05-data-models.md"
+    title: "Data Structures"
+    description: "Key data structures and types"
+    prompt_key: data_models
+    order: 4
