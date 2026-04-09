@@ -25,8 +25,29 @@ class TestDetectLanguage:
     def test_unsupported(self):
         assert detect_language("Makefile") is None
 
-    def test_rust_unsupported(self):
-        assert detect_language("src/main.rs") is None
+    def test_rust_supported(self):
+        assert detect_language("src/main.rs") == "rust"
+
+    def test_kotlin_supported(self):
+        assert detect_language("src/Main.kt") == "kotlin"
+
+    def test_csharp_supported(self):
+        assert detect_language("src/Program.cs") == "c_sharp"
+
+    def test_c_supported(self):
+        assert detect_language("src/main.c") == "c"
+
+    def test_cpp_supported(self):
+        assert detect_language("src/main.cpp") == "cpp"
+
+    def test_ruby_supported(self):
+        assert detect_language("app/model.rb") == "ruby"
+
+    def test_php_supported(self):
+        assert detect_language("src/Controller.php") == "php"
+
+    def test_swift_supported(self):
+        assert detect_language("Sources/main.swift") == "swift"
 
 
 class TestPythonExtraction:
@@ -141,8 +162,11 @@ class TestGoExtraction:
 
 class TestUnsupportedLanguage:
 
-    def test_returns_empty(self):
-        assert extract_symbols("fn main() {}", "rust", "main.rs") == []
+    def test_rust_now_supported_via_treesitter(self):
+        """Rust is now supported via tree-sitter bridge."""
+        symbols = extract_symbols("fn main() {}", "rust", "main.rs")
+        assert len(symbols) >= 1
+        assert symbols[0].name == "main"
 
     def test_unknown_language(self):
         assert extract_symbols("code", "brainfuck", "prog.bf") == []

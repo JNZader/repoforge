@@ -275,6 +275,17 @@ _LANG_MAP: dict[str, str] = {
     ".ts": "typescript", ".tsx": "typescript",
     ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript",
     ".go": "go",
+    # New languages supported via tree-sitter (no regex fallback)
+    ".kt": "kotlin", ".kts": "kotlin",
+    ".cs": "c_sharp",
+    ".php": "php",
+    ".rb": "ruby",
+    ".swift": "swift",
+    ".c": "c", ".h": "c",
+    ".cpp": "cpp", ".cxx": "cpp", ".cc": "cpp",
+    ".hpp": "cpp", ".hxx": "cpp", ".hh": "cpp",
+    ".java": "java",
+    ".rs": "rust",
 }
 
 _EXTRACTORS = {
@@ -292,8 +303,54 @@ def detect_language(file_path: str) -> str | None:
     return _LANG_MAP.get(ext)
 
 
+def _try_treesitter_symbols(content: str, file_path: str) -> list[Symbol] | None:
+    """Attempt tree-sitter extraction, converting ASTSymbol to Symbol.
+
+    Returns None if tree-sitter is unavailable or no extractor exists
+    for the file type. Returns a (possibly empty) list on success.
+    """
+    try:
+        from ..intelligence.extractor_registry import get_ast_registry
+    except ImportError:
+        return None
+
+    registry = get_ast_registry()
+    if registry is None:
+        return None
+
+    extractor = registry.get_for_file(file_path)
+    if extractor is None:
+        return None
+
+    try:
+        ast_symbols = extractor.extract_symbols(content, file_path)
+    except (SyntaxError, ValueError, TypeError, AttributeError, RuntimeError):
+        logger.debug("tree-sitter extraction failed for %s, will try regex", file_path)
+        return None
+
+    if not ast_symbols:
+        return None
+
+    # Convert ASTSymbol → Symbol (bridge)
+    symbols: list[Symbol] = []
+    for s in ast_symbols:
+        symbols.append(Symbol(
+            name=s.name,
+            kind=s.kind if s.kind in ("function", "class") else (
+                "function" if s.kind in ("method",) else "class"
+            ),
+            file=s.file,
+            line=s.line,
+            end_line=s.line,  # tree-sitter doesn't track end_line the same way
+            params=s.params,
+        ))
+    return symbols
+
+
 def extract_symbols(content: str, language: str, file_path: str = "") -> list[Symbol]:
     """Extract symbols from source code for a given language.
+
+    Prefers tree-sitter extraction when available, falls back to regex.
 
     Args:
         content: Source file content.
@@ -307,8 +364,16 @@ def extract_symbols(content: str, language: str, file_path: str = "") -> list[Sy
     if not content or not content.strip():
         return []
 
+    # For languages with regex extractors, prefer regex (handles nested scopes better)
+    # For new languages (no regex), use tree-sitter exclusively
     extractor = _EXTRACTORS.get(language)
+
     if extractor is None:
+        # No regex extractor — try tree-sitter as primary
+        if file_path:
+            ts_result = _try_treesitter_symbols(content, file_path)
+            if ts_result is not None:
+                return ts_result
         return []
 
     try:

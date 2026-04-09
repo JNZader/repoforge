@@ -122,6 +122,49 @@ def get_ast_registry() -> ASTExtractorRegistry | None:
         _ast_registry.register(JavaASTExtractor())
         _ast_registry.register(RustASTExtractor())
 
+        # New language extractors — each guarded against missing tree-sitter grammar
+        try:
+            from .lang_kotlin import KotlinASTExtractor
+            _ast_registry.register(KotlinASTExtractor())
+        except (ImportError, OSError, RuntimeError):
+            logger.debug("Kotlin extractor unavailable", exc_info=True)
+
+        try:
+            from .lang_csharp import CSharpASTExtractor
+            _ast_registry.register(CSharpASTExtractor())
+        except (ImportError, OSError, RuntimeError):
+            logger.debug("C# extractor unavailable", exc_info=True)
+
+        try:
+            from .lang_php import PHPASTExtractor
+            _ast_registry.register(PHPASTExtractor())
+        except (ImportError, OSError, RuntimeError):
+            logger.debug("PHP extractor unavailable", exc_info=True)
+
+        try:
+            from .lang_ruby import RubyASTExtractor
+            _ast_registry.register(RubyASTExtractor())
+        except (ImportError, OSError, RuntimeError):
+            logger.debug("Ruby extractor unavailable", exc_info=True)
+
+        try:
+            from .lang_swift import SwiftASTExtractor
+            _ast_registry.register(SwiftASTExtractor())
+        except (ImportError, OSError, RuntimeError):
+            logger.debug("Swift extractor unavailable", exc_info=True)
+
+        try:
+            from .lang_c import CASTExtractor
+            _ast_registry.register(CASTExtractor())
+        except (ImportError, OSError, RuntimeError):
+            logger.debug("C extractor unavailable", exc_info=True)
+
+        try:
+            from .lang_cpp import CppASTExtractor
+            _ast_registry.register(CppASTExtractor())
+        except (ImportError, OSError, RuntimeError):
+            logger.debug("C++ extractor unavailable", exc_info=True)
+
         logger.debug(
             "AST extractor registry initialized with %d extensions: %s",
             len(_ast_registry),
