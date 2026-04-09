@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .facts import FactItem, extract_facts
-from .graph import CodeGraph, build_graph_v2, get_blast_radius_v2, is_test_file
+from .graph import CodeGraph, build_graph_v2, detect_communities, get_blast_radius_v2, is_test_file
 from .intelligence.ast_extractor import ASTSymbol
 
 logger = logging.getLogger(__name__)
@@ -132,6 +132,15 @@ def format_graph_context(graph: CodeGraph) -> str:
             sample = ", ".join(Path(f).name for f in layer_files[:3])
             suffix = f" +{len(layer_files) - 3} more" if len(layer_files) > 3 else ""
             lines.append(f"- **{layer_name}**: {sample}{suffix}\n")
+
+    # Community detection
+    communities = detect_communities(graph)
+    if communities:
+        lines.append("### Communities\n")
+        for cname, members in sorted(communities.items()):
+            sample = ", ".join(Path(f).name for f in members[:3])
+            suffix = f" +{len(members) - 3} more" if len(members) > 3 else ""
+            lines.append(f"- **{cname}** ({len(members)} modules): {sample}{suffix}\n")
 
     # Simplified mermaid (top edges only — max 15)
     top_edges = _get_top_edges(graph, max_edges=15)

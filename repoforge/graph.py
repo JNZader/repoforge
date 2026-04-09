@@ -34,6 +34,7 @@ class Node:
     layer: str = ""      # which layer this belongs to
     file_path: str = ""  # source file
     exports: list[str] = field(default_factory=list)
+    community: str = ""  # set after detect_communities()
 
 
 @dataclass
@@ -168,6 +169,7 @@ class CodeGraph:
                     "layer": n.layer,
                     "file_path": n.file_path,
                     "exports": n.exports,
+                    "community": n.community,
                 }
                 for n in self.nodes
             ],
@@ -670,6 +672,194 @@ def _resolve_import(
                     return  # Only link to first module in the package
 
     # If none matched → external dependency, skip (no node in graph)
+
+
+# ---------------------------------------------------------------------------
+# Community detection (label propagation)
+# ---------------------------------------------------------------------------
+
+def _infer_community_name(nodes: list[Node]) -> str:
+    """Infer a descriptive name for a community from its member nodes.
+
+    Heuristics (in order of preference):
+      1. Majority layer — if >50% of nodes share a layer, use it
+      2. Common directory prefix — longest shared directory prefix
+      3. Common name stem — shared prefix in node names
+      4. Fallback — "cluster-N" (caller must supply N)
+    """
+    if not nodes:
+        return ""
+
+    # 1. Majority layer
+    layer_counts: dict[str, int] = {}
+    for n in nodes:
+        if n.layer:
+            layer_counts[n.layer] = layer_counts.get(n.layer, 0) + 1
+    if layer_counts:
+        best_layer, best_count = max(layer_counts.items(), key=lambda x: x[0] if x[1] == max(layer_counts.values()) else "")
+        # Recalculate correctly: find the max count, then pick deterministically
+        max_count = max(layer_counts.values())
+        candidates = sorted(k for k, v in layer_counts.items() if v == max_count)
+        if max_count > len(nodes) / 2:
+            return candidates[0]
+
+    # 2. Common directory prefix
+    paths = [n.file_path for n in nodes if n.file_path]
+    if paths:
+        parts_list = [p.replace("\\", "/").split("/") for p in paths]
+        # Find longest common prefix of directory parts (exclude filename)
+        dir_parts = [p[:-1] for p in parts_list if len(p) > 1]
+        if dir_parts:
+            prefix_parts: list[str] = []
+            for segments in zip(*dir_parts):
+                if len(set(segments)) == 1:
+                    prefix_parts.append(segments[0])
+                else:
+                    break
+            if prefix_parts:
+                return "/".join(prefix_parts)
+
+    # 3. Common name stem (at least 3 chars)
+    names = sorted(n.name for n in nodes if n.name)
+    if len(names) >= 2:
+        first, last = names[0], names[-1]
+        common = 0
+        for a, b in zip(first, last):
+            if a == b:
+                common += 1
+            else:
+                break
+        if common >= 3:
+            return first[:common].rstrip("_-")
+
+    # 4. Fallback — empty string; caller adds "cluster-N"
+    return ""
+
+
+def detect_communities(
+    graph: CodeGraph,
+    max_iterations: int = 50,
+) -> dict[str, list[str]]:
+    """Detect communities using label propagation on import/depends_on edges.
+
+    Each module node starts with its own label. On each iteration, every node
+    adopts the most frequent label among its neighbors (connected via
+    imports/depends_on edges in either direction). Ties are broken
+    deterministically by choosing the lexicographically smallest label.
+
+    Converges when no labels change or max_iterations is reached.
+
+    Args:
+        graph: The CodeGraph to analyze.
+        max_iterations: Safety cap on iterations (default 50).
+
+    Returns:
+        dict mapping community_name → list of node IDs.
+        Community names are inferred from member characteristics.
+    """
+    # Only operate on module nodes
+    module_ids = [n.id for n in graph.nodes if n.node_type == "module"]
+    if not module_ids:
+        return {}
+
+    # Build adjacency (undirected) from import/depends_on edges
+    neighbors: dict[str, list[str]] = {nid: [] for nid in module_ids}
+    module_set = set(module_ids)
+
+    for e in graph.edges:
+        if e.edge_type not in ("imports", "depends_on"):
+            continue
+        if e.source in module_set and e.target in module_set:
+            neighbors[e.source].append(e.target)
+            neighbors[e.target].append(e.source)
+
+    # Initialize labels: each node is its own label
+    labels: dict[str, str] = {nid: nid for nid in module_ids}
+
+    # Iterate
+    for _ in range(max_iterations):
+        changed = False
+        # Process nodes in deterministic order
+        for nid in sorted(module_ids):
+            nbrs = neighbors[nid]
+            if not nbrs:
+                continue
+
+            # Count neighbor labels
+            label_counts: dict[str, int] = {}
+            for nbr in nbrs:
+                lbl = labels[nbr]
+                label_counts[lbl] = label_counts.get(lbl, 0) + 1
+
+            # Find max frequency, break ties with sorted
+            max_freq = max(label_counts.values())
+            best_label = sorted(
+                lbl for lbl, cnt in label_counts.items() if cnt == max_freq
+            )[0]
+
+            if labels[nid] != best_label:
+                labels[nid] = best_label
+                changed = True
+
+        if not changed:
+            break
+
+    # Group by label
+    groups: dict[str, list[str]] = {}
+    for nid, lbl in labels.items():
+        groups.setdefault(lbl, []).append(nid)
+
+    # Sort members within each group for determinism
+    for lbl in groups:
+        groups[lbl].sort()
+
+    # Name communities
+    result: dict[str, list[str]] = {}
+    cluster_counter = 0
+    for lbl in sorted(groups.keys()):
+        members = groups[lbl]
+        member_nodes = [graph.get_node(nid) for nid in members]
+        member_nodes = [n for n in member_nodes if n is not None]
+
+        name = _infer_community_name(member_nodes)
+        if not name:
+            cluster_counter += 1
+            name = f"cluster-{cluster_counter}"
+
+        # Handle name collisions
+        original_name = name
+        suffix = 2
+        while name in result:
+            name = f"{original_name}-{suffix}"
+            suffix += 1
+
+        result[name] = members
+
+    return result
+
+
+def assign_communities(graph: CodeGraph, communities: dict[str, list[str]] | None = None) -> CodeGraph:
+    """Run community detection and assign node.community fields.
+
+    If communities dict is not provided, runs detect_communities() first.
+
+    Args:
+        graph: The CodeGraph to modify (in-place).
+        communities: Optional pre-computed communities dict.
+
+    Returns:
+        The same graph with node.community fields set.
+    """
+    if communities is None:
+        communities = detect_communities(graph)
+
+    for community_name, node_ids in communities.items():
+        for nid in node_ids:
+            node = graph.get_node(nid)
+            if node is not None:
+                node.community = community_name
+
+    return graph
 
 
 # ---------------------------------------------------------------------------

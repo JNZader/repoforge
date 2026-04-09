@@ -943,9 +943,11 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     help="Symbol name for --query callers/callees.")
 @click.option("--file", "query_file", default=None,
     help="File path for --query imports.")
+@click.option("--communities", is_flag=True, default=False,
+    help="Detect and display module communities (clusters of related modules).")
 @click.option("-q", "--quiet", is_flag=True, default=False,
     help="Suppress progress output.")
-def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_files, include_tests, query_mode, symbol, query_file, quiet):
+def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_files, include_tests, query_mode, symbol, query_file, communities, quiet):
     """
     Build a code knowledge graph from scanner data (no API key needed).
 
@@ -1144,15 +1146,27 @@ def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_
 
             output = "\n".join(lines)
         else:
+            # Run community detection if requested
+            if communities:
+                from .graph import assign_communities, detect_communities
+                comm = detect_communities(code_graph)
+                assign_communities(code_graph, comm)
+
             # Normal format output
             if fmt == "mermaid":
-                output = code_graph.to_mermaid()
+                if communities:
+                    output = _mermaid_with_communities(code_graph, comm)
+                else:
+                    output = code_graph.to_mermaid()
             elif fmt == "json":
                 output = code_graph.to_json()
             elif fmt == "dot":
                 output = code_graph.to_dot()
             else:
-                output = code_graph.summary()
+                base = code_graph.summary()
+                if communities:
+                    base += "\n\n" + _format_community_summary(comm)
+                output = base
 
     # Write output
     if output_path:
@@ -1162,6 +1176,60 @@ def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_
             print(f"Written to {output_path}", file=sys.stderr)
     else:
         click.echo(output)
+
+
+def _format_community_summary(communities: dict[str, list[str]]) -> str:
+    """Format communities as a human-readable summary block."""
+    from pathlib import Path
+    lines = [f"Communities: {len(communities)}"]
+    for cname, members in sorted(communities.items()):
+        sample = ", ".join(Path(f).name for f in members[:5])
+        suffix = f" +{len(members) - 5} more" if len(members) > 5 else ""
+        lines.append(f"  {cname} ({len(members)} modules): {sample}{suffix}")
+    return "\n".join(lines)
+
+
+def _mermaid_with_communities(graph, communities: dict[str, list[str]]) -> str:
+    """Render mermaid diagram with community subgraphs instead of layers."""
+    import re
+    lines = ["graph LR"]
+
+    module_nodes = [n for n in graph.nodes if n.node_type == "module"]
+    if len(module_nodes) > 50:
+        module_nodes = module_nodes[:50]
+    visible_ids = {n.id for n in module_nodes}
+
+    # Map node → community
+    node_community: dict[str, str] = {}
+    for cname, members in communities.items():
+        for nid in members:
+            if nid in visible_ids:
+                node_community[nid] = cname
+
+    # Group by community
+    by_community: dict[str, list] = {}
+    for n in module_nodes:
+        cname = node_community.get(n.id, "uncategorized")
+        by_community.setdefault(cname, []).append(n)
+
+    for cname, cnodes in sorted(by_community.items()):
+        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", cname)
+        lines.append(f"    subgraph {safe_name}")
+        for n in cnodes:
+            safe_id = re.sub(r"[^a-zA-Z0-9_]", "_", n.id)
+            safe_label = re.sub(r"[\"'\\[\\]{}|<>]", "", n.name)
+            lines.append(f"        {safe_id}[{safe_label}]")
+        lines.append("    end")
+
+    for e in graph.edges:
+        if e.edge_type == "contains":
+            continue
+        if e.source in visible_ids and e.target in visible_ids:
+            src = re.sub(r"[^a-zA-Z0-9_]", "_", e.source)
+            tgt = re.sub(r"[^a-zA-Z0-9_]", "_", e.target)
+            lines.append(f"    {src} --> {tgt}")
+
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
