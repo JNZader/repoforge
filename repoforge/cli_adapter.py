@@ -13,7 +13,9 @@ Usage via build_llm():
 import re
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterator, Optional
 
 # ---------------------------------------------------------------------------
@@ -58,7 +60,7 @@ CLI_REGISTRY: dict[str, CliToolConfig] = {
     "codex": CliToolConfig(
         binary="codex",
         prompt_mode="arg",
-        cmd_template=["exec", "--output-last-message", "/dev/stdout"],
+        cmd_template=["exec", "-o", "{output_file}"],
         system_flag=None,
         supports_stream=False,
         output_patterns=[re.compile(r"^\x1b\[.*?m")],
@@ -105,7 +107,17 @@ class CliLLMAdapter:
     def complete(self, prompt: str, system: Optional[str] = None) -> str:
         """Single-shot completion via subprocess.run."""
         cmd = self._build_command(prompt, system)
+        output_file: Path | None = None
         try:
+            # If cmd contains {output_file} placeholder, use a tempfile
+            if any("{output_file}" in str(c) for c in cmd):
+                tmp = tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".md", delete=False,
+                )
+                tmp.close()
+                output_file = Path(tmp.name)
+                cmd = [c.replace("{output_file}", str(output_file)) for c in cmd]
+
             result = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=self.timeout,
             )
@@ -115,7 +127,13 @@ class CliLLMAdapter:
                     f"(exit {result.returncode}): "
                     f"{result.stderr.strip()[:500]}"
                 )
-            return sanitize_output(result.stdout, self.config.output_patterns)
+
+            # Read from output file if used, otherwise from stdout
+            if output_file and output_file.exists():
+                raw = output_file.read_text()
+            else:
+                raw = result.stdout
+            return sanitize_output(raw, self.config.output_patterns)
         except subprocess.TimeoutExpired:
             raise RuntimeError(
                 f"CLI tool '{self.config.binary}' timed out after {self.timeout}s"
@@ -124,6 +142,9 @@ class CliLLMAdapter:
             raise RuntimeError(
                 f"CLI tool '{self.config.binary}' not found. Install it first."
             )
+        finally:
+            if output_file and output_file.exists():
+                output_file.unlink()
 
     def stream(self, prompt: str, system: Optional[str] = None) -> Iterator[str]:
         """Streaming completion. Falls back to complete() for non-streaming tools."""
