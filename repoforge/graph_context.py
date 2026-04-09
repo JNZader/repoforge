@@ -182,6 +182,189 @@ def build_short_graph_context(graph: CodeGraph) -> str:
     return "".join(lines)
 
 
+def _format_module_summary(
+    node_id: str,
+    name: str,
+    exports: list[str],
+    dependents: list[str],
+    dependencies: list[str],
+    layer: str,
+    num_functions: int = 0,
+    num_classes: int = 0,
+) -> str:
+    """Format a structured summary for a single module.
+
+    Produces a markdown block with exports, callers, dependencies,
+    layer, and complexity info for LLM consumption.
+
+    Args:
+        node_id: Module identifier (file path).
+        name: Display name.
+        exports: List of exported symbol names.
+        dependents: List of module IDs that import this module.
+        dependencies: List of module IDs this module imports.
+        layer: Layer this module belongs to.
+        num_functions: Number of functions in the module.
+        num_classes: Number of classes in the module.
+
+    Returns:
+        Formatted markdown string for the module.
+    """
+    lines = [f"## Module: {name}"]
+
+    # Exports
+    if exports:
+        exports_str = ", ".join(exports[:10])
+        if len(exports) > 10:
+            exports_str += f" (+{len(exports) - 10} more)"
+        lines.append(f"- Exports: {exports_str}")
+    else:
+        lines.append("- Exports: (none detected)")
+
+    # Called by (dependents)
+    if dependents:
+        # Count calls per dependent (group by module)
+        dep_parts = []
+        for dep_id in dependents[:5]:
+            dep_parts.append(Path(dep_id).stem)
+        called_by = ", ".join(dep_parts)
+        if len(dependents) > 5:
+            called_by += f" (+{len(dependents) - 5} more)"
+        lines.append(f"- Called by: {called_by}")
+    else:
+        lines.append("- Called by: (none)")
+
+    # Depends on
+    if dependencies:
+        dep_names = [Path(d).stem for d in dependencies[:5]]
+        depends_str = ", ".join(dep_names)
+        if len(dependencies) > 5:
+            depends_str += f" (+{len(dependencies) - 5} more)"
+        lines.append(f"- Depends on: {depends_str}")
+    else:
+        lines.append("- Depends on: (none)")
+
+    # Layer
+    lines.append(f"- Layer: {layer or 'unknown'}")
+
+    # Complexity
+    parts = []
+    if num_functions:
+        parts.append(f"{num_functions} functions")
+    if num_classes:
+        parts.append(f"{num_classes} classes")
+    if parts:
+        lines.append(f"- Complexity: {', '.join(parts)}")
+
+    return "\n".join(lines)
+
+
+def build_structured_graph_context(
+    graph: CodeGraph,
+    symbol_graph: "SymbolGraph | None" = None,
+    max_modules: int = 30,
+) -> str:
+    """Build a structured per-module context string for LLM prompts.
+
+    Ranks modules by connectivity (in-degree + out-degree), or PageRank
+    when available, and produces a formatted summary for each top module.
+
+    When a SymbolGraph is provided, enriches each module with:
+    - Accurate export lists from symbol extraction
+    - Function/class counts
+
+    Args:
+        graph: Pre-built CodeGraph.
+        symbol_graph: Optional SymbolGraph for richer symbol info.
+        max_modules: Maximum number of modules to include (default 30).
+
+    Returns:
+        Markdown string with structured module summaries.
+        Returns empty string for empty graphs.
+    """
+    module_nodes = [n for n in graph.nodes if n.node_type == "module"]
+    if not module_nodes:
+        return ""
+
+    # Rank by PageRank if available, else by connectivity
+    ranks = _compute_ranks(graph)
+
+    if ranks:
+        ranked = sorted(
+            module_nodes,
+            key=lambda n: ranks.get(n.id, 0),
+            reverse=True,
+        )
+    else:
+        # Connectivity: in-degree + out-degree
+        connectivity: dict[str, int] = {}
+        for n in module_nodes:
+            connectivity[n.id] = 0
+        for e in graph.edges:
+            if e.edge_type in ("imports", "depends_on"):
+                connectivity[e.source] = connectivity.get(e.source, 0) + 1
+                connectivity[e.target] = connectivity.get(e.target, 0) + 1
+        ranked = sorted(
+            module_nodes,
+            key=lambda n: connectivity.get(n.id, 0),
+            reverse=True,
+        )
+
+    top_modules = ranked[:max_modules]
+
+    # Pre-compute symbol info per file if SymbolGraph is available
+    file_symbols: dict[str, dict] = {}
+    if symbol_graph is not None:
+        for sym in symbol_graph.symbols.values():
+            entry = file_symbols.setdefault(sym.file, {
+                "exports": set(),
+                "functions": 0,
+                "classes": 0,
+            })
+            entry["exports"].add(sym.name)
+            if sym.kind == "function":
+                entry["functions"] += 1
+            elif sym.kind == "class":
+                entry["classes"] += 1
+
+    summaries: list[str] = []
+    for node in top_modules:
+        dependents = graph.get_dependents(node.id)
+        dependencies = graph.get_dependencies(node.id)
+
+        # Determine exports, function/class counts
+        exports = list(node.exports)
+        num_functions = 0
+        num_classes = 0
+
+        if symbol_graph is not None and node.id in file_symbols:
+            sym_info = file_symbols[node.id]
+            # Merge: symbol graph exports override node exports
+            exports = sorted(sym_info["exports"])
+            num_functions = sym_info["functions"]
+            num_classes = sym_info["classes"]
+
+        # Detect layer
+        layer = node.layer or _infer_layer(node.id)
+
+        summary = _format_module_summary(
+            node_id=node.id,
+            name=node.name,
+            exports=exports,
+            dependents=dependents,
+            dependencies=dependencies,
+            layer=layer,
+            num_functions=num_functions,
+            num_classes=num_classes,
+        )
+        summaries.append(summary)
+
+    header = (
+        f"# Structured Module Context ({len(summaries)}/{len(module_nodes)} modules)\n"
+    )
+    return header + "\n\n".join(summaries) + "\n"
+
+
 def build_module_graph_context(graph: CodeGraph, module_path: str) -> str:
     """Build graph context specific to a single module (for skills generation).
 

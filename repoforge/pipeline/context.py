@@ -111,7 +111,11 @@ def _build_diagrams(root: Path, all_files: list, result: ContextBundle, log, *, 
 
 
 def _build_graph(root: Path, result: ContextBundle, log) -> None:
-    from ..graph_context import build_graph_context_from_graph, build_short_graph_context
+    from ..graph_context import (
+        build_graph_context_from_graph,
+        build_short_graph_context,
+        build_structured_graph_context,
+    )
 
     try:
         from ..graph import build_graph_v2
@@ -123,6 +127,21 @@ def _build_graph(root: Path, result: ContextBundle, log) -> None:
         module_count = len([n for n in _graph.nodes if n.node_type == "module"])
         edge_count = len([e for e in _graph.edges if e.edge_type in ("imports", "depends_on")])
         log(f"   ✅ Graph: {module_count} modules, {edge_count} dependencies")
+
+        # Build structured graph context (enriched with SymbolGraph if available)
+        _symbol_graph = None
+        try:
+            from ..symbols.graph import build_symbol_graph
+            _symbol_graph = build_symbol_graph(str(root))
+            log("   ✅ SymbolGraph built for structured context")
+        except (ImportError, OSError, ValueError, RuntimeError) as sym_err:
+            log(f"   ℹ️  SymbolGraph unavailable, structured context without symbol enrichment: {sym_err}")
+
+        result.structured_graph_ctx = build_structured_graph_context(
+            _graph, symbol_graph=_symbol_graph,
+        )
+        if result.structured_graph_ctx:
+            log(f"   ✅ Structured graph context built")
     except (ImportError, OSError, ValueError, RuntimeError) as e:
         # ImportError: graph module not available; others: graph build failures
         log(f"   ⚠️  Graph analysis skipped: {e}")

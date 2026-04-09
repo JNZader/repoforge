@@ -159,8 +159,8 @@ def generate_docs(
     # ------------------------------------------------------------------
     # Stage 4: Get chapter list
     # ------------------------------------------------------------------
-    _arch_context = ctx.semantic_ctx or ctx.graph_ctx
-    _other_parts = [p for p in [ctx.facts_ctx, ctx.api_surface_ctx, ctx.short_graph_ctx] if p]
+    _arch_context = ctx.semantic_ctx or ctx.structured_graph_ctx or ctx.graph_ctx
+    _other_parts = [p for p in [ctx.facts_ctx, ctx.api_surface_ctx, ctx.structured_graph_ctx or ctx.short_graph_ctx] if p]
     _other_context = "\n".join(_other_parts).strip() if _other_parts else ""
 
     all_chapters = get_chapter_prompts(

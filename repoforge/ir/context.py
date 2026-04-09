@@ -22,6 +22,7 @@ class ContextBundle:
 
     graph_ctx: str = ""
     short_graph_ctx: str = ""
+    structured_graph_ctx: str = ""
     diagram_ctx: str = ""
     semantic_ctx: str = ""
     facts_ctx: str = ""
@@ -80,6 +81,7 @@ class ContextBundle:
         return {
             "graph_ctx": self.graph_ctx,
             "short_graph_ctx": self.short_graph_ctx,
+            "structured_graph_ctx": self.structured_graph_ctx,
             "diagram_ctx": self.diagram_ctx,
             "semantic_ctx": self.semantic_ctx,
             "facts_ctx": self.facts_ctx,
@@ -104,6 +106,7 @@ class ContextBundle:
         return cls(
             graph_ctx=d.get("graph_ctx", ""),
             short_graph_ctx=d.get("short_graph_ctx", ""),
+            structured_graph_ctx=d.get("structured_graph_ctx", ""),
             diagram_ctx=d.get("diagram_ctx", ""),
             semantic_ctx=d.get("semantic_ctx", ""),
             facts_ctx=d.get("facts_ctx", ""),
