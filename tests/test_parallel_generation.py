@@ -61,7 +61,7 @@ def _deterministic_content(user_prompt: str, **kw) -> str:
 class TestParallelVsSequential:
     """Parallel (max_workers=4) must produce identical chapters as sequential (max_workers=1)."""
 
-    @patch("repoforge.docs_generator.build_llm")
+    @patch("repoforge.model_router.build_llm")
     def test_same_chapters_generated(self, mock_build_llm, python_repo):
         """Chapter files produced by parallel and sequential runs must match."""
         mock_llm = MagicMock()
@@ -104,7 +104,7 @@ class TestParallelVsSequential:
                 f"Content mismatch for {name}"
             )
 
-    @patch("repoforge.docs_generator.build_llm")
+    @patch("repoforge.model_router.build_llm")
     def test_no_errors_in_either_mode(self, mock_build_llm, python_repo):
         """Neither parallel nor sequential should produce errors with a healthy LLM."""
         mock_llm = MagicMock()
@@ -139,7 +139,7 @@ class TestParallelVsSequential:
 class TestPartialFailure:
     """When one chapter's LLM call raises, the rest must still be generated."""
 
-    @patch("repoforge.docs_generator.build_llm")
+    @patch("repoforge.model_router.build_llm")
     def test_other_chapters_still_generated(self, mock_build_llm, python_repo):
         """If one chapter fails, the remaining chapters must still appear on disk."""
         call_count = 0
@@ -185,7 +185,7 @@ class TestPartialFailure:
             full = docs_dir / Path(rel_path).name
             assert full.exists(), f"Generated chapter missing on disk: {rel_path}"
 
-    @patch("repoforge.docs_generator.build_llm")
+    @patch("repoforge.model_router.build_llm")
     def test_error_contains_chapter_file(self, mock_build_llm, python_repo):
         """Error entries must identify which chapter file failed."""
         mock_llm = MagicMock()

@@ -36,7 +36,7 @@ from .incremental import (
 )
 from .ir.context import ContextBundle
 from .ir.repo import RepoMap
-from .llm import build_llm
+from .model_router import ModelRouter
 from .performance import BatchExecutor, RateLimiter
 from .pipeline.context import build_all_contexts
 from .pipeline.generate import generate_chapter, postprocess_chapter
@@ -72,6 +72,9 @@ def generate_docs(
     max_workers: Optional[int] = None,
     semantic_dedup: bool = False,
     semantic_threshold: float = 0.95,
+    model_heavy: Optional[str] = None,
+    model_standard: Optional[str] = None,
+    model_light: Optional[str] = None,
 ) -> dict:
     """
     Main entry point for documentation generation.
@@ -136,8 +139,13 @@ def generate_docs(
         project_name = _infer_project_name(root, repo_map)
     log(f"📝 Project: {project_name}")
 
-    llm = build_llm(model=model, api_key=api_key, api_base=api_base)
-    log(f"🤖 Model:  {llm.model}")
+    # Build model router: single-model or per-tier routing
+    cli_overrides = {"heavy": model_heavy, "standard": model_standard, "light": model_light}
+    router = ModelRouter.from_config(
+        model=model, config=cfg, cli_overrides=cli_overrides,
+        api_key=api_key, api_base=api_base,
+    )
+    log(f"🤖 Model:  {router.model}")
     log(f"🌐 Language: {language}")
 
     # ------------------------------------------------------------------
@@ -265,6 +273,7 @@ def generate_docs(
         safe_log(f"[{i}/{total_chapters}] {display} — {chapter['title']} ...", end=" ")
         try:
             rate_limiter.acquire_or_wait()
+            llm = router.get_llm_for_chapter(chapter["file"])
             content = generate_chapter(llm, chapter, safe_log)
             safe_log("✅", end="")
 

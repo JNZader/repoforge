@@ -1060,7 +1060,7 @@ class TestDocsDiagramsFlag:
         mock_llm.model = "mock-model"
         mock_llm.call.return_value = "# Test\n\nContent."
 
-        with patch("repoforge.docs_generator.build_llm", return_value=mock_llm):
+        with patch("repoforge.model_router.build_llm", return_value=mock_llm):
             from repoforge.docs_generator import generate_docs
             # Should not raise TypeError for unknown kwarg
             result = generate_docs(

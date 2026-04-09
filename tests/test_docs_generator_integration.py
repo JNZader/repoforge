@@ -215,7 +215,7 @@ class TestDryRun:
 # ---------------------------------------------------------------------------
 
 class TestFullGeneration:
-    @patch("repoforge.docs_generator.build_llm")
+    @patch("repoforge.model_router.build_llm")
     def test_generates_chapters_and_docsify(self, mock_build_llm, python_repo):
         mock_llm = MagicMock()
         mock_llm.model = "test-model"
@@ -242,7 +242,7 @@ class TestFullGeneration:
         md_files = list(docs_dir.glob("*.md"))
         assert len(md_files) >= 2  # _sidebar + at least one chapter
 
-    @patch("repoforge.docs_generator.build_llm")
+    @patch("repoforge.model_router.build_llm")
     def test_llm_error_captured(self, mock_build_llm, python_repo):
         mock_llm = MagicMock()
         mock_llm.model = "test-model"
@@ -259,7 +259,7 @@ class TestFullGeneration:
         assert len(result["errors"]) > 0
         assert result["errors"][0]["error"] == "LLM failed"
 
-    @patch("repoforge.docs_generator.build_llm")
+    @patch("repoforge.model_router.build_llm")
     def test_output_dir_created(self, mock_build_llm, python_repo):
         mock_llm = MagicMock()
         mock_llm.model = "test"

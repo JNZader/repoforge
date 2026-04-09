@@ -314,12 +314,19 @@ SUPPORTED_LANGUAGES = [
     ))
 @click.option("--max-workers", type=int, default=None,
     help="Max parallel chapter generation workers (default: 4).")
+@click.option("--model-heavy", default=None,
+    help="LLM for heavy-tier chapters (architecture, core-mechanisms). Requires --model auto.")
+@click.option("--model-standard", default=None,
+    help="LLM for standard-tier chapters (overview, data-models, api-reference). Requires --model auto.")
+@click.option("--model-light", default=None,
+    help="LLM for light-tier chapters (index, quickstart, dev-guide). Requires --model auto.")
 def docs(working_dir, model, api_key, api_base, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
          chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental,
          semantic_dedup, semantic_threshold,
-         watch, watch_interval, link_style, embed_diagrams, max_workers):
+         watch, watch_interval, link_style, embed_diagrams, max_workers,
+         model_heavy, model_standard, model_light):
     """
     Generate technical documentation (Docsify-ready, GitHub Pages compatible).
 
@@ -401,6 +408,9 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             link_style=link_style,
             embed_diagrams=embed_diagrams,
             max_workers=max_workers,
+            model_heavy=model_heavy,
+            model_standard=model_standard,
+            model_light=model_light,
         )
 
     if do_serve or serve_only:
