@@ -273,7 +273,11 @@ def generate_docs(
         safe_log(f"[{i}/{total_chapters}] {display} — {chapter['title']} ...", end=" ")
         try:
             rate_limiter.acquire_or_wait()
-            llm = router.get_llm_for_chapter(chapter["file"])
+            llm = router.get_llm_for_chapter(
+                chapter["file"],
+                model_override=chapter.get("model"),
+                tier_override=chapter.get("model_tier"),
+            )
             content = generate_chapter(llm, chapter, safe_log)
             safe_log("✅", end="")
 

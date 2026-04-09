@@ -220,3 +220,74 @@ class TestIsMultiModel:
             models_cfg={"heavy": "a", "standard": "a", "light": "b"},
         )
         assert router.is_multi_model is True
+
+
+# ---------------------------------------------------------------------------
+# Per-chapter model/tier overrides
+# ---------------------------------------------------------------------------
+
+class TestModelOverride:
+    """Verify model_override and tier_override in get_llm_for_chapter."""
+
+    @patch("repoforge.model_router.build_llm", side_effect=_fake_build_llm)
+    def test_model_override_bypasses_tier_map(self, mock_build):
+        """model_override builds an ad-hoc provider, ignoring TIER_MAP."""
+        router = ModelRouter(
+            models_cfg={"heavy": "m-heavy", "standard": "m-std", "light": "m-light"},
+        )
+        # index.md is normally "light" tier
+        p = router.get_llm_for_chapter("index.md", model_override="gpt-4o")
+        assert p.model == "gpt-4o"
+
+    @patch("repoforge.model_router.build_llm", side_effect=_fake_build_llm)
+    def test_model_override_is_cached(self, mock_build):
+        """Same model_override string reuses the cached provider."""
+        router = ModelRouter(
+            models_cfg={"heavy": "m-heavy", "standard": "m-std", "light": "m-light"},
+        )
+        p1 = router.get_llm_for_chapter("index.md", model_override="gpt-4o")
+        p2 = router.get_llm_for_chapter("03-architecture.md", model_override="gpt-4o")
+        assert p1 is p2
+
+    @patch("repoforge.model_router.build_llm", side_effect=_fake_build_llm)
+    def test_tier_override_uses_specified_tier(self, mock_build):
+        """tier_override resolves to that tier's model instead of TIER_MAP."""
+        router = ModelRouter(
+            models_cfg={"heavy": "m-heavy", "standard": "m-std", "light": "m-light"},
+        )
+        # index.md is normally "light", but we override to "heavy"
+        p = router.get_llm_for_chapter("index.md", tier_override="heavy")
+        assert p.model == "m-heavy"
+
+    @patch("repoforge.model_router.build_llm", side_effect=_fake_build_llm)
+    def test_model_override_wins_over_tier_override(self, mock_build):
+        """When both are set, model_override takes precedence."""
+        router = ModelRouter(
+            models_cfg={"heavy": "m-heavy", "standard": "m-std", "light": "m-light"},
+        )
+        p = router.get_llm_for_chapter(
+            "index.md",
+            model_override="explicit-model",
+            tier_override="heavy",
+        )
+        assert p.model == "explicit-model"
+
+    @patch("repoforge.model_router.build_llm", side_effect=_fake_build_llm)
+    def test_no_overrides_uses_tier_map(self, mock_build):
+        """Without overrides, behavior is unchanged (TIER_MAP lookup)."""
+        router = ModelRouter(
+            models_cfg={"heavy": "m-heavy", "standard": "m-std", "light": "m-light"},
+        )
+        p = router.get_llm_for_chapter("03-architecture.md")
+        assert p.model == "m-heavy"
+        p2 = router.get_llm_for_chapter("index.md")
+        assert p2.model == "m-light"
+
+    @patch("repoforge.model_router.build_llm", side_effect=_fake_build_llm)
+    def test_tier_override_unconfigured_raises(self, mock_build):
+        """tier_override with a tier not in config raises ValueError."""
+        router = ModelRouter(
+            models_cfg={"heavy": "m-heavy", "standard": "m-std", "light": "m-light"},
+        )
+        with pytest.raises(ValueError, match="No model configured for tier 'ultra'"):
+            router.get_llm_for_chapter("index.md", tier_override="ultra")

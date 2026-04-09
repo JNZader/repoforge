@@ -72,6 +72,8 @@ class ChapterDef:
     prompt_template: str | None = None
     condition: str | None = None
     order: int = 0
+    model: str | None = None
+    model_tier: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -389,6 +391,8 @@ class TemplateLoader:
                 prompt_template=prompt_template,
                 condition=condition,
                 order=int(ch_raw.get("order", i)),
+                model=ch_raw.get("model"),
+                model_tier=ch_raw.get("model_tier"),
             ))
 
         return ChapterTemplate(

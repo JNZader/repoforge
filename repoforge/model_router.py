@@ -133,9 +133,40 @@ class ModelRouter:
         basename = os.path.basename(chapter_file)
         return TIER_MAP.get(basename, "standard")
 
-    def get_llm_for_chapter(self, chapter_file: str) -> LLMProvider:
-        """Resolve *chapter_file* to its tier and return the cached provider."""
-        tier = self.get_tier(chapter_file)
+    def get_llm_for_chapter(
+        self,
+        chapter_file: str,
+        *,
+        model_override: str | None = None,
+        tier_override: str | None = None,
+    ) -> LLMProvider:
+        """Resolve *chapter_file* to its tier and return the cached provider.
+
+        When *model_override* is set, build (and cache) a provider for that
+        specific model string, bypassing TIER_MAP entirely.
+
+        When *tier_override* is set, use that tier instead of TIER_MAP lookup.
+
+        Precedence: model_override > tier_override > TIER_MAP.
+        """
+        # --- explicit model override: highest precedence ---
+        if model_override is not None:
+            cache_key = model_override
+            if cache_key not in self._providers:
+                provider = build_llm(
+                    model=model_override,
+                    api_key=self._api_key,
+                    api_base=self._api_base,
+                )
+                self._providers[cache_key] = provider
+            logger.info(
+                "Model for %s: %s (override)", chapter_file, model_override,
+            )
+            return self._providers[cache_key]
+
+        # --- tier override: use specified tier instead of TIER_MAP ---
+        tier = tier_override if tier_override is not None else self.get_tier(chapter_file)
+
         if tier not in self._tier_models:
             raise ValueError(f"No model configured for tier '{tier}'")
 

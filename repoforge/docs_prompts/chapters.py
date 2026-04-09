@@ -345,11 +345,16 @@ def _resolve_adaptive_chapters(
         prompt_templates: dict[str, str] = {}
 
         for ch_def in template.chapters:
-            type_chapters.append({
+            ch_dict: dict = {
                 "file": ch_def.file,
                 "title": ch_def.title,
                 "description": ch_def.description,
-            })
+            }
+            if ch_def.model is not None:
+                ch_dict["model"] = ch_def.model
+            if ch_def.model_tier is not None:
+                ch_dict["model_tier"] = ch_def.model_tier
+            type_chapters.append(ch_dict)
             if ch_def.prompt_template:
                 prompt_templates[ch_def.file] = ch_def.prompt_template
 

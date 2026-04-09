@@ -477,6 +477,44 @@ class TestTemplateLoaderValidation:
         with pytest.raises(TemplateValidationError, match="must be a YAML mapping"):
             loader.load_all()
 
+    def test_model_field_parsed(self, tmp_path: Path):
+        """YAML chapter with model field is parsed into ChapterDef."""
+        tpl = _valid_template_dict(chapters=[
+            {
+                "file": "04-core-mechanisms.md",
+                "title": "Core",
+                "description": "Desc",
+                "prompt_key": "core_mechanisms",
+                "model": "cli/claude",
+            },
+        ])
+        _write_yaml(tmp_path / "m.yaml", tpl)
+        loader = TemplateLoader(extra_dirs=[tmp_path])
+        loader.load_all()
+        result = loader.get("web_service")
+        assert result is not None
+        assert result.chapters[0].model == "cli/claude"
+        assert result.chapters[0].model_tier is None
+
+    def test_model_tier_field_parsed(self, tmp_path: Path):
+        """YAML chapter with model_tier field is parsed into ChapterDef."""
+        tpl = _valid_template_dict(chapters=[
+            {
+                "file": "04-core-mechanisms.md",
+                "title": "Core",
+                "description": "Desc",
+                "prompt_key": "core_mechanisms",
+                "model_tier": "heavy",
+            },
+        ])
+        _write_yaml(tmp_path / "mt.yaml", tpl)
+        loader = TemplateLoader(extra_dirs=[tmp_path])
+        loader.load_all()
+        result = loader.get("web_service")
+        assert result is not None
+        assert result.chapters[0].model is None
+        assert result.chapters[0].model_tier == "heavy"
+
     def test_condition_with_valid_syntax(self, tmp_path: Path):
         tpl = _valid_template_dict(chapters=[
             {
@@ -614,6 +652,35 @@ class TestChapterDefDataclass:
         assert ch.prompt_template is None
         assert ch.condition is None
         assert ch.order == 0
+        assert ch.model is None
+        assert ch.model_tier is None
+
+    def test_model_field(self):
+        """ChapterDef stores explicit model string."""
+        ch = ChapterDef(
+            file="04.md", title="T", description="D",
+            prompt_key="overview", model="gpt-4o",
+        )
+        assert ch.model == "gpt-4o"
+        assert ch.model_tier is None
+
+    def test_model_tier_field(self):
+        """ChapterDef stores explicit model_tier string."""
+        ch = ChapterDef(
+            file="04.md", title="T", description="D",
+            prompt_key="overview", model_tier="heavy",
+        )
+        assert ch.model is None
+        assert ch.model_tier == "heavy"
+
+    def test_both_model_and_tier(self):
+        """ChapterDef accepts both model and model_tier."""
+        ch = ChapterDef(
+            file="04.md", title="T", description="D",
+            prompt_key="overview", model="gpt-4o", model_tier="light",
+        )
+        assert ch.model == "gpt-4o"
+        assert ch.model_tier == "light"
 
 
 class TestChapterTemplateDataclass:
