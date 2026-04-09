@@ -2155,7 +2155,7 @@ def index(workspace, output_dir, embedding_model, quiet):
         sys.exit(1)
 
     from .graph import build_graph_v2
-    from .search import Embedder, SearchIndex
+    from .search import BM25Index, Embedder, SearchIndex
     from .search.prepare import prepare_all
     from .symbols import build_symbol_graph
 
@@ -2193,7 +2193,16 @@ def index(workspace, output_dir, embedding_model, quiet):
             file=sys.stderr,
         )
 
-    # 4. Build index
+    out = Path(output_dir)
+
+    # 4a. Build BM25 index (always — no external dependencies)
+    bm25_index = BM25Index()
+    bm25_index.add(texts=texts, ids=ids, entity_types=types)
+    bm25_index.save(out)
+    if not quiet:
+        print(f"BM25 index saved ({bm25_index.size} documents)", file=sys.stderr)
+
+    # 4b. Build FAISS semantic index
     embedder_kwargs = {}
     if embedding_model:
         embedder_kwargs["model"] = embedding_model
@@ -2202,7 +2211,6 @@ def index(workspace, output_dir, embedding_model, quiet):
     search_index.add(texts=texts, ids=ids, types=types)
 
     # 5. Save
-    out = Path(output_dir)
     search_index.save(out)
 
     if not quiet:
@@ -2231,38 +2239,32 @@ def index(workspace, output_dir, embedding_model, quiet):
     default=None,
     help="Embedding model (must match the model used to build the index).",
 )
-def query(query_text, top_k, index_dir, as_json, embedding_model):
+@click.option("--search-mode", "search_mode",
+    default="hybrid", show_default=True,
+    type=click.Choice(["hybrid", "semantic", "bm25"], case_sensitive=False),
+    help="Search mode: hybrid (default), semantic, or bm25.",
+)
+def query(query_text, top_k, index_dir, as_json, embedding_model, search_mode):
     """
-    Search the semantic index for matching entities.
+    Search the index for matching entities.
 
     \b
-    Loads a pre-built index from disk, embeds the query, and returns
-    the most similar codebase entities.
-
-    \b
-    Requires: pip install repoforge-ai[search]
+    Loads a pre-built index from disk and returns the most similar
+    codebase entities. Supports hybrid (BM25 + semantic), pure semantic,
+    or pure BM25 search modes.
 
     \b
     Examples:
       repoforge query "authentication logic"
       repoforge query "database connection" --top-k 5
       repoforge query "user service" --json
+      repoforge query "auth" --search-mode bm25
     """
     import json as json_mod
     import sys
     from pathlib import Path
 
-    from .search import SEARCH_AVAILABLE
-
-    if not SEARCH_AVAILABLE:
-        click.echo(
-            "Error: faiss-cpu is required for semantic search.\n"
-            "Install with: pip install repoforge-ai[search]",
-            err=True,
-        )
-        sys.exit(1)
-
-    from .search import Embedder, SearchIndex
+    from .search import SEARCH_AVAILABLE, BM25Index
 
     idx_path = Path(index_dir)
     if not idx_path.exists():
@@ -2273,13 +2275,44 @@ def query(query_text, top_k, index_dir, as_json, embedding_model):
         )
         sys.exit(1)
 
-    embedder_kwargs = {}
-    if embedding_model:
-        embedder_kwargs["model"] = embedding_model
-    embedder = Embedder(**embedder_kwargs)
+    results = []
 
-    search_index = SearchIndex.load(idx_path, embedder=embedder)
-    results = search_index.search(query_text, top_k=top_k)
+    if search_mode == "bm25":
+        bm25_index = BM25Index.load(idx_path)
+        results = bm25_index.search(query_text, top_k=top_k)
+
+    elif search_mode == "semantic":
+        if not SEARCH_AVAILABLE:
+            click.echo(
+                "Error: faiss-cpu is required for semantic search.\n"
+                "Install with: pip install repoforge-ai[search]",
+                err=True,
+            )
+            sys.exit(1)
+
+        from .search import Embedder, SearchIndex
+
+        embedder_kwargs = {}
+        if embedding_model:
+            embedder_kwargs["model"] = embedding_model
+        embedder = Embedder(**embedder_kwargs)
+        search_index = SearchIndex.load(idx_path, embedder=embedder)
+        results = search_index.search(query_text, top_k=top_k)
+
+    else:  # hybrid (default)
+        embedder = None
+        if SEARCH_AVAILABLE:
+            from .search import Embedder
+
+            embedder_kwargs = {}
+            if embedding_model:
+                embedder_kwargs["model"] = embedding_model
+            embedder = Embedder(**embedder_kwargs)
+
+        from .search import HybridSearchIndex
+
+        hybrid_index = HybridSearchIndex.load(idx_path, embedder=embedder)
+        results = hybrid_index.search(query_text, top_k=top_k)
 
     if not results:
         click.echo("No results found.", err=True)
