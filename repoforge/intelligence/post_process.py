@@ -98,6 +98,10 @@ _COT_LINE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r'^(?:Looking\s+at\s+(?:the|this))', re.IGNORECASE),
     re.compile(r'^(?:After\s+(?:reviewing|analyzing|examining|looking))', re.IGNORECASE),
     re.compile(r'^(?:First,?\s+(?:let\s+me|I\'ll|I\s+need))', re.IGNORECASE),
+    re.compile(r'^(?:I\s+have\s+(?:comprehensive|sufficient|detailed|complete|all\s+the))', re.IGNORECASE),
+    re.compile(r'^(?:The\s+\*{0,2}\d{2}-[\w-]+\.md\*{0,2}\s+(?:document|file|chapter)\s+has\s+been)', re.IGNORECASE),
+    re.compile(r'^(?:The\s+(?:repo|codebase|project)\s+(?:isn\'t|is\s+not)\s+(?:cloned|available|accessible))', re.IGNORECASE),
+    re.compile(r'^(?:Here\'s\s+(?:the|what|my)\s+)', re.IGNORECASE),
 ]
 
 
@@ -127,16 +131,22 @@ def _strip_cot_preamble(
         if stripped_line.startswith("#"):
             break
 
-        # Stop at markdown structural elements (lists, tables, code blocks, etc.)
-        if stripped_line.startswith(("- ", "* ", "1.", "|", "```", "---", ">")):
-            break
-
         # Check if this line matches a CoT pattern
         is_cot = any(p.search(stripped_line) for p in _COT_LINE_PATTERNS)
         if is_cot:
             stripped_count += 1
             cot_count += 1
             continue
+
+        # If we've already found CoT, treat bullets/lists before a heading
+        # as continuation of the preamble (e.g., "Here's what it covers:\n- item")
+        if cot_count > 0 and stripped_line.startswith(("- ", "* ", "1.")):
+            stripped_count += 1
+            continue
+
+        # Stop at markdown structural elements (tables, code blocks, hrs)
+        if stripped_line.startswith(("|", "```", "---", ">")):
+            break
 
         # Non-empty, non-CoT, non-heading line — stop stripping
         break
