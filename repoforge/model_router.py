@@ -21,6 +21,39 @@ logger = logging.getLogger(__name__)
 _UNSET = object()  # sentinel for "key not present in merged config"
 
 # ---------------------------------------------------------------------------
+# Cost weights: model substring -> relative cost (first match wins)
+# ---------------------------------------------------------------------------
+# Order matters: more specific substrings MUST come before broader ones
+# (e.g. "gpt-4o-mini" before "gpt-4o").
+
+DEFAULT_COST_WEIGHT: int = 5
+
+COST_WEIGHTS: list[tuple[str, int]] = [
+    # Anthropic
+    ("haiku", 1),
+    ("sonnet", 5),
+    ("opus", 25),
+    # OpenAI — specific before broad
+    ("gpt-4.1-nano", 1),
+    ("gpt-4.1-mini", 1),
+    ("gpt-4.1", 10),
+    ("gpt-4o-mini", 1),
+    ("gpt-4o", 10),
+    ("o3-mini", 2),
+    ("o3", 15),
+    ("o4-mini", 2),
+    # Google — match on "flash"/"pro" keywords within model string
+    ("gemini-flash", 1),
+    ("flash", 1),
+    ("gemini-pro", 5),
+    # Open-source / budget
+    ("deepseek", 1),
+    ("llama", 1),
+    ("mistral", 2),
+    ("mixtral", 3),
+]
+
+# ---------------------------------------------------------------------------
 # Tier mapping: chapter filename -> tier name
 # ---------------------------------------------------------------------------
 
@@ -190,6 +223,74 @@ class ModelRouter:
         parts = [f"{t}={self._tier_models[t]}" for t in ("heavy", "standard", "light")
                  if t in self._tier_models]
         return "auto(" + ", ".join(parts) + ")"
+
+    # ------------------------------------------------------------------
+    # Cost estimation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _resolve_cost_weight(model_str: str | None) -> int:
+        """Return the relative cost weight for *model_str*.
+
+        Iterates :data:`COST_WEIGHTS` and returns the weight for the first
+        substring match (case-insensitive).  Falls back to
+        :data:`DEFAULT_COST_WEIGHT` when no entry matches.
+        """
+        if model_str is None:
+            return DEFAULT_COST_WEIGHT
+        lower = model_str.lower()
+        for substring, weight in COST_WEIGHTS:
+            if substring in lower:
+                return weight
+        return DEFAULT_COST_WEIGHT
+
+    def get_cost_weight(self, chapter_file: str) -> int:
+        """Return the relative cost weight for the model assigned to *chapter_file*."""
+        tier = self.get_tier(chapter_file)
+        model_str = self._tier_models.get(tier)
+        return self._resolve_cost_weight(model_str)
+
+    def estimate_total_cost(self, chapters: list[dict]) -> dict:
+        """Estimate relative cost for a list of chapter dicts.
+
+        Each chapter dict must have a ``"file"`` key.  Returns::
+
+            {
+                "breakdown": {
+                    "heavy":    {"count": 2, "weight": 25, "subtotal": 50},
+                    "standard": {"count": 3, "weight": 5,  "subtotal": 15},
+                    ...
+                },
+                "total": 65,
+                "display": "Estimated relative cost: 65 (2 heavy × 25 + 3 standard × 5)",
+            }
+        """
+        buckets: dict[str, dict] = {}
+        total = 0
+
+        for ch in chapters:
+            fname = ch["file"]
+            tier = self.get_tier(fname)
+            weight = self.get_cost_weight(fname)
+
+            if tier not in buckets:
+                buckets[tier] = {"count": 0, "weight": weight, "subtotal": 0}
+            buckets[tier]["count"] += 1
+            buckets[tier]["subtotal"] += weight
+            total += weight
+
+        # Build human-friendly display string
+        parts = []
+        for tier in ("heavy", "standard", "light"):
+            if tier in buckets:
+                b = buckets[tier]
+                parts.append(f"{b['count']} {tier} \u00d7 {b['weight']}")
+
+        display = f"Estimated relative cost: {total}"
+        if parts:
+            display += f" ({' + '.join(parts)})"
+
+        return {"breakdown": buckets, "total": total, "display": display}
 
     # ------------------------------------------------------------------
     # Factory

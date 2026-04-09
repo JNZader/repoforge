@@ -181,6 +181,10 @@ def generate_docs(
     for c in chapters:
         log(f"   • {c['file']} — {c['title']}")
 
+    # Cost estimate display
+    cost_info = router.estimate_total_cost(chapters)
+    log(f"💰 {cost_info['display']}")
+
     if dry_run:
         log("\n🔍 DRY RUN — no LLM calls, no files written")
         return {
