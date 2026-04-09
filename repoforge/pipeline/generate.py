@@ -30,6 +30,26 @@ def postprocess_chapter(
     """
     corrections_log: list[dict] = []
 
+    # Always strip CoT preamble (regardless of post-process/verify settings)
+    try:
+        from ..intelligence.post_process import Correction, _strip_cot_preamble
+        cot_corrections: list[Correction] = []
+        content = _strip_cot_preamble(content, cot_corrections)
+        if cot_corrections:
+            if log:
+                log(f" 🧹CoT:{len(cot_corrections)}", end="")
+            corrections_log.append({
+                "file": chapter["file"],
+                "stage": "CoT",
+                "corrections": [
+                    {"original": c.original, "corrected": c.corrected,
+                     "reason": c.reason, "line": c.line}
+                    for c in cot_corrections
+                ],
+            })
+    except Exception:
+        pass  # CoT stripping is best-effort
+
     # Stage D: Deterministic post-processing
     if do_post_process:
         try:
