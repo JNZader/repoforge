@@ -101,7 +101,8 @@ _COT_LINE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r'^(?:I\s+have\s+(?:comprehensive|sufficient|detailed|complete|all\s+the))', re.IGNORECASE),
     re.compile(r'^(?:The\s+\*{0,2}\d{2}-[\w-]+\.md\*{0,2}\s+(?:document|file|chapter)\s+has\s+been)', re.IGNORECASE),
     re.compile(r'^(?:The\s+(?:repo|codebase|project)\s+(?:isn\'t|is\s+not)\s+(?:cloned|available|accessible))', re.IGNORECASE),
-    re.compile(r'^(?:Here\'s\s+(?:the|what|my)\s+)', re.IGNORECASE),
+    re.compile(r'^(?:Here\'s\s+(?:the|what|my|a)\s+)', re.IGNORECASE),
+    re.compile(r'^(?:The\s+\*{0,2}[\w/-]+\.md\*{0,2}\s+(?:has\s+been|was|is)\s+)', re.IGNORECASE),
 ]
 
 
@@ -140,7 +141,10 @@ def _strip_cot_preamble(
 
         # If we've already found CoT, treat bullets/lists before a heading
         # as continuation of the preamble (e.g., "Here's what it covers:\n- item")
-        if cot_count > 0 and stripped_line.startswith(("- ", "* ", "1.")):
+        if cot_count > 0 and (
+            stripped_line.startswith(("- ", "* "))
+            or (len(stripped_line) > 2 and stripped_line[0].isdigit() and stripped_line[1] in ".)")
+        ):
             stripped_count += 1
             continue
 
