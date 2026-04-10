@@ -58,3 +58,31 @@
 # templates:
 #   path: ./my-templates/     # custom template directory (default: built-in templates)
 #   override: web-service      # force a specific template regardless of auto-detection
+
+# Page templates — control which SECTIONS appear within each generated page.
+# Chapter templates define which files are generated; page templates define
+# what content blocks appear inside each file.
+#
+# Section types: intro, outro, call_graph, entity_diff, diagram,
+#                data_models, api_surface, custom
+#
+# pages:
+#   - file: "03-architecture.md"
+#     sections:
+#       - type: intro
+#         content: "This project follows a hexagonal architecture."
+#       - type: call_graph
+#         enabled: true
+#       - type: entity_diff
+#         enabled: false
+#       - type: diagram
+#         enabled: true
+#       - type: custom
+#         title: "Deployment Notes"
+#         content: "We deploy via GitHub Actions to ECS."
+#       - type: outro
+#         content: "For questions, see the #architecture Slack channel."
+#
+# You can also use a standalone YAML file:
+# pages:
+#   path: ./page-templates.yaml

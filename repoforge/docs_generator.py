@@ -37,6 +37,7 @@ from .incremental import (
 from .ir.context import ContextBundle
 from .ir.repo import RepoMap
 from .model_router import ModelRouter
+from .page_templates import load_page_templates, render_page_sections
 from .performance import BatchExecutor, RateLimiter
 from .pipeline.context import build_all_contexts
 from .pipeline.generate import generate_chapter, postprocess_chapter
@@ -238,6 +239,17 @@ def generate_docs(
             chapters = stale
 
     # ------------------------------------------------------------------
+    # Stage 4c: Load page templates (section-level control)
+    # ------------------------------------------------------------------
+    _page_templates = load_page_templates(cfg)
+    if _page_templates:
+        log(f"\n📄 Page templates: {len(_page_templates)} page(s) with custom sections")
+        for pt_file, pt in _page_templates.items():
+            enabled = len(pt.enabled_sections)
+            disabled = len(pt.disabled_section_types)
+            log(f"   • {pt_file}: {enabled} sections enabled, {disabled} types disabled")
+
+    # ------------------------------------------------------------------
     # Stage 5: Prepare post-processing state
     # ------------------------------------------------------------------
     do_post_process = not no_verify_docs
@@ -292,6 +304,13 @@ def generate_docs(
                 do_post_process=do_post_process, do_verify=do_verify,
                 llm=llm, verify_model=verify_model, log=safe_log,
             )
+
+            # Apply page template (section-level assembly) if defined
+            pt = _page_templates.get(chapter["file"])
+            if pt:
+                content = render_page_sections(pt, content)
+                safe_log(" 📄", end="")
+
             safe_log("")
 
             path = write_chapter(content, chapter, out)
