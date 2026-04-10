@@ -62,6 +62,11 @@ def extract_decisions_from_content(
         marker = match.group(1).upper()
         text = match.group(2).strip()
 
+        # Skip placeholder/example patterns (e.g., "..." in docstrings)
+        cleaned = text.rstrip("*/").strip()
+        if not cleaned or cleaned == "..." or len(cleaned) < 5:
+            continue
+
         # Gather surrounding context
         start = max(0, i - context_lines)
         end = min(len(lines), i + context_lines + 1)

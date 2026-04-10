@@ -99,7 +99,9 @@ class TestExtractDecisions:
         assert "line4" in decisions[0].context
 
     def test_file_path_preserved(self):
-        decisions = extract_decisions_from_content("// WHY: test", "src/deep/file.ts")
+        decisions = extract_decisions_from_content(
+            "// WHY: important architectural reason", "src/deep/file.ts"
+        )
         assert decisions[0].file == "src/deep/file.ts"
 
 
