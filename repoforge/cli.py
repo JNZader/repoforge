@@ -949,9 +949,11 @@ def compress(workspace, target_dir, aggressive, dry_run, quiet):
     help="File path for --query imports.")
 @click.option("--communities", is_flag=True, default=False,
     help="Detect and display module communities (clusters of related modules).")
+@click.option("--incremental", is_flag=True, default=False,
+    help="Use incremental graph building with file-hash caching (faster on repeated runs).")
 @click.option("-q", "--quiet", is_flag=True, default=False,
     help="Suppress progress output.")
-def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_files, include_tests, query_mode, symbol, query_file, communities, quiet):
+def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_files, include_tests, query_mode, symbol, query_file, communities, incremental, quiet):
     """
     Build a code knowledge graph from scanner data (no API key needed).
 
@@ -1078,7 +1080,17 @@ def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_
             mode = "v2 (extractor-based)" if v2 else "v1 (name-matching)"
             print(f"Building code graph for {workspace} ({mode}) ...", file=sys.stderr)
 
-        if v2:
+        if incremental:
+            from .incremental_graph import build_graph_incremental
+            code_graph, stats = build_graph_incremental(workspace)
+            if not quiet:
+                if stats["cached"]:
+                    print(f"Graph loaded from cache in {stats['build_time_ms']:.0f}ms "
+                          f"({stats['total_files']} files, 0 changes)", file=sys.stderr)
+                else:
+                    print(f"Graph built in {stats['build_time_ms']:.0f}ms "
+                          f"({stats['total_files']} files)", file=sys.stderr)
+        elif v2:
             from .graph import build_graph_v2
             code_graph = build_graph_v2(workspace)
         else:
@@ -1578,7 +1590,7 @@ def audit(path, fail_on, fmt, quiet):
 )
 @click.option("--type", "diagram_type",
     default="all", show_default=True,
-    type=click.Choice(["dependency", "directory", "callflow", "erd", "k8s", "openapi", "all"], case_sensitive=False),
+    type=click.Choice(["dependency", "directory", "callflow", "erd", "k8s", "openapi", "svg", "all"], case_sensitive=False),
     help="Diagram type to generate.")
 @click.option("--max-nodes", default=40, show_default=True, type=int,
     help="Max nodes in dependency diagram.")
@@ -1676,6 +1688,14 @@ def diagram(workspace, output_path, diagram_type, max_nodes, max_depth, entry, i
             str(root), entry, files, max_depth=max_depth,
         )
         output = "```mermaid\n" + mermaid + "\n```"
+    elif diagram_type == "svg":
+        from .diagram_svg import DiagramStyle, generate_svg_diagram
+        svg_style = DiagramStyle()
+        output = generate_svg_diagram(
+            code_graph, svg_style,
+            max_nodes=max_nodes,
+            title=str(Path(workspace).resolve().name) + " — Architecture",
+        )
     elif diagram_type in ("erd", "k8s", "openapi"):
         if not input_path:
             click.echo(f"--input is required for --type {diagram_type}.", err=True)
@@ -2732,6 +2752,130 @@ def ownership_cmd(working_dir, bus_factor, max_commits, since, as_json, quiet):
         click.echo(json_mod.dumps(data, indent=2))
     else:
         click.echo(format_ownership(report, bus_factor=bus_factor))
+
+
+# ---------------------------------------------------------------------------
+# context-prune subcommand (#19)
+# ---------------------------------------------------------------------------
+
+@main.command("context-prune")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--files", multiple=True, required=True,
+    help="File paths to prune context for.")
+@click.option("--depth", default=1, show_default=True, type=int,
+    help="How many levels of dependents to include.")
+@click.option("--no-dependents", is_flag=True, default=False,
+    help="Only show symbols from changed files (skip dependents).")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def context_prune_cmd(working_dir, files, depth, no_dependents, as_json, quiet):
+    """Graph-aware context pruning for LLM review (no API key needed).
+
+    \b
+    Given changed files, extracts only the relevant symbols (functions, classes)
+    that an LLM needs to see for code review, achieving up to 8x token reduction.
+
+    \b
+    Examples:
+      repoforge context-prune --files src/auth.py --files src/models.py
+      repoforge context-prune --files cli.py --no-dependents
+      repoforge context-prune --files cli.py --json
+    """
+    import json as json_mod
+    import sys
+
+    from .context_pruning import format_pruned_context, prune_context
+
+    if not quiet:
+        print(f"Pruning context for {len(files)} file(s) in {working_dir} ...",
+              file=sys.stderr)
+
+    ctx = prune_context(
+        working_dir, list(files),
+        max_depth=depth,
+        include_dependents=not no_dependents,
+    )
+
+    if as_json:
+        data = {
+            "changed_files": ctx.changed_files,
+            "symbols": [
+                {"name": s.name, "kind": s.kind, "file": s.file,
+                 "line_start": s.line_start, "line_end": s.line_end,
+                 "source": s.source}
+                for s in ctx.symbols
+            ],
+            "dependent_symbols": [
+                {"name": s.name, "kind": s.kind, "file": s.file,
+                 "line_start": s.line_start, "line_end": s.line_end,
+                 "source": s.source}
+                for s in ctx.dependent_symbols
+            ],
+            "total_lines_original": ctx.total_lines_original,
+            "total_lines_pruned": ctx.total_lines_pruned,
+            "reduction_ratio": round(ctx.reduction_ratio, 3),
+        }
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_pruned_context(ctx))
+
+
+# ---------------------------------------------------------------------------
+# dead-code subcommand (#20)
+# ---------------------------------------------------------------------------
+
+@main.command("dead-code")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--include-tests", is_flag=True, default=False,
+    help="Include test files in analysis.")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def dead_code_cmd(working_dir, include_tests, as_json, quiet):
+    """Detect potentially dead code via graph analysis (no API key needed).
+
+    \b
+    Finds exported symbols with zero dependents (no other file imports them)
+    and isolated modules with no incoming imports. Pure graph traversal, no LLM.
+
+    \b
+    Examples:
+      repoforge dead-code -w .
+      repoforge dead-code -w . --include-tests
+      repoforge dead-code -w . --json
+    """
+    import json as json_mod
+    import sys
+
+    from .dead_code import detect_dead_code, format_dead_code_report
+
+    if not quiet:
+        print(f"Detecting dead code in {working_dir} ...", file=sys.stderr)
+
+    report = detect_dead_code(working_dir, include_tests=include_tests)
+
+    if as_json:
+        data = {
+            "isolated_modules": report.isolated_modules,
+            "dead_symbols": [
+                {"name": s.name, "kind": s.kind, "file": s.file,
+                 "confidence": s.confidence}
+                for s in report.dead_symbols
+            ],
+            "entry_points": report.entry_points,
+            "total_modules": report.total_modules,
+            "total_exports": report.total_exports,
+        }
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_dead_code_report(report))
 
 
 # ---------------------------------------------------------------------------
