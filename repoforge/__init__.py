@@ -29,6 +29,19 @@ from .coverage import (
     parse_lcov,
     render_coverage_markdown,
 )
+from .deep_analysis import (
+    ASTNode,
+    CallEdgeInfo,
+    CFGNode,
+    DFGEdge,
+    FileAnalysis,
+    FunctionAnalysis,
+    PDGEdge,
+    RepoAnalysis,
+    analyze_file,
+    analyze_repo,
+    format_analysis,
+)
 from .dep_health import (
     DependencyHealthReport,
     DuplicateDep,
@@ -118,6 +131,15 @@ from .security import (
     Severity,
     scan_generated_output,
 )
+from .semantic_search import (
+    BehaviorIndex,
+    BehaviorMatch,
+    build_behavior_index,
+    format_search_results,
+)
+from .semantic_search import (
+    search_repo as search_by_behavior,
+)
 from .server import serve_docs, serve_skills
 from .watch import FileWatcher, WatchEvent, watch_docs
 
@@ -194,6 +216,22 @@ __all__ = [
     "query_callers",
     "query_callees",
     "query_imports",
+    "ASTNode",
+    "CFGNode",
+    "CallEdgeInfo",
+    "DFGEdge",
+    "FileAnalysis",
+    "FunctionAnalysis",
+    "PDGEdge",
+    "RepoAnalysis",
+    "analyze_file",
+    "analyze_repo",
+    "format_analysis",
+    "BehaviorIndex",
+    "BehaviorMatch",
+    "build_behavior_index",
+    "format_search_results",
+    "search_by_behavior",
     "CoverageFile",
     "CoverageReport",
     "auto_detect_and_parse",

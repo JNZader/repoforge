@@ -101,6 +101,10 @@ def main(verbose):
       change-impact    Identify which tests need to run for a change (no API key needed)
       co-change        Detect files that always change together (no API key needed)
       ownership        Compute file/module ownership and bus factor (no API key needed)
+      analyze          Multi-layer code analysis: AST + Call Graph + CFG + DFG + PDG (no API key needed)
+      search           Semantic code search by behavior (no API key needed)
+      slice            Compute program slice for a specific line (no API key needed)
+      decisions        Decision registry from git history and inline markers (no API key needed)
 
     \b
     Examples:
@@ -2825,6 +2829,154 @@ def context_prune_cmd(working_dir, files, depth, no_dependents, as_json, quiet):
 
 
 # ---------------------------------------------------------------------------
+# decisions subcommand (#55)
+# ---------------------------------------------------------------------------
+
+@main.command("decisions")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--stale", is_flag=True, default=False,
+    help="Show only stale decisions.")
+@click.option("--no-commits", is_flag=True, default=False,
+    help="Skip mining commit messages (inline markers only).")
+@click.option("--max-commits", default=500, show_default=True, type=int,
+    help="Maximum commits to analyze for commit-sourced decisions.")
+@click.option("--since", default=None,
+    help="Git date filter (e.g., '6 months ago').")
+@click.option("--stale-threshold", default=50, show_default=True, type=int,
+    help="Lines-changed threshold to flag a decision as stale.")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def decisions_cmd(working_dir, stale, no_commits, max_commits, since,
+                  stale_threshold, as_json, quiet):
+    """Decision registry from git history and inline markers (no API key needed).
+
+    \b
+    Extracts architectural decisions from:
+      - Inline markers (WHY:, DECISION:, TRADEOFF:, etc.)
+      - Git commit messages matching decision patterns
+    Tracks staleness by checking how much the associated code has changed.
+
+    \b
+    Examples:
+      repoforge decisions -w .
+      repoforge decisions -w . --stale
+      repoforge decisions -w . --since "6 months ago"
+      repoforge decisions -w . --no-commits --json
+    """
+    import json as json_mod
+    import sys
+
+    from .decision_intel_v2 import build_decision_registry, format_decision_registry
+
+    if not quiet:
+        print(f"Building decision registry for {working_dir} ...", file=sys.stderr)
+
+    registry = build_decision_registry(
+        working_dir,
+        include_commits=not no_commits,
+        max_commits=max_commits,
+        since=since,
+        stale_threshold=stale_threshold,
+        stale_only=stale,
+    )
+
+    if as_json:
+        data = {
+            "total_decisions": len(registry.entries),
+            "stale_decisions": len(registry.stale_decisions),
+            "files_scanned": registry.files_scanned,
+            "commits_analyzed": registry.commits_analyzed,
+            "entries": [
+                {
+                    "marker": e.marker,
+                    "text": e.text,
+                    "file": e.file,
+                    "line": e.line,
+                    "source": e.source,
+                    "author": e.author,
+                    "date": e.date,
+                    "commit_sha": e.commit_sha,
+                    "is_stale": e.is_stale,
+                    "staleness_reason": e.staleness_reason,
+                    "confidence": e.confidence,
+                    "lines_changed_since": e.lines_changed_since,
+                }
+                for e in registry.entries
+            ],
+        }
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_decision_registry(registry, stale_only=stale))
+
+
+# ---------------------------------------------------------------------------
+# slice subcommand (#54)
+# ---------------------------------------------------------------------------
+
+@main.command("slice")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--file", "file_path", required=True,
+    help="Relative file path to slice.")
+@click.option("--line", "line_num", required=True, type=int,
+    help="Line number (1-indexed) to compute the slice for.")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def slice_cmd(working_dir, file_path, line_num, as_json, quiet):
+    """Compute program slice for a specific line (no API key needed).
+
+    \b
+    Given a file and line number, outputs the minimal set of lines needed
+    to understand the change at that line — variable defs, usages, imports,
+    and control flow that affect or are affected by it.
+
+    \b
+    Examples:
+      repoforge slice --file repoforge/cli.py --line 42
+      repoforge slice --file src/auth.py --line 10 --json
+    """
+    import json as json_mod
+    import sys
+
+    from .program_slicing import compute_slice, format_slice
+
+    if not quiet:
+        print(f"Computing program slice for {file_path}:{line_num} ...",
+              file=sys.stderr)
+
+    result = compute_slice(working_dir, file_path, line_num)
+
+    if as_json:
+        data = {
+            "file": result.file,
+            "target_line": result.target_line,
+            "target_content": result.target_content,
+            "scope_name": result.scope_name,
+            "total_file_lines": result.total_file_lines,
+            "slice_lines": len(result.lines),
+            "reduction_ratio": round(result.reduction_ratio, 3),
+            "lines": [
+                {
+                    "line_number": sl.line_number,
+                    "content": sl.content,
+                    "reason": sl.reason,
+                }
+                for sl in result.lines
+            ],
+        }
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_slice(result))
+
+
+# ---------------------------------------------------------------------------
 # dead-code subcommand (#20)
 # ---------------------------------------------------------------------------
 
@@ -2876,6 +3028,135 @@ def dead_code_cmd(working_dir, include_tests, as_json, quiet):
         click.echo(json_mod.dumps(data, indent=2))
     else:
         click.echo(format_dead_code_report(report))
+
+
+# ---------------------------------------------------------------------------
+# analyze subcommand (#56 — 5-layer deep analysis)
+# ---------------------------------------------------------------------------
+
+@main.command("analyze")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--depth", default=5, show_default=True, type=int,
+    help="Analysis depth (1=AST, 2=+CallGraph, 3=+CFG, 4=+DFG, 5=+PDG).")
+@click.option("--file", "file_path", default=None,
+    help="Analyze a single file (relative path).")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def analyze_cmd(working_dir, depth, file_path, as_json, quiet):
+    """Multi-layer code analysis: AST + Call Graph + CFG + DFG + PDG (no API key needed).
+
+    \b
+    Produces a 5-layer analysis report with complexity hotspots,
+    control flow patterns, data flow chains, and program dependencies.
+
+    \b
+    Layers:
+      1. AST        — functions, classes, methods
+      2. Call Graph  — who calls whom
+      3. CFG         — branches, loops, conditionals
+      4. DFG         — variable definitions and uses
+      5. PDG         — combined control + data dependencies
+
+    \b
+    Examples:
+      repoforge analyze -w .                        # full repo, all 5 layers
+      repoforge analyze -w . --depth 3              # AST + calls + CFG only
+      repoforge analyze --file repoforge/cli.py     # single file
+      repoforge analyze -w . --json                 # JSON output
+    """
+    import json as json_mod
+    import sys
+
+    from .deep_analysis import (
+        analysis_to_json,
+        analyze_file,
+        analyze_repo,
+        format_analysis,
+    )
+
+    depth = max(1, min(5, depth))
+
+    if file_path:
+        if not quiet:
+            print(f"Analyzing {file_path} (depth {depth}/5) ...", file=sys.stderr)
+        result = analyze_file(working_dir, file_path, depth=depth)
+        if as_json:
+            click.echo(analysis_to_json(result))
+        else:
+            click.echo(format_analysis(result))
+    else:
+        if not quiet:
+            print(f"Analyzing repository {working_dir} (depth {depth}/5) ...",
+                  file=sys.stderr)
+        result = analyze_repo(working_dir, depth=depth)
+        if as_json:
+            click.echo(analysis_to_json(result))
+        else:
+            click.echo(format_analysis(result))
+
+
+# ---------------------------------------------------------------------------
+# search subcommand (#57 — semantic code search by behavior)
+# ---------------------------------------------------------------------------
+
+@main.command("search")
+@click.argument("query_text")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to search.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--behavior", "behavior_query", default=None,
+    help="Search by behavioral description (alternative to positional query).")
+@click.option("--depth", default=3, show_default=True, type=int,
+    help="Analysis depth for behavior extraction (1-5).")
+@click.option("--top-k", default=10, show_default=True, type=int,
+    help="Maximum number of results.")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def search_cmd(query_text, working_dir, behavior_query, depth, top_k, as_json, quiet):
+    """Semantic code search by behavior (no API key needed).
+
+    \b
+    Find code by what it DOES, not just keyword matching.
+    Uses multi-layer analysis (AST + call graph + control flow) to create
+    rich behavioral descriptions for each function.
+
+    \b
+    Examples:
+      repoforge search "JWT validation"
+      repoforge search "authenticates user requests"
+      repoforge search --behavior "handles file uploads" -w .
+      repoforge search "error handling" --depth 5 --json
+    """
+    import sys
+
+    from .semantic_search import (
+        format_search_results,
+        search_repo,
+        search_results_to_json,
+    )
+
+    effective_query = behavior_query or query_text
+    depth = max(1, min(5, depth))
+
+    if not quiet:
+        print(f"Searching for: {effective_query!r} (depth {depth}/5) ...",
+              file=sys.stderr)
+
+    results = search_repo(
+        working_dir, effective_query,
+        depth=depth, top_k=top_k,
+    )
+
+    if as_json:
+        click.echo(search_results_to_json(results))
+    else:
+        click.echo(format_search_results(results))
 
 
 # ---------------------------------------------------------------------------
