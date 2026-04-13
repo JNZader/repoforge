@@ -20,6 +20,7 @@ htmlcov/
 # RepoForge runtime outputs (not part of source)
 .atl/
 .opencode/
+.graph-cache.json
 
 # IDE
 .vscode/
