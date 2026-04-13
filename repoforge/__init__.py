@@ -29,6 +29,18 @@ from .coverage import (
     parse_lcov,
     render_coverage_markdown,
 )
+from .cross_repo import (
+    CrossRepoMatch,
+    RepoEntry,
+    cross_repo_results_to_json,
+    format_cross_repo_results,
+    format_registry_list,
+    registry_add,
+    registry_build,
+    registry_list,
+    registry_remove,
+    registry_search,
+)
 from .deep_analysis import (
     ASTNode,
     CallEdgeInfo,
@@ -253,4 +265,14 @@ __all__ = [
     "generate_prompts",
     "render_prompts_markdown",
     "write_individual_prompts",
+    "RepoEntry",
+    "CrossRepoMatch",
+    "registry_add",
+    "registry_remove",
+    "registry_list",
+    "registry_build",
+    "registry_search",
+    "format_registry_list",
+    "format_cross_repo_results",
+    "cross_repo_results_to_json",
 ]

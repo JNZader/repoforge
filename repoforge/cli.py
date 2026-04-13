@@ -105,6 +105,7 @@ def main(verbose):
       search           Semantic code search by behavior (no API key needed)
       slice            Compute program slice for a specific line (no API key needed)
       decisions        Decision registry from git history and inline markers (no API key needed)
+      registry         Cross-repo code graph registry (no API key needed)
 
     \b
     Examples:
@@ -3157,6 +3158,168 @@ def search_cmd(query_text, working_dir, behavior_query, depth, top_k, as_json, q
         click.echo(search_results_to_json(results))
     else:
         click.echo(format_search_results(results))
+
+
+# ---------------------------------------------------------------------------
+# registry subcommand group — cross-repo code graph registry
+# ---------------------------------------------------------------------------
+
+@main.group("registry")
+def registry_group():
+    """Cross-repo code graph registry (no API key needed).
+
+    \b
+    Register multiple repos, build structural graphs for each,
+    and search across all repos for similar patterns.
+
+    \b
+    Commands:
+      add     Register a repository
+      remove  Unregister a repository
+      list    List all registered repos
+      build   Rebuild the graph for a repo
+      search  Search across all registered repos
+
+    \b
+    Examples:
+      repoforge registry add /path/to/repo
+      repoforge registry list
+      repoforge registry search "JWT validation"
+      repoforge registry build /path/to/repo
+      repoforge registry remove /path/to/repo
+    """
+
+
+@registry_group.command("add")
+@click.argument("path", type=click.Path(exists=True, file_okay=False))
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def registry_add_cmd(path, quiet):
+    """Register a repository in the cross-repo registry.
+
+    Resolves the path to absolute, validates it, adds it to the registry,
+    and builds the graph immediately.
+    """
+    import sys
+
+    from .cross_repo import registry_add
+
+    if not quiet:
+        print(f"Registering {path} ...", file=sys.stderr)
+
+    try:
+        entry = registry_add(path)
+    except (FileNotFoundError, ValueError) as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1) from exc
+
+    click.echo(
+        f"Registered: {entry.name} "
+        f"({entry.node_count} nodes, {entry.edge_count} edges, "
+        f"{entry.file_count} files)"
+    )
+
+
+@registry_group.command("remove")
+@click.argument("path", type=click.Path())
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def registry_remove_cmd(path, quiet):
+    """Remove a repository from the registry."""
+    from .cross_repo import registry_remove
+
+    if registry_remove(path):
+        click.echo(f"Removed: {path}")
+    else:
+        click.echo(f"Not found in registry: {path}", err=True)
+        raise SystemExit(1)
+
+
+@registry_group.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+def registry_list_cmd(as_json):
+    """List all registered repositories."""
+    import json as json_mod
+
+    from .cross_repo import format_registry_list, registry_list
+
+    entries = registry_list()
+
+    if as_json:
+        data = [e.to_dict() for e in entries]
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_registry_list(entries))
+
+
+@registry_group.command("build")
+@click.argument("path", type=click.Path(exists=True, file_okay=False))
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def registry_build_cmd(path, quiet):
+    """Rebuild the graph for a registered repository."""
+    import sys
+
+    from .cross_repo import registry_build
+
+    if not quiet:
+        print(f"Rebuilding graph for {path} ...", file=sys.stderr)
+
+    try:
+        entry = registry_build(path)
+    except KeyError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1) from exc
+
+    click.echo(
+        f"Built: {entry.name} "
+        f"({entry.node_count} nodes, {entry.edge_count} edges, "
+        f"{entry.file_count} files)"
+    )
+
+
+@registry_group.command("search")
+@click.argument("query")
+@click.option("--top-k", default=10, show_default=True, type=int,
+    help="Maximum number of results.")
+@click.option("--depth", default=3, show_default=True, type=int,
+    help="Analysis depth for behavior extraction (1-5).")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def registry_search_cmd(query, top_k, depth, as_json, quiet):
+    """Search across all registered repos by behavior.
+
+    \b
+    Find code by what it DOES across multiple projects.
+
+    \b
+    Examples:
+      repoforge registry search "JWT validation"
+      repoforge registry search "file upload handling" --depth 5
+      repoforge registry search "error retry logic" --json
+    """
+    import sys
+
+    from .cross_repo import (
+        cross_repo_results_to_json,
+        format_cross_repo_results,
+        registry_search,
+    )
+
+    depth = max(1, min(5, depth))
+
+    if not quiet:
+        print(f"Searching across repos for: {query!r} ...", file=sys.stderr)
+
+    results = registry_search(query, top_k=top_k, depth=depth)
+
+    if as_json:
+        click.echo(cross_repo_results_to_json(results))
+    else:
+        click.echo(format_cross_repo_results(results))
 
 
 # ---------------------------------------------------------------------------
