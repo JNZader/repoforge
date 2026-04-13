@@ -97,6 +97,10 @@ def main(verbose):
       check            Validate code references in generated docs (no API key needed)
       diff             Entity-level semantic diff between two git refs (no API key needed)
       validate-skills  Validate SKILL.md files against standard format (no API key needed)
+      blast-radius     Compute transitive blast radius of a change (no API key needed)
+      change-impact    Identify which tests need to run for a change (no API key needed)
+      co-change        Detect files that always change together (no API key needed)
+      ownership        Compute file/module ownership and bus factor (no API key needed)
 
     \b
     Examples:
@@ -2405,6 +2409,329 @@ def query(query_text, top_k, index_dir, as_json, embedding_model, search_mode):
         for r in results:
             snippet = r.text[:80].replace("\n", " ")
             click.echo(f"{r.score:.4f} | {r.entity_type:8s} | {r.entity_id} | {snippet}")
+
+
+# ---------------------------------------------------------------------------
+# blast-radius subcommand (#14 + #15)
+# ---------------------------------------------------------------------------
+
+@main.command("blast-radius")
+@click.argument("target", required=False)
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--files", multiple=True,
+    help="File paths to analyze (alternative to commit target).")
+@click.option("--depth", default=3, show_default=True, type=int,
+    help="Max BFS depth for transitive dependencies.")
+@click.option("--max-files", default=50, show_default=True, type=int,
+    help="Cap on total files in result.")
+@click.option("--include-tests/--no-include-tests", default=True, show_default=True,
+    help="Include test files in results.")
+@click.option("--ast", is_flag=True, default=False,
+    help="Enrich with tree-sitter AST symbols (requires intelligence extra).")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def blast_radius_cmd(target, working_dir, files, depth, max_files, include_tests, ast, as_json, quiet):
+    """Compute blast radius of a change (no API key needed).
+
+    \b
+    Analyze which files are transitively affected by a change.
+    Accepts a git commit/ref OR a list of files.
+
+    \b
+    Examples:
+      repoforge blast-radius HEAD                    # from latest commit
+      repoforge blast-radius abc123                   # from specific commit
+      repoforge blast-radius --files src/auth.py --files src/models.py
+      repoforge blast-radius HEAD --ast               # with tree-sitter symbols
+      repoforge blast-radius --files cli.py --json    # JSON output
+    """
+    import json as json_mod
+    import sys
+
+    from .blast_radius import (
+        blast_radius_from_commit,
+        blast_radius_from_files,
+        format_blast_radius,
+    )
+
+    if not target and not files:
+        # Default: working tree changes
+        from .blast_radius import _get_changed_files_working_tree
+        wt_files = _get_changed_files_working_tree(working_dir)
+        if not wt_files:
+            click.echo("No changed files found in working tree. "
+                       "Specify a commit or --files.", err=True)
+            sys.exit(1)
+        files = tuple(wt_files)
+
+    if not quiet:
+        if target:
+            print(f"Computing blast radius for commit {target} in {working_dir} ...",
+                  file=sys.stderr)
+        else:
+            print(f"Computing blast radius for {len(files)} file(s) in {working_dir} ...",
+                  file=sys.stderr)
+
+    if target:
+        report = blast_radius_from_commit(
+            working_dir, target,
+            max_depth=depth, max_files=max_files,
+            include_tests=include_tests, with_ast=ast,
+        )
+    else:
+        report = blast_radius_from_files(
+            working_dir, list(files),
+            max_depth=depth, max_files=max_files,
+            include_tests=include_tests, with_ast=ast,
+        )
+
+    if as_json:
+        data = {
+            "changed_files": report.changed_files,
+            "affected_files": report.affected_files,
+            "affected_tests": report.affected_tests,
+            "risk_level": report.risk_level,
+            "depth": report.depth,
+            "exceeded_cap": report.exceeded_cap,
+            "total_affected": report.total_affected,
+        }
+        if report.symbols:
+            data["symbols"] = [
+                {"name": s.name, "kind": s.kind, "file": s.file,
+                 "line": s.line, "signature": s.signature}
+                for s in report.symbols
+            ]
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_blast_radius(report))
+
+
+# ---------------------------------------------------------------------------
+# change-impact subcommand (#16)
+# ---------------------------------------------------------------------------
+
+@main.command("change-impact")
+@click.argument("target", required=False)
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--files", multiple=True,
+    help="File paths to analyze (alternative to commit target).")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def change_impact_cmd(target, working_dir, files, as_json, quiet):
+    """Identify which tests need to run for a change (no API key needed).
+
+    \b
+    Given changed files (from a commit or file list), maps each changed
+    file to the test files that exercise it.
+
+    \b
+    Examples:
+      repoforge change-impact HEAD
+      repoforge change-impact abc123
+      repoforge change-impact --files src/auth.py --files src/models.py
+    """
+    import json as json_mod
+    import sys
+
+    from .change_impact import analyze_change_impact, format_change_impact
+
+    if not target and not files:
+        click.echo("Specify a commit SHA or --files.", err=True)
+        sys.exit(1)
+
+    if not quiet:
+        print(f"Analyzing change impact in {working_dir} ...", file=sys.stderr)
+
+    report = analyze_change_impact(
+        working_dir,
+        files=list(files) if files else None,
+        commit=target,
+    )
+
+    if as_json:
+        data = {
+            "changed_files": report.changed_files,
+            "tests_to_run": report.all_tests,
+            "untested_files": report.untested_files,
+            "mappings": [
+                {
+                    "source": m.source_file,
+                    "graph_tests": m.graph_tests,
+                    "convention_tests": m.convention_tests,
+                    "all_tests": m.all_tests,
+                }
+                for m in report.mappings
+            ],
+        }
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_change_impact(report))
+
+
+# ---------------------------------------------------------------------------
+# co-change subcommand (#17)
+# ---------------------------------------------------------------------------
+
+@main.command("co-change")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--threshold", default=0.5, show_default=True, type=float,
+    help="Minimum Jaccard similarity to include (0.0-1.0).")
+@click.option("--min-commits", default=3, show_default=True, type=int,
+    help="Minimum co-change count to include.")
+@click.option("--max-commits", default=500, show_default=True, type=int,
+    help="Maximum commits to analyze.")
+@click.option("--since", default=None,
+    help="Git date filter (e.g., '6 months ago').")
+@click.option("--no-imports", is_flag=True, default=False,
+    help="Skip cross-referencing with dependency graph.")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def co_change_cmd(working_dir, threshold, min_commits, max_commits, since, no_imports, as_json, quiet):
+    """Detect files that always change together (no API key needed).
+
+    \b
+    Mines git history to find co-change pairs — files that frequently
+    appear in the same commits. Flags hidden coupling when pairs have
+    no import relationship.
+
+    \b
+    Examples:
+      repoforge co-change -w .
+      repoforge co-change -w . --threshold 0.7
+      repoforge co-change -w . --since "6 months ago"
+      repoforge co-change -w . --no-imports --json
+    """
+    import json as json_mod
+    import sys
+
+    from .co_change import detect_co_changes, format_co_changes
+
+    if not quiet:
+        print(f"Mining co-change patterns in {working_dir} ...", file=sys.stderr)
+
+    report = detect_co_changes(
+        working_dir,
+        threshold=threshold,
+        min_commits=min_commits,
+        max_commits=max_commits,
+        since=since,
+        check_imports=not no_imports,
+    )
+
+    if as_json:
+        data = {
+            "commits_analyzed": report.commits_analyzed,
+            "files_analyzed": report.files_analyzed,
+            "threshold": report.threshold,
+            "pairs": [
+                {
+                    "file_a": p.file_a,
+                    "file_b": p.file_b,
+                    "co_change_count": p.co_change_count,
+                    "jaccard": p.jaccard,
+                    "has_import_link": p.has_import_link,
+                    "confidence": p.confidence,
+                }
+                for p in report.pairs
+            ],
+        }
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_co_changes(report))
+
+
+# ---------------------------------------------------------------------------
+# ownership subcommand (#18)
+# ---------------------------------------------------------------------------
+
+@main.command("ownership")
+@click.option("-w", "--working-dir", default=".", show_default=True,
+    help="Path to the repo to analyze.",
+    type=click.Path(exists=True, file_okay=False))
+@click.option("--bus-factor", is_flag=True, default=False,
+    help="Show bus-factor risk analysis.")
+@click.option("--max-commits", default=1000, show_default=True, type=int,
+    help="Maximum commits to analyze.")
+@click.option("--since", default=None,
+    help="Git date filter (e.g., '1 year ago').")
+@click.option("--json", "as_json", is_flag=True, default=False,
+    help="Output as JSON.")
+@click.option("-q", "--quiet", is_flag=True, default=False,
+    help="Suppress progress output.")
+def ownership_cmd(working_dir, bus_factor, max_commits, since, as_json, quiet):
+    """Compute file/module ownership and bus factor (no API key needed).
+
+    \b
+    Analyzes git history to compute per-file and per-directory ownership
+    concentration. Flags bus-factor risks where knowledge is concentrated
+    in a single contributor.
+
+    \b
+    Examples:
+      repoforge ownership -w .
+      repoforge ownership -w . --bus-factor
+      repoforge ownership -w . --since "1 year ago"
+      repoforge ownership -w . --bus-factor --json
+    """
+    import json as json_mod
+    import sys
+
+    from .ownership import analyze_ownership, format_ownership
+
+    if not quiet:
+        print(f"Analyzing ownership in {working_dir} ...", file=sys.stderr)
+
+    report = analyze_ownership(
+        working_dir,
+        max_commits=max_commits,
+        since=since,
+        bus_factor_only=False,
+    )
+
+    if as_json:
+        data = {
+            "total_contributors": report.total_contributors,
+            "total_files": report.total_files,
+            "directories": [
+                {
+                    "directory": d.directory,
+                    "file_count": d.file_count,
+                    "total_commits": d.total_commits,
+                    "top_contributor": d.top_contributor,
+                    "ownership_ratio": round(d.ownership_ratio, 3),
+                    "bus_factor": d.bus_factor,
+                    "risk_level": d.risk_level,
+                }
+                for d in report.directories
+            ],
+        }
+        if bus_factor:
+            data["bus_factor_risks"] = [
+                {
+                    "file": f.file,
+                    "top_contributor": f.top_contributor,
+                    "ownership_ratio": round(f.ownership_ratio, 3),
+                    "bus_factor": f.bus_factor,
+                    "risk_level": f.risk_level,
+                    "total_commits": f.total_commits,
+                }
+                for f in report.bus_factor_risks
+            ]
+        click.echo(json_mod.dumps(data, indent=2))
+    else:
+        click.echo(format_ownership(report, bus_factor=bus_factor))
 
 
 # ---------------------------------------------------------------------------
