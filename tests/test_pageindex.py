@@ -7,10 +7,11 @@ Enables small context models (4K-8K) to handle large repo analysis.
 Run: pytest tests/test_pageindex.py -v
 """
 
-import pytest
-import tempfile
 import sqlite3
+import tempfile
 from pathlib import Path
+
+import pytest
 
 
 class TestPageIndex:

@@ -5,12 +5,12 @@ Paginated repository analysis for small context models (4K-8K tokens).
 Prevents compaction loops and enables granular access to large repo analysis.
 """
 
-import sqlite3
 import json
 import re
-from pathlib import Path
-from typing import List, Dict, Optional, Any
+import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
