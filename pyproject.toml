@@ -72,6 +72,42 @@ Changelog = "https://github.com/JNZader/repoforge/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["repoforge"]
+exclude = [
+  "tests/",
+  "tests/**",
+  "docs/",
+  "docs/**",
+  "scripts/",
+  "scripts/**",
+  ".github/",
+  ".github/**",
+  ".env*",
+  ".env.example",
+  ".gitignore",
+  ".pre-commit-config.yaml",
+  "docker-compose*.yml",
+  "Dockerfile*",
+  "Makefile",
+  "*.log",
+  ".coverage",
+  "coverage/",
+  "htmlcov/",
+  ".hypothesis/",
+  ".pytest_cache/",
+  ".ruff_cache/",
+  ".mypy_cache/",
+  ".tmp/",
+  "tmp/",
+  "*.tmp",
+  ".DS_Store",
+  "Thumbs.db",
+  ".vscode/",
+  ".idea/",
+  "uv.lock",
+  ".venv/",
+  "venv/",
+  ".python-version",
+]
 
 [tool.ruff]
 line-length = 100

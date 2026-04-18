@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════════════════════════
+# MANIFEST.in - Exclude files from PyPI distribution
+# Similar to .npmignore but for Python packages
+# ═══════════════════════════════════════════════════════════════
+
+# ─── SOURCE FILES (only repoforge/ should be in wheel) ────────────
+exclude tests/
+exclude tests/**
+recursive-exclude tests *
+
+# ─── CONFIGURATION FILES ────────────────────────────────────────
+exclude .env*
+exclude .env.example
+exclude .gitignore
+exclude .gitattributes
+exclude .pre-commit-config.yaml
+
+# ─── CI/CD FILES ────────────────────────────────────────────────
+exclude .github/
+recursive-exclude .github *
+exclude .gitlab-ci.yml
+exclude docker-compose*.yml
+exclude Dockerfile*
+
+# ─── DOCUMENTATION (keep minimal) ──────────────────────────────
+exclude docs/
+recursive-exclude docs *
+exclude *.md
+include README.md
+include CHANGELOG.md
+
+# ─── BUILD ARTIFACTS ───────────────────────────────────────────
+exclude Makefile
+exclude scripts/
+recursive-exclude scripts *
+exclude .scripts/
+exclude *.log
+exclude .coverage
+exclude coverage/
+exclude htmlcov/
+exclude .hypothesis/
+exclude .pytest_cache/
+exclude .ruff_cache/
+exclude .mypy_cache/
+
+# ─── TEMP FILES ────────────────────────────────────────────────
+exclude .tmp/
+exclude tmp/
+exclude *.tmp
+exclude .DS_Store
+exclude Thumbs.db
+
+# ─── IDE FILES ────────────────────────────────────────────────
+exclude .vscode/
+exclude .idea/
+exclude *.swp
+exclude *.swo
+exclude *~
+
+# ─── UV/SPECIFIC ─────────────────────────────────────────────
+exclude uv.lock
+exclude .venv/
+exclude venv/
+exclude .python-version
