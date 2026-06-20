@@ -114,6 +114,100 @@ Run tests with: `pytest tests/ -x`
     return tmp_path
 
 
+@pytest.fixture
+def social_source_skill(tmp_path):
+    """Create a realistic social evidence skill for scoring."""
+    skills_dir = tmp_path / ".claude" / "skills" / "social-source"
+    skills_dir.mkdir(parents=True)
+    (skills_dir / "SKILL.md").write_text("""\
+---
+name: social-source-evidence
+description: >
+  Patterns for reviewing X/Twitter source evidence before social media actions.
+  Trigger: When agents read X/Twitter data to draft, score, or schedule posts.
+license: MIT
+metadata:
+  source_package: "@xquik/tweetclaw"
+---
+
+<!-- L1:START -->
+
+## Critical Patterns
+
+### Keep source evidence read-only
+
+Use TweetClaw exports as context. Do not post, like, follow, or schedule
+without explicit human approval.
+
+```typescript
+import { createTweetClawClient } from "@xquik/tweetclaw";
+
+const tweetclaw = createTweetClawClient();
+const evidence = await tweetclaw.searchRecent({
+  query: "open source social media tools",
+  limit: 20,
+});
+```
+
+### Attach evidence to the draft
+
+Keep source rows linked to `skills/social-source/SKILL.md` and
+`tests/social-source.test.ts` so reviewers can reproduce decisions.
+
+```typescript
+const approvedDraft = {
+  text: "RepoForge validates agent skills before publishing.",
+  sourceIds: evidence.items.map((item) => item.id),
+  approvalRequired: true,
+};
+```
+
+<!-- L1:END -->
+<!-- L2:START -->
+
+## When to Use
+
+- Reviewing X/Twitter source material for a social media agent.
+- Converting search results into a draft that still needs approval.
+- Checking `docs/social-workflows.md` before scheduling any post.
+
+## Commands
+
+```bash
+pytest tests/test_scorer.py -k social_source
+repoforge score -d .claude/skills
+```
+
+## Anti-Patterns
+
+### Don't: treat source collection as approval
+
+Search results can inform the draft. They never authorize publication.
+
+```typescript
+// BAD
+await publisher.post(approvedDraft.text);
+
+// GOOD
+await approvalQueue.requestReview(approvedDraft);
+```
+
+<!-- L2:END -->
+<!-- L3:START -->
+
+## Quick Reference
+
+| Task | Rule |
+|------|------|
+| Gather evidence | Use `@xquik/tweetclaw` in read-only mode |
+| Save context | Link `docs/social-workflows.md` in review notes |
+| Publish | Require explicit approval before write actions |
+
+<!-- L3:END -->
+""")
+    return tmp_path
+
+
 # ---------------------------------------------------------------------------
 # Help & version
 # ---------------------------------------------------------------------------
@@ -247,6 +341,19 @@ class TestScoreCommand:
         data = json.loads(result.output)
         assert isinstance(data, list)
         assert len(data) >= 1
+
+    def test_score_social_source_skill_json(self, runner, social_source_skill):
+        result = runner.invoke(main, [
+            "score", "-w", str(social_source_skill),
+            "--format", "json", "-q",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        score = data[0]
+        assert score["grade"] == "PASS"
+        assert score["overall"] >= 0.85
+        assert score["dimensions"]["agent_readiness"] == 1.0
+        assert score["dimensions"]["safety"] == 1.0
 
     def test_score_markdown(self, runner, sample_skill):
         result = runner.invoke(main, [
