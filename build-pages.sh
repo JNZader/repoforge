@@ -23,6 +23,17 @@ if [ -f landing/favicon.svg ]; then
   cp landing/favicon.svg _site/
 fi
 
+# 1b. SEO assets → _site/ root
+if [ -f landing/robots.txt ]; then
+  cp landing/robots.txt _site/
+fi
+if [ -f landing/sitemap.xml ]; then
+  cp landing/sitemap.xml _site/
+fi
+if [ -f landing/og-image.png ]; then
+  cp landing/og-image.png _site/
+fi
+
 # 2. React dashboard → _site/app/
 if [ -d apps/web/dist ]; then
   cp -r apps/web/dist/* _site/app/
