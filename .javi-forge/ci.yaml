@@ -1,0 +1,20 @@
+version: 1
+runners:
+  - name: repoforge
+    stack: python
+    # Why `build-context` and not `setup`:
+    # javi-forge runs every CI phase (setup/lint/test) in a FRESH
+    # `docker run --rm` container built from the base image, so a `setup:` list
+    # that `pip install`s the project lands in an ephemeral container that is
+    # discarded before lint/test — the deps never reach those phases (verified:
+    # with only `setup`, pylint still can't import `click`/`litellm` and pytest
+    # still raises `ModuleNotFoundError: No module named 'repoforge'`).
+    #
+    # `build-context: .javi-forge` points javi-forge at this directory's
+    # Dockerfile, which bakes the project's third-party dependencies (incl.
+    # tree-sitter for the AST symbol extractors) INTO the CI image. At run time
+    # the repo is bind-mounted over /home/runner/work and PYTHONPATH exposes it,
+    # so the lint/test phases exercise the live code while the baked
+    # site-packages supply the dependencies. This is the mechanism that survives
+    # javi-forge's per-phase container model (the "missing install phase" bug).
+    build-context: .javi-forge
