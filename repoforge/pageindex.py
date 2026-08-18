@@ -41,7 +41,7 @@ class CompactionCheck:
 class PageIndex:
     """
     Manages paginated repository analysis.
-    
+
     Enables small context models to handle large repo analysis
     by dividing content into navigable pages.
     """
@@ -76,11 +76,11 @@ class PageIndex:
 
             # Create indexes
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_repo_pages_repo 
+                CREATE INDEX IF NOT EXISTS idx_repo_pages_repo
                 ON repo_pages(repo_id)
             """)
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_repo_pages_number 
+                CREATE INDEX IF NOT EXISTS idx_repo_pages_number
                 ON repo_pages(repo_id, page_num)
             """)
 
@@ -91,13 +91,13 @@ class PageIndex:
                      overlap_tokens: int = 200) -> Dict[str, Any]:
         """
         Paginate repository analysis into chunks.
-        
+
         Args:
             repo_id: Repository identifier
             content: Analysis content to paginate
             max_tokens_per_page: Maximum tokens per page (default: 1500)
             overlap_tokens: Tokens to overlap between pages (default: 200)
-            
+
         Returns:
             Dict with 'pages' (count) and 'tokens' (total)
         """
@@ -121,7 +121,7 @@ class PageIndex:
                 token_count = self._estimate_tokens(chunk)
 
                 cursor.execute("""
-                    INSERT INTO repo_pages 
+                    INSERT INTO repo_pages
                     (repo_id, page_num, total_pages, content, topics, file_refs, token_count)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
@@ -137,7 +137,7 @@ class PageIndex:
                 next_id = page_ids[i + 1] if i < len(page_ids) - 1 else None
 
                 cursor.execute("""
-                    UPDATE repo_pages 
+                    UPDATE repo_pages
                     SET prev_page_id = ?, next_page_id = ?
                     WHERE id = ?
                 """, (prev_id, next_id, page_id))
@@ -221,7 +221,7 @@ class PageIndex:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, repo_id, page_num, total_pages, content, 
+                SELECT id, repo_id, page_num, total_pages, content,
                        topics, file_refs, token_count, prev_page_id, next_page_id
                 FROM repo_pages
                 WHERE repo_id = ? AND page_num = ?
@@ -253,7 +253,7 @@ class PageIndex:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, repo_id, page_num, total_pages, content, 
+                SELECT id, repo_id, page_num, total_pages, content,
                        topics, file_refs, token_count
                 FROM repo_pages
                 WHERE repo_id = ? AND page_num BETWEEN ? AND ?
@@ -315,7 +315,7 @@ class PageIndex:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, repo_id, page_num, total_pages, content, 
+                SELECT id, repo_id, page_num, total_pages, content,
                        topics, file_refs, token_count
                 FROM repo_pages
                 WHERE repo_id = ?

@@ -147,7 +147,9 @@ def _get_changed_files_working_tree(repo_path: str) -> list[str]:
 def _extract_ast_symbols(repo_path: str, files: list[str]) -> list[ASTSymbolInfo]:
     """Try to extract symbols via tree-sitter. Returns empty list if unavailable."""
     try:
-        from .intelligence.ast_extractor import ASTSymbol
+        from .intelligence.ast_extractor import (
+            ASTSymbol,  # noqa: F401  # preserve behavior pending registry repair
+        )
         from .intelligence.extractor_registry import get_ast_extractor
     except ImportError:
         logger.debug("tree-sitter not available, skipping AST enrichment")
