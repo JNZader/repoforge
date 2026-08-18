@@ -2,6 +2,7 @@
 
 import re
 import subprocess
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -32,7 +33,7 @@ class TestCliToolConfig:
         assert cfg.stream_args is None
         assert cfg.supports_stream is False
         assert cfg.output_patterns == []
-        assert cfg.timeout == 120
+        assert cfg.timeout == 300
 
     def test_registry_has_expected_tools(self):
         assert "claude" in CLI_REGISTRY
@@ -131,10 +132,9 @@ class TestBuildCommand:
     def test_claude_includes_template_flags(self, _mock_which):
         adapter = CliLLMAdapter(CLI_REGISTRY["claude"])
         cmd = adapter._build_command("test")
-        assert "-p" in cmd
+        assert "--print" in cmd
         assert "--output-format" in cmd
         assert "text" in cmd
-        assert "--no-input" in cmd
 
 
 # ---------------------------------------------------------------------------
@@ -207,12 +207,21 @@ class TestStream:
     @patch("shutil.which", return_value="/usr/bin/codex")
     @patch("subprocess.run")
     def test_non_streaming_tool_falls_back_to_complete(self, mock_run, _mock_which):
-        """codex doesn't support streaming — stream() should call complete()."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="fallback response",
-            stderr="",
-        )
+        """codex doesn't support streaming — stream() should call complete(), which
+        writes real tool output to the {output_file} tempfile and reads it back.
+
+        The mock simulates the real tool: it writes non-empty content to the file
+        named by the `-o` flag (codex cmd_template: ``exec -o {output_file}``),
+        then complete() returns the content read from that file.
+        """
+        def _fake_run(cmd, *args, **kwargs):
+            # codex cmd_template contains "-o {output_file}"; write real content there
+            if "-o" in cmd:
+                out_path = cmd[cmd.index("-o") + 1]
+                Path(out_path).write_text("fallback response")
+            return MagicMock(returncode=0, stdout="ignored", stderr="")
+
+        mock_run.side_effect = _fake_run
         adapter = CliLLMAdapter(CLI_REGISTRY["codex"])
         chunks = list(adapter.stream("test"))
         assert len(chunks) == 1

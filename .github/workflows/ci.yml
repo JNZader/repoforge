@@ -29,9 +29,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Core Library Tests ────────────────────────────────────
-  test:
-    name: Tests (Python ${{ matrix.python-version }})
+  # ── Core Library Tests (lean: no optional intelligence deps) ──
+  # Pre-collection partition (S1): intelligence tests are excluded via --ignore
+  # flags so the core job installs only `.[dev]` and never needs tree-sitter.
+  test-core:
+    name: Tests — Core (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -53,8 +55,59 @@ jobs:
       - name: Install ripgrep
         run: sudo apt-get install -y ripgrep
 
-      - name: Run tests
-        run: pytest tests/ -q --tb=short
+      - name: Run core tests (intelligence excluded pre-collection)
+        # Ignores are DERIVED from tests/intelligence_tests.txt (single source of
+        # truth) so the core job can never drift from the manifest. The parser
+        # strips inline '# TRANSITIVE:' annotations before emitting --ignore args.
+        run: |
+          ignores=()
+          while read -r line; do
+            line="${line%%#*}"                                   # strip comments / TRANSITIVE annotations
+            line="${line#"${line%%[![:space:]]*}"}"              # strip leading whitespace
+            line="${line%"${line##*[![:space:]]}"}"              # strip trailing whitespace
+            [ -n "$line" ] && ignores+=("--ignore=${line}")
+          done < tests/intelligence_tests.txt
+          [ "${#ignores[@]}" -gt 0 ] || { echo "intelligence manifest produced no ignore paths"; exit 1; }
+          pytest tests/ "${ignores[@]}" -q --tb=short
+
+  # ── Intelligence Tests (requires the `.[intelligence]` extra / tree-sitter) ──
+  # Runs ONLY the explicit manifest paths (tests/intelligence_tests.txt) so the
+  # heavy tree-sitter-dependent suite never drags down the lean core job. An
+  # install failure here is fatal (hard-red): pip must succeed or the job fails.
+  test-intelligence:
+    name: Tests — Intelligence (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,intelligence]"
+
+      - name: Install ripgrep
+        run: sudo apt-get install -y ripgrep
+
+      - name: Run intelligence tests (explicit manifest paths)
+        run: |
+          paths=()
+          while read -r line; do
+            line="${line%%#*}"                                   # strip comments / TRANSITIVE annotations
+            line="${line#"${line%%[![:space:]]*}"}"              # strip leading whitespace
+            line="${line%"${line##*[![:space:]]}"}"              # strip trailing whitespace
+            [ -n "$line" ] && paths+=("$line")                   # skip blank/whitespace-only lines
+          done < tests/intelligence_tests.txt
+          [ "${#paths[@]}" -gt 0 ] || { echo "intelligence manifest produced no test paths"; exit 1; }
+          pytest "${paths[@]}" -q --tb=short
 
   # ── Lint ──────────────────────────────────────────────────
   lint:

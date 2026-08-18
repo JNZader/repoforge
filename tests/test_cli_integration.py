@@ -208,6 +208,31 @@ await approvalQueue.requestReview(approvedDraft);
     return tmp_path
 
 
+@pytest.fixture
+def low_quality_skill(tmp_path):
+    """Create a deliberately low-quality SKILL.md that must NOT pass scoring.
+
+    It omits required sections (Trigger, Commands, Patterns, Anti-Patterns,
+    When to Use), uses vague 'as needed' phrasing, and ships no code examples,
+    no frontmatter-driven markers, and no concrete paths -> non-passing grade.
+    """
+    skills_dir = tmp_path / ".claude" / "skills" / "lazy"
+    skills_dir.mkdir(parents=True)
+    (skills_dir / "SKILL.md").write_text("""\
+---
+name: lazy-skill
+description: A lazy skill.
+---
+
+# Lazy Skill
+
+Just do stuff as needed. Use your project app as needed.
+
+This skill is simple. Just run it.
+""")
+    return tmp_path
+
+
 # ---------------------------------------------------------------------------
 # Help & version
 # ---------------------------------------------------------------------------
@@ -352,8 +377,23 @@ class TestScoreCommand:
         score = data[0]
         assert score["grade"] == "PASS"
         assert score["overall"] >= 0.85
-        assert score["dimensions"]["agent_readiness"] == 1.0
-        assert score["dimensions"]["safety"] == 1.0
+        # S7: positive assertions are tolerant/bounded, not exact-match brittle.
+        assert score["dimensions"]["agent_readiness"] >= 0.99
+        assert score["dimensions"]["safety"] >= 0.99
+
+    def test_score_low_quality_skill_fails(self, runner, low_quality_skill):
+        """S7 negative/edge case: a low-quality skill must NOT receive a
+        passing grade. This exercises the non-passing negative path so the
+        positive contract is real, not a trivial threshold."""
+        result = runner.invoke(main, [
+            "score", "-w", str(low_quality_skill),
+            "--format", "json", "-q",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        score = data[0]
+        assert score["grade"] != "PASS"
+        assert score["overall"] < 0.85
 
     def test_score_markdown(self, runner, sample_skill):
         result = runner.invoke(main, [

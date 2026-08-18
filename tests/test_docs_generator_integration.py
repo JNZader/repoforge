@@ -215,12 +215,22 @@ class TestDryRun:
 # ---------------------------------------------------------------------------
 
 class TestFullGeneration:
+    @patch("repoforge.intelligence.verifier.build_llm")
     @patch("repoforge.model_router.build_llm")
-    def test_generates_chapters_and_docsify(self, mock_build_llm, python_repo):
+    def test_generates_chapters_and_docsify(self, mock_build_llm, mock_v_build_llm, python_repo):
+        # S4: BOTH the generator (model_router.build_llm) and the verifier
+        # (verifier.build_llm) must be mocked. The verifier builds its own LLM
+        # fresh via verifier.build_llm; patching only model_router leaves the
+        # verifier calling a real provider (no creds -> chapter fails verify).
         mock_llm = MagicMock()
         mock_llm.model = "test-model"
         mock_llm.complete.return_value = "# Test Chapter\n\nGenerated content.\n"
         mock_build_llm.return_value = mock_llm
+
+        mock_v_llm = MagicMock()
+        mock_v_llm.model = "test-verifier-model"
+        mock_v_llm.complete.return_value = "[]"  # valid empty corrections
+        mock_v_build_llm.return_value = mock_v_llm
 
         docs_dir = python_repo / "test_docs"
         result = generate_docs(
@@ -242,12 +252,18 @@ class TestFullGeneration:
         md_files = list(docs_dir.glob("*.md"))
         assert len(md_files) >= 2  # _sidebar + at least one chapter
 
+    @patch("repoforge.intelligence.verifier.build_llm")
     @patch("repoforge.model_router.build_llm")
-    def test_llm_error_captured(self, mock_build_llm, python_repo):
+    def test_llm_error_captured(self, mock_build_llm, mock_v_build_llm, python_repo):
         mock_llm = MagicMock()
         mock_llm.model = "test-model"
         mock_llm.complete.side_effect = Exception("LLM failed")
         mock_build_llm.return_value = mock_llm
+
+        mock_v_llm = MagicMock()
+        mock_v_llm.model = "test-verifier-model"
+        mock_v_llm.complete.side_effect = Exception("LLM failed")
+        mock_v_build_llm.return_value = mock_v_llm
 
         docs_dir = python_repo / "err_docs"
         result = generate_docs(
@@ -259,12 +275,18 @@ class TestFullGeneration:
         assert len(result["errors"]) > 0
         assert result["errors"][0]["error"] == "LLM failed"
 
+    @patch("repoforge.intelligence.verifier.build_llm")
     @patch("repoforge.model_router.build_llm")
-    def test_output_dir_created(self, mock_build_llm, python_repo):
+    def test_output_dir_created(self, mock_build_llm, mock_v_build_llm, python_repo):
         mock_llm = MagicMock()
         mock_llm.model = "test"
         mock_llm.complete.return_value = "# Content\n"
         mock_build_llm.return_value = mock_llm
+
+        mock_v_llm = MagicMock()
+        mock_v_llm.model = "test-verifier-model"
+        mock_v_llm.complete.return_value = "[]"
+        mock_v_build_llm.return_value = mock_v_llm
 
         deep_dir = python_repo / "a" / "b" / "c" / "docs"
         generate_docs(
@@ -273,6 +295,34 @@ class TestFullGeneration:
             verbose=False,
         )
         assert deep_dir.exists()
+
+    @patch("repoforge.model_router.build_llm")
+    def test_stale_wrong_target_patch_does_not_succeed(self, mock_build_llm, python_repo, monkeypatch):
+        """Guard (S4): patching ONLY repoforge.model_router.build_llm — the OLD
+        single-target patch — must NOT produce generated chapters.
+
+        The verifier builds its own LLM via repoforge.intelligence.verifier.build_llm,
+        so without credentials it raises and the chapter fails verification. This
+        proves the dual-patch fix (model_router + verifier) is required and guards
+        against regressing to the stale, incomplete patch.
+        """
+        monkeypatch.delenv("GITHUB_API_KEY", raising=False)
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        mock_llm = MagicMock()
+        mock_llm.model = "test-model"
+        mock_llm.complete.return_value = "# Test\n"
+        mock_build_llm.return_value = mock_llm
+
+        result = generate_docs(
+            working_dir=str(python_repo),
+            output_dir=str(python_repo / "guard_docs"),
+            verbose=False,
+        )
+        # Single-target patch is insufficient: the verifier still builds a real LLM,
+        # so no chapters are generated (provider/auth error captured into errors).
+        assert result["chapters_generated"] == []
 
 
 # ---------------------------------------------------------------------------
