@@ -25,3 +25,4 @@ tests/test_token_budget_integration.py
 tests/test_wave12_generators.py
 tests/test_wave15_intelligence.py
 tests/test_wave3_symbol_linker.py
+tests/test_symbols/test_extractor.py  # TRANSITIVE: repoforge.symbols.extractor -> repoforge.intelligence.extractor_registry (tree-sitter optional extra)

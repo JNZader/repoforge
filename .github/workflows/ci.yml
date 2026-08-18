@@ -56,15 +56,19 @@ jobs:
         run: sudo apt-get install -y ripgrep
 
       - name: Run core tests (intelligence excluded pre-collection)
-        run: >
-          pytest tests/
-          --ignore=tests/test_intelligence
-          --ignore=tests/test_wave3_symbol_linker.py
-          --ignore=tests/test_wave12_generators.py
-          --ignore=tests/test_token_budget_integration.py
-          --ignore=tests/test_wave15_intelligence.py
-          --ignore=tests/test_doc_chunks.py
-          -q --tb=short
+        # Ignores are DERIVED from tests/intelligence_tests.txt (single source of
+        # truth) so the core job can never drift from the manifest. The parser
+        # strips inline '# TRANSITIVE:' annotations before emitting --ignore args.
+        run: |
+          ignores=()
+          while read -r line; do
+            line="${line%%#*}"                                   # strip comments / TRANSITIVE annotations
+            line="${line#"${line%%[![:space:]]*}"}"              # strip leading whitespace
+            line="${line%"${line##*[![:space:]]}"}"              # strip trailing whitespace
+            [ -n "$line" ] && ignores+=("--ignore=${line}")
+          done < tests/intelligence_tests.txt
+          [ "${#ignores[@]}" -gt 0 ] || { echo "intelligence manifest produced no ignore paths"; exit 1; }
+          pytest tests/ "${ignores[@]}" -q --tb=short
 
   # ── Intelligence Tests (requires the `.[intelligence]` extra / tree-sitter) ──
   # Runs ONLY the explicit manifest paths (tests/intelligence_tests.txt) so the
@@ -97,8 +101,10 @@ jobs:
         run: |
           paths=()
           while read -r line; do
-            line="${line%%#*}"                                   # strip comments
-            [ -n "${line//[[:space:]]/}" ] && paths+=("$line")   # skip blank/whitespace-only lines; keep each path as one array element
+            line="${line%%#*}"                                   # strip comments / TRANSITIVE annotations
+            line="${line#"${line%%[![:space:]]*}"}"              # strip leading whitespace
+            line="${line%"${line##*[![:space:]]}"}"              # strip trailing whitespace
+            [ -n "$line" ] && paths+=("$line")                   # skip blank/whitespace-only lines
           done < tests/intelligence_tests.txt
           [ "${#paths[@]}" -gt 0 ] || { echo "intelligence manifest produced no test paths"; exit 1; }
           pytest "${paths[@]}" -q --tb=short
