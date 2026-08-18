@@ -67,7 +67,7 @@ def sample_repo(tmp_path):
 class TestIndexCommand:
     def test_index_missing_faiss(self, runner):
         """Should exit with error when faiss not available."""
-        with patch("repoforge.cli.SEARCH_AVAILABLE", False):
+        with patch("repoforge.search.SEARCH_AVAILABLE", False):
             # We need to patch the import inside the command
             with patch.dict("sys.modules", {"repoforge.search": MagicMock(SEARCH_AVAILABLE=False)}):
                 # Directly test the import guard
@@ -81,7 +81,7 @@ class TestIndexCommand:
         output_dir = tmp_path / "test_index_out"
         mock_embedder = _make_embedder_mock(dim=8)
 
-        with patch("repoforge.cli.Embedder", return_value=mock_embedder):
+        with patch("repoforge.search.Embedder", return_value=mock_embedder):
             result = runner.invoke(main, [
                 "index",
                 "-w", str(sample_repo),
@@ -109,7 +109,7 @@ class TestIndexCommand:
         output_dir = tmp_path / "quiet_index"
         mock_embedder = _make_embedder_mock(dim=8)
 
-        with patch("repoforge.cli.Embedder", return_value=mock_embedder):
+        with patch("repoforge.search.Embedder", return_value=mock_embedder):
             result = runner.invoke(main, [
                 "index",
                 "-w", str(sample_repo),
@@ -151,10 +151,11 @@ class TestQueryCommand:
         self._build_index(index_dir)
 
         mock_embedder = _make_embedder_mock(dim=8)
-        with patch("repoforge.cli.Embedder", return_value=mock_embedder):
+        with patch("repoforge.search.Embedder", return_value=mock_embedder):
             result = runner.invoke(main, [
                 "query",
                 "authentication",
+                "--search-mode", "semantic",
                 "--index-dir", str(index_dir),
             ])
 
@@ -168,10 +169,11 @@ class TestQueryCommand:
         self._build_index(index_dir)
 
         mock_embedder = _make_embedder_mock(dim=8)
-        with patch("repoforge.cli.Embedder", return_value=mock_embedder):
+        with patch("repoforge.search.Embedder", return_value=mock_embedder):
             result = runner.invoke(main, [
                 "query",
                 "database connection",
+                "--search-mode", "semantic",
                 "--index-dir", str(index_dir),
                 "--json",
             ])
@@ -191,10 +193,11 @@ class TestQueryCommand:
         self._build_index(index_dir)
 
         mock_embedder = _make_embedder_mock(dim=8)
-        with patch("repoforge.cli.Embedder", return_value=mock_embedder):
+        with patch("repoforge.search.Embedder", return_value=mock_embedder):
             result = runner.invoke(main, [
                 "query",
                 "something",
+                "--search-mode", "semantic",
                 "--index-dir", str(index_dir),
                 "--top-k", "1",
                 "--json",
