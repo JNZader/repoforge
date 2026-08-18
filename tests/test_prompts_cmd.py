@@ -82,7 +82,7 @@ MOCK_REPO_MAP = {
 @pytest.fixture
 def mock_scan():
     """Patch scan_repo to return mock data."""
-    with patch("repoforge.prompts_cmd.scan_repo", return_value=MOCK_REPO_MAP):
+    with patch("repoforge.scanner.scan_repo", return_value=MOCK_REPO_MAP):
         yield
 
 
