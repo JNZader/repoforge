@@ -30,10 +30,13 @@ def real_graph():
 
 class TestRealRepoGraph:
     def test_discovers_python_files(self, real_graph):
-        """Graph should contain repoforge's own Python modules."""
+        """Graph should contain repoforge's own Python modules.
+
+        ``cli.py`` (~124 KB) exceeds the 100 KB production cap on graph node
+        size and is intentionally NOT a node — see S3.
+        """
         node_ids = {n.id for n in real_graph.nodes}
         assert "repoforge/graph.py" in node_ids
-        assert "repoforge/cli.py" in node_ids
         assert "repoforge/scanner.py" in node_ids
 
     def test_discovers_extractor_files(self, real_graph):
@@ -58,12 +61,13 @@ class TestRealRepoGraph:
         # Lazy imports to extractors won't show up — that's correct behavior
 
     def test_cli_imports_graph(self, real_graph):
-        """cli.py should depend on graph.py (it imports build_graph_v2)."""
-        # CLI uses lazy imports inside function bodies, so this may or may
-        # not show up depending on extractor capability. We check if cli
-        # has any deps at all — it at least imports click at module level.
-        node = real_graph.get_node("repoforge/cli.py")
-        assert node is not None
+        """cli.py (~124 KB) exceeds the production 100 KB cap and must NOT be a graph
+        node; graph.py and scanner.py are reliably present and must remain nodes.
+        """
+        node_ids = {n.id for n in real_graph.nodes}
+        assert "repoforge/cli.py" not in node_ids
+        assert "repoforge/graph.py" in node_ids
+        assert "repoforge/scanner.py" in node_ids
 
     def test_extractor_init_imports_submodules(self, real_graph):
         """extractors/__init__.py should depend on the individual extractor files."""
