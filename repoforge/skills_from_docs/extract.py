@@ -6,7 +6,6 @@ Deterministic — no LLM needed.
 """
 
 import re
-from typing import Optional
 
 from .types import CodeExample, DocContent, DocSection
 

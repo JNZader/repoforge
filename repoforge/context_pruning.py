@@ -22,7 +22,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .graph import CodeGraph, build_graph_v2
+from .graph import build_graph_v2
 
 logger = logging.getLogger(__name__)
 

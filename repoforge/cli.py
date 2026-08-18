@@ -767,7 +767,7 @@ def check(working_dir, docs_dir, fmt, fail_on, quiet):
     import sys
     from pathlib import Path
 
-    from .checker import ReferenceChecker, check_docs
+    from .checker import ReferenceChecker
 
     workspace = Path(working_dir).resolve()
 
@@ -2164,7 +2164,7 @@ def validate_skills(path, strict, max_lines, fmt, fail_on, quiet):
     )
 
     if target.is_file():
-        from .skill_validator import FileResult, ValidationResult
+        from .skill_validator import ValidationResult
         file_result = validator.validate_file(target)
         result = ValidationResult(
             files_scanned=1,
@@ -3069,7 +3069,6 @@ def analyze_cmd(working_dir, depth, file_path, as_json, quiet):
       repoforge analyze --file repoforge/cli.py     # single file
       repoforge analyze -w . --json                 # JSON output
     """
-    import json as json_mod
     import sys
 
     from .deep_analysis import (

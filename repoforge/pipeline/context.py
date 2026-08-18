@@ -6,7 +6,7 @@ and facts-only per-chapter contexts from the scanned repo.
 
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from ..ir.context import ContextBundle
 from ..ir.repo import RepoMap

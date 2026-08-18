@@ -20,15 +20,12 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .graph import CodeGraph, Edge, Node, build_graph_v2
 from .incremental_graph import build_graph_incremental
 from .semantic_search import (
-    BehaviorIndex,
-    BehaviorMatch,
     build_behavior_index,
 )
 

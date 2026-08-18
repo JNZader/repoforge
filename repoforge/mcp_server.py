@@ -33,13 +33,11 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from pathlib import Path
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
-    Resource,
     TextContent,
     Tool,
 )

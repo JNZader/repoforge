@@ -17,7 +17,6 @@ Falls back to first-N-lines extraction when tree-sitter is not available.
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import PurePosixPath
 
 logger = logging.getLogger(__name__)

@@ -29,16 +29,13 @@ import math
 import re
 import string
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from .deep_analysis import (
     ASTNode,
     CallEdgeInfo,
     CFGNode,
     DFGEdge,
-    FileAnalysis,
     FunctionAnalysis,
-    analyze_file,
     analyze_repo,
 )
 
