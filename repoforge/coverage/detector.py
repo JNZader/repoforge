@@ -7,6 +7,7 @@ identifies the format, and delegates to the appropriate parser.
 from __future__ import annotations
 
 import logging
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from .model import CoverageReport
@@ -136,8 +137,10 @@ def auto_detect_and_parse(root: str | Path) -> list[CoverageReport]:
             report = parser(path)
             reports.append(report)
             logger.debug("Parsed %s coverage from %s (%d files)", fmt, path, len(report.files))
-        except (OSError, ValueError, KeyError) as e:
-            # OSError: file read error; ValueError/KeyError: malformed coverage data
+        except (OSError, ValueError, KeyError, ET.ParseError) as e:
+            # OSError: file read error; ValueError/KeyError: malformed coverage data;
+            # ET.ParseError: malformed XML coverage input (SyntaxError subclass, not
+            # caught by the above) — skip the offending report instead of aborting.
             logger.warning("Failed to parse %s: %s", path, e)
 
     return reports
