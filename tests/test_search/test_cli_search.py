@@ -5,10 +5,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-np = pytest.importorskip("numpy", reason="numpy not installed")
-faiss = pytest.importorskip("faiss", reason="faiss-cpu not installed")
-
 from click.testing import CliRunner
 
 from repoforge.cli import main
@@ -17,6 +13,7 @@ from repoforge.search.embedder import Embedder
 
 def _make_embedder_mock(dim: int = 8):
     """Create a mock Embedder returning deterministic vectors."""
+    np = pytest.importorskip("numpy", reason="numpy not installed")
     call_count = [0]
 
     def fake_embed(texts):
@@ -68,16 +65,17 @@ class TestIndexCommand:
     def test_index_missing_faiss(self, runner):
         """Should exit with error when faiss not available."""
         with patch("repoforge.search.SEARCH_AVAILABLE", False):
-            # We need to patch the import inside the command
-            with patch.dict("sys.modules", {"repoforge.search": MagicMock(SEARCH_AVAILABLE=False)}):
-                # Directly test the import guard
-                from repoforge.search import SEARCH_AVAILABLE as actual
-                # If faiss is actually installed in test env, skip this
-                if actual:
-                    pytest.skip("faiss is installed, cannot test missing guard")
+            result = runner.invoke(main, ["index"])
+
+        assert result.exit_code != 0
+        assert (
+            "Error: faiss-cpu is required for semantic search.\n"
+            "Install with: pip install repoforge-ai[search]"
+        ) in result.output
 
     def test_index_builds_and_saves(self, runner, sample_repo, tmp_path):
         """Full index build with mocked embedder."""
+        pytest.importorskip("faiss", reason="faiss-cpu not installed")
         output_dir = tmp_path / "test_index_out"
         mock_embedder = _make_embedder_mock(dim=8)
 
@@ -106,6 +104,7 @@ class TestIndexCommand:
 
     def test_index_quiet_mode(self, runner, sample_repo, tmp_path):
         """Quiet mode should suppress progress output."""
+        pytest.importorskip("faiss", reason="faiss-cpu not installed")
         output_dir = tmp_path / "quiet_index"
         mock_embedder = _make_embedder_mock(dim=8)
 
@@ -125,6 +124,7 @@ class TestIndexCommand:
 class TestQueryCommand:
     def _build_index(self, index_dir: Path, dim: int = 8):
         """Build a small test index on disk."""
+        pytest.importorskip("faiss", reason="faiss-cpu not installed")
         from repoforge.search.index import SearchIndex
 
         mock_embedder = _make_embedder_mock(dim=dim)
