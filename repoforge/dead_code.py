@@ -19,7 +19,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .graph import CodeGraph, Node, build_graph_v2, is_test_file
+from .graph import CodeGraph, build_graph_v2, is_test_file
 
 logger = logging.getLogger(__name__)
 

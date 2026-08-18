@@ -10,7 +10,6 @@ Output is saved to `.repoforge/external-docs/` as flat markdown files.
 No external dependencies — uses stdlib urllib + subprocess.
 """
 
-import base64
 import json
 import logging
 import re

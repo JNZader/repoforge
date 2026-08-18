@@ -20,7 +20,6 @@ Entry points:
 from __future__ import annotations
 
 import html
-import math
 from dataclasses import dataclass, field
 
 from .graph import CodeGraph

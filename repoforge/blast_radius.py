@@ -20,9 +20,8 @@ import logging
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
-from .graph import BlastRadiusResult, CodeGraph, build_graph_v2, get_blast_radius_v2, is_test_file
+from .graph import build_graph_v2, get_blast_radius_v2
 
 logger = logging.getLogger(__name__)
 

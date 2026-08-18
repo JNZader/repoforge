@@ -13,7 +13,6 @@ import re
 from ..facts import FactItem
 from .ast_extractor import (
     ASTSymbol,
-    find_children,
     find_first_child,
     get_parser,
     node_text,

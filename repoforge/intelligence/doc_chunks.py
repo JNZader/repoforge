@@ -168,7 +168,6 @@ def chunk_mcp_tools(
     Returns:
         Formatted MCP tools context string, or empty string.
     """
-    import re
 
     lines: list[str] = []
     tools_found: list[dict] = []

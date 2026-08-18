@@ -23,8 +23,6 @@ from pathlib import Path
 from .decision_intel import (
     _MARKERS,
     _TEXT_EXTENSIONS,
-    Decision,
-    DecisionReport,
     extract_decisions_from_content,
 )
 

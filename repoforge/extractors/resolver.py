@@ -9,7 +9,6 @@ Ported from ghagga's resolveImportPath() in builder.ts.
 """
 
 import os
-import re
 from pathlib import PurePosixPath
 
 # ---------------------------------------------------------------------------

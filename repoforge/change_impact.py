@@ -21,7 +21,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .graph import CodeGraph, build_graph_v2, get_blast_radius_v2, is_test_file
+from .graph import build_graph_v2, get_blast_radius_v2, is_test_file
 
 logger = logging.getLogger(__name__)
 

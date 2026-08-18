@@ -29,10 +29,8 @@ from typing import Optional
 from .adapters import ADAPTER_TARGETS, resolve_targets, run_adapters
 from .disclosure import build_discovery_index
 from .graph_context import (
-    build_graph_context_from_graph,
     build_module_facts_context,
     build_module_graph_context,
-    build_semantic_context,
     build_short_graph_context,
     format_facts_section,
 )

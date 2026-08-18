@@ -9,7 +9,6 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -56,7 +55,7 @@ class PageIndex:
         """Initialize database schema."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
+
             # Create pages table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS repo_pages (
@@ -74,7 +73,7 @@ class PageIndex:
                     UNIQUE(repo_id, page_num)
                 )
             """)
-            
+
             # Create indexes
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_repo_pages_repo 
@@ -84,10 +83,10 @@ class PageIndex:
                 CREATE INDEX IF NOT EXISTS idx_repo_pages_number 
                 ON repo_pages(repo_id, page_num)
             """)
-            
+
             conn.commit()
 
-    def paginate_repo(self, repo_id: str, content: str, 
+    def paginate_repo(self, repo_id: str, content: str,
                      max_tokens_per_page: int = 1500,
                      overlap_tokens: int = 200) -> Dict[str, Any]:
         """
@@ -110,17 +109,17 @@ class PageIndex:
         # Chunk content
         chunks = self._chunk_content(content, max_tokens_per_page, overlap_tokens)
         total_pages = len(chunks)
-        
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             page_ids = []
-            
+
             for i, chunk in enumerate(chunks):
                 page_num = i + 1
                 topics = self.extract_topics(chunk)
                 file_refs = self.extract_file_refs(chunk)
                 token_count = self._estimate_tokens(chunk)
-                
+
                 cursor.execute("""
                     INSERT INTO repo_pages 
                     (repo_id, page_num, total_pages, content, topics, file_refs, token_count)
@@ -129,37 +128,37 @@ class PageIndex:
                     repo_id, page_num, total_pages, chunk,
                     json.dumps(topics), json.dumps(file_refs), token_count
                 ))
-                
+
                 page_ids.append(cursor.lastrowid)
-            
+
             # Link pages
             for i, page_id in enumerate(page_ids):
                 prev_id = page_ids[i - 1] if i > 0 else None
                 next_id = page_ids[i + 1] if i < len(page_ids) - 1 else None
-                
+
                 cursor.execute("""
                     UPDATE repo_pages 
                     SET prev_page_id = ?, next_page_id = ?
                     WHERE id = ?
                 """, (prev_id, next_id, page_id))
-            
+
             conn.commit()
 
         total_tokens = sum(self._estimate_tokens(c) for c in chunks)
         return {'pages': total_pages, 'tokens': total_tokens}
 
-    def _chunk_content(self, content: str, max_tokens: int, 
+    def _chunk_content(self, content: str, max_tokens: int,
                       overlap: int) -> List[str]:
         """Split content into chunks with overlap."""
         max_chars = max_tokens * 4  # Approx 4 chars per token
         overlap_chars = overlap * 4
-        
+
         chunks = []
         pos = 0
-        
+
         while pos < len(content):
             end = min(pos + max_chars, len(content))
-            
+
             if end < len(content):
                 # Try to break at section boundary
                 section_break = content.rfind('\n\n## ', pos, end)
@@ -170,10 +169,10 @@ class PageIndex:
                     para_break = content.rfind('\n\n', pos, end)
                     if para_break > pos + max_chars * 0.7:
                         end = para_break + 2
-            
+
             chunks.append(content[pos:end].strip())
             pos = max(pos + 1, end - overlap_chars)
-        
+
         return chunks if chunks else [content]
 
     def _estimate_tokens(self, text: str) -> int:
@@ -183,12 +182,12 @@ class PageIndex:
     def extract_topics(self, content: str) -> List[str]:
         """Extract topics from content (headers, bold text)."""
         topics = []
-        
+
         # Headers (### Topic)
         headers = re.findall(r'^#{1,3}\s+(.+)$', content, re.MULTILINE)
         for h in headers[:5]:
             topics.append(h[:50])
-        
+
         # Bold text
         if len(topics) < 10:
             bold = re.findall(r'\*\*(.+?)\*\*', content)
@@ -196,25 +195,25 @@ class PageIndex:
                 topic = b[:50]
                 if topic not in topics:
                     topics.append(topic)
-        
+
         return topics[:8]
 
     def extract_file_refs(self, content: str) -> List[str]:
         """Extract file references from content."""
         refs = []
-        
+
         # File paths
         paths = re.findall(r'(?:src/|apps/|packages/)[\w/\-]+\.\w+', content)
         for p in paths[:10]:
             if p not in refs:
                 refs.append(p)
-        
+
         # Glob patterns
         globs = re.findall(r'\*\*\/\*\.\w+', content)
         for g in globs[:5]:
             if g not in refs:
                 refs.append(g)
-        
+
         return refs[:15]
 
     def get_page(self, repo_id: str, page_num: int) -> Optional[Dict[str, Any]]:
@@ -227,11 +226,11 @@ class PageIndex:
                 FROM repo_pages
                 WHERE repo_id = ? AND page_num = ?
             """, (repo_id, page_num))
-            
+
             row = cursor.fetchone()
             if not row:
                 return None
-            
+
             return {
                 'id': row[0],
                 'repo_id': row[1],
@@ -245,12 +244,12 @@ class PageIndex:
                 'next_page_id': row[9]
             }
 
-    def get_context(self, repo_id: str, page_num: int, 
+    def get_context(self, repo_id: str, page_num: int,
                    window_size: int = 1) -> Dict[str, Any]:
         """Get page with surrounding context."""
         start_page = max(1, page_num - window_size)
         end_page = page_num + window_size
-        
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -260,7 +259,7 @@ class PageIndex:
                 WHERE repo_id = ? AND page_num BETWEEN ? AND ?
                 ORDER BY page_num
             """, (repo_id, start_page, end_page))
-            
+
             pages = []
             for row in cursor.fetchall():
                 pages.append({
@@ -273,16 +272,16 @@ class PageIndex:
                     'file_refs': json.loads(row[6] or '[]'),
                     'token_count': row[7]
                 })
-        
+
         current = next((p for p in pages if p['page_num'] == page_num), None)
         if not current:
             raise ValueError(f"Page {page_num} not found in repo {repo_id}")
-        
+
         previous = [p for p in pages if p['page_num'] < page_num]
         next_pages = [p for p in pages if p['page_num'] > page_num]
-        
+
         total_tokens = sum(p['token_count'] for p in pages)
-        
+
         return {
             'current_page': current,
             'previous_pages': previous,
@@ -291,7 +290,7 @@ class PageIndex:
             'total_tokens': total_tokens
         }
 
-    def navigate(self, repo_id: str, current_page_num: int, 
+    def navigate(self, repo_id: str, current_page_num: int,
                 direction: str) -> Optional[Dict[str, Any]]:
         """Navigate to adjacent page."""
         if direction == 'next':
@@ -308,11 +307,11 @@ class PageIndex:
         else:
             return None
 
-    def find_relevant_pages(self, repo_id: str, query: str, 
+    def find_relevant_pages(self, repo_id: str, query: str,
                           max_pages: int = 3) -> List[Dict[str, Any]]:
         """Find pages relevant to query."""
         keywords = [k.lower() for k in query.split() if len(k) > 2]
-        
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -322,7 +321,7 @@ class PageIndex:
                 WHERE repo_id = ?
                 ORDER BY page_num
             """, (repo_id,))
-            
+
             scored_pages = []
             for row in cursor.fetchall():
                 page = {
@@ -335,20 +334,20 @@ class PageIndex:
                     'file_refs': json.loads(row[6] or '[]'),
                     'token_count': row[7]
                 }
-                
+
                 # Score by keyword matches
-                content_lower = (page['content'] + ' ' + 
+                content_lower = (page['content'] + ' ' +
                                ' '.join(page['topics'])).lower()
                 score = sum(content_lower.count(kw) for kw in keywords)
-                
+
                 # Bonus for file reference matches
-                file_matches = sum(1 for ref in page['file_refs'] 
+                file_matches = sum(1 for ref in page['file_refs']
                                  if any(kw in ref.lower() for kw in keywords))
                 score += file_matches * 3
-                
+
                 if score > 0:
                     scored_pages.append((page, score))
-        
+
         # Sort by score and return top N
         scored_pages.sort(key=lambda x: x[1], reverse=True)
         return [p for p, _ in scored_pages[:max_pages]]
@@ -359,9 +358,9 @@ class PageIndex:
         stats = self.get_repo_stats(repo_id)
         current_tokens = stats['tokens']
         threshold = model_max_tokens * (1 - safety_margin)
-        
+
         should_compact = current_tokens > threshold
-        
+
         return CompactionCheck(
             current_tokens=current_tokens,
             max_tokens=model_max_tokens,
@@ -380,7 +379,7 @@ class PageIndex:
                 FROM repo_pages
                 WHERE repo_id = ?
             """, (repo_id,))
-            
+
             row = cursor.fetchone()
             return {'pages': row[0], 'tokens': row[1]}
 

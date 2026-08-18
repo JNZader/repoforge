@@ -325,13 +325,6 @@ def _merge_build_packages(
     existing layer, scan it and add its modules to the closest layer
     (or create a 'build_modules' layer).
     """
-    from .ripgrep import (
-        extract_definitions,
-        extract_imports,
-        extract_summary_hints,
-        list_files,
-        rg_available,
-    )
 
     # Collect all paths already covered by existing layers
     covered_paths: set[str] = set()

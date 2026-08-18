@@ -15,10 +15,9 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Optional
 
 from ..facts import FactItem
-from ..llm import LLM, LLMProvider, build_llm
+from ..llm import LLMProvider, build_llm
 from .ast_extractor import ASTSymbol
 
 logger = logging.getLogger(__name__)

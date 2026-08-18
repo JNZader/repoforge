@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any
 
 from .entity_impact import Entity, EntityGraph, ImpactReport
 from .symbols.extractor import Symbol, extract_symbols
