@@ -1,0 +1,27 @@
+# Pre-collection partition manifest for the `test-intelligence` CI job (S1).
+# Every path below directly imports repoforge.intelligence or tree_sitter and
+# therefore requires the `.[intelligence]` extra. The `test-core` job excludes
+# them via `pytest --ignore`. Keep this list in sync with
+# tests/test_intelligence_manifest.py (it fails red on classification drift).
+tests/test_doc_chunks.py
+tests/test_intelligence/test_ast_extractor.py
+tests/test_intelligence/test_budget.py
+tests/test_intelligence/test_build_parser.py
+tests/test_intelligence/test_compressor.py
+tests/test_intelligence/test_extractor_registry.py
+tests/test_intelligence/test_lang_c.py
+tests/test_intelligence/test_lang_go.py
+tests/test_intelligence/test_lang_java.py
+tests/test_intelligence/test_lang_javascript.py
+tests/test_intelligence/test_lang_kotlin.py
+tests/test_intelligence/test_lang_python.py
+tests/test_intelligence/test_lang_ruby.py
+tests/test_intelligence/test_lang_rust.py
+tests/test_intelligence/test_lang_typescript.py
+tests/test_intelligence/test_post_process.py
+tests/test_intelligence/test_ranker.py
+tests/test_intelligence/test_verifier.py
+tests/test_token_budget_integration.py
+tests/test_wave12_generators.py
+tests/test_wave15_intelligence.py
+tests/test_wave3_symbol_linker.py
