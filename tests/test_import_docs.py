@@ -1,5 +1,6 @@
 """Tests for repoforge.import_docs module."""
 
+import importlib
 import json
 import urllib.error
 from io import BytesIO
@@ -7,6 +8,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+_IMPORT_DOCS_MODULE = importlib.import_module("repoforge.import_docs")
 from click.testing import CliRunner
 
 from repoforge.cli import main
@@ -61,14 +64,14 @@ class TestSanitizeName:
 # ---------------------------------------------------------------------------
 
 class TestFetchNpmReadme:
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_returns_readme(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen({"readme": "# Hello\nWorld"})
         result = fetch_npm_readme("test-pkg")
         assert "# Hello" in result
         assert "World" in result
 
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_fallback_to_description(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen({
             "readme": "ERROR: No README data found!",
@@ -77,7 +80,7 @@ class TestFetchNpmReadme:
         result = fetch_npm_readme("test-pkg")
         assert "A test package" in result
 
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_no_readme_no_description_raises(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen({
             "readme": "ERROR: No README data found!",
@@ -85,7 +88,7 @@ class TestFetchNpmReadme:
         with pytest.raises(RuntimeError, match="No README found"):
             fetch_npm_readme("nonexistent")
 
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_http_error(self, mock_urlopen):
         mock_urlopen.side_effect = urllib.error.HTTPError(
             url="https://registry.npmjs.org/nope",
@@ -103,7 +106,7 @@ class TestFetchNpmReadme:
 # ---------------------------------------------------------------------------
 
 class TestFetchPypiDescription:
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_returns_description(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen({
             "info": {"description": "# Click\n\nCLI toolkit"},
@@ -111,7 +114,7 @@ class TestFetchPypiDescription:
         result = fetch_pypi_description("click")
         assert "# Click" in result
 
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_fallback_to_summary(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen({
             "info": {"description": "", "summary": "A CLI toolkit"},
@@ -119,13 +122,13 @@ class TestFetchPypiDescription:
         result = fetch_pypi_description("click")
         assert "A CLI toolkit" in result
 
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_no_description_raises(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen({"info": {}})
         with pytest.raises(RuntimeError, match="No description found"):
             fetch_pypi_description("nonexistent")
 
-    @patch("repoforge.import_docs.urllib.request.urlopen")
+    @patch("urllib.request.urlopen")
     def test_http_error(self, mock_urlopen):
         mock_urlopen.side_effect = urllib.error.HTTPError(
             url="https://pypi.org/pypi/nope/json",
@@ -147,14 +150,14 @@ class TestFetchGithubDocs:
         with pytest.raises(ValueError, match="Not a valid GitHub URL"):
             fetch_github_docs("not-a-url")
 
-    @patch("repoforge.import_docs.subprocess.run")
+    @patch("subprocess.run")
     def test_clone_failure(self, mock_run):
         mock_run.return_value = MagicMock(returncode=1, stderr="fatal: repo not found")
         with pytest.raises(RuntimeError, match="git clone failed"):
             fetch_github_docs("https://github.com/owner/repo")
 
-    @patch("repoforge.import_docs.subprocess.run")
-    @patch("repoforge.import_docs.tempfile.mkdtemp")
+    @patch("subprocess.run")
+    @patch("tempfile.mkdtemp")
     def test_reads_readme(self, mock_mkdtemp, mock_run, tmp_path):
         mock_mkdtemp.return_value = str(tmp_path)
         mock_run.return_value = MagicMock(returncode=0)
@@ -165,8 +168,8 @@ class TestFetchGithubDocs:
         result = fetch_github_docs("https://github.com/owner/repo")
         assert "# My Repo" in result
 
-    @patch("repoforge.import_docs.subprocess.run")
-    @patch("repoforge.import_docs.tempfile.mkdtemp")
+    @patch("subprocess.run")
+    @patch("tempfile.mkdtemp")
     def test_reads_docs_dir(self, mock_mkdtemp, mock_run, tmp_path):
         mock_mkdtemp.return_value = str(tmp_path)
         mock_run.return_value = MagicMock(returncode=0)
@@ -181,8 +184,8 @@ class TestFetchGithubDocs:
         assert "# Repo" in result
         assert "# Guide" in result
 
-    @patch("repoforge.import_docs.subprocess.run")
-    @patch("repoforge.import_docs.tempfile.mkdtemp")
+    @patch("subprocess.run")
+    @patch("tempfile.mkdtemp")
     def test_no_docs_raises(self, mock_mkdtemp, mock_run, tmp_path):
         mock_mkdtemp.return_value = str(tmp_path)
         mock_run.return_value = MagicMock(returncode=0)
@@ -196,7 +199,7 @@ class TestFetchGithubDocs:
 # ---------------------------------------------------------------------------
 
 class TestImportDocs:
-    @patch("repoforge.import_docs.fetch_npm_readme", return_value="# React\n\nUI lib")
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_npm_readme", return_value="# React\n\nUI lib")
     def test_imports_npm(self, mock_fetch, tmp_path):
         result = import_docs(
             working_dir=str(tmp_path),
@@ -209,7 +212,7 @@ class TestImportDocs:
         assert out_file.exists()
         assert "# React" in out_file.read_text()
 
-    @patch("repoforge.import_docs.fetch_pypi_description", return_value="# Click\n\nCLI")
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_pypi_description", return_value="# Click\n\nCLI")
     def test_imports_pypi(self, mock_fetch, tmp_path):
         result = import_docs(
             working_dir=str(tmp_path),
@@ -219,7 +222,7 @@ class TestImportDocs:
         out_file = tmp_path / ".repoforge" / "external-docs" / "pypi--click.md"
         assert out_file.exists()
 
-    @patch("repoforge.import_docs.fetch_github_docs", return_value="# Repo\n\nDocs")
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_github_docs", return_value="# Repo\n\nDocs")
     def test_imports_github(self, mock_fetch, tmp_path):
         result = import_docs(
             working_dir=str(tmp_path),
@@ -229,7 +232,7 @@ class TestImportDocs:
         out_file = tmp_path / ".repoforge" / "external-docs" / "github--org--repo.md"
         assert out_file.exists()
 
-    @patch("repoforge.import_docs.fetch_npm_readme", side_effect=RuntimeError("fail"))
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_npm_readme", side_effect=RuntimeError("fail"))
     def test_handles_failure_gracefully(self, mock_fetch, tmp_path):
         result = import_docs(
             working_dir=str(tmp_path),
@@ -239,8 +242,8 @@ class TestImportDocs:
         assert len(result["failed"]) == 1
         assert "npm/bad-pkg" in result["failed"][0]["source"]
 
-    @patch("repoforge.import_docs.fetch_npm_readme", return_value="# A")
-    @patch("repoforge.import_docs.fetch_pypi_description", return_value="# B")
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_npm_readme", return_value="# A")
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_pypi_description", return_value="# B")
     def test_mixed_sources(self, mock_pypi, mock_npm, tmp_path):
         result = import_docs(
             working_dir=str(tmp_path),
@@ -267,7 +270,7 @@ class TestImportDocsCLI:
         assert result.exit_code != 0
         assert "at least one" in result.output or "at least one" in (result.stderr_bytes or b"").decode("utf-8", errors="replace")
 
-    @patch("repoforge.import_docs.fetch_npm_readme", return_value="# React\n\nUI lib")
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_npm_readme", return_value="# React\n\nUI lib")
     def test_npm_success(self, mock_fetch, tmp_path):
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -279,7 +282,7 @@ class TestImportDocsCLI:
         out_file = tmp_path / ".repoforge" / "external-docs" / "npm--react.md"
         assert out_file.exists()
 
-    @patch("repoforge.import_docs.fetch_npm_readme", side_effect=RuntimeError("fail"))
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_npm_readme", side_effect=RuntimeError("fail"))
     def test_all_failed_exits_1(self, mock_fetch, tmp_path):
         runner = CliRunner()
         result = runner.invoke(main, [
@@ -289,7 +292,7 @@ class TestImportDocsCLI:
         ])
         assert result.exit_code == 1
 
-    @patch("repoforge.import_docs.fetch_npm_readme", return_value="# A")
+    @patch.object(_IMPORT_DOCS_MODULE, "fetch_npm_readme", return_value="# A")
     def test_quiet_mode(self, mock_fetch, tmp_path):
         runner = CliRunner()
         result = runner.invoke(main, [
