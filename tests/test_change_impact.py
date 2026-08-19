@@ -111,6 +111,29 @@ class TestChangeImpactReport:
         )
         assert report.untested_files == ["b.py"]
 
+    def test_all_tests_unions_direct_and_derived_tests(self):
+        report = ChangeImpactReport(
+            changed_files=["auth.py", "tests/test_auth.py"],
+            mappings=[
+                SourceTestMapping(
+                    source_file="auth.py",
+                    graph_tests=["tests/test_service.py", "tests/test_auth.py"],
+                ),
+            ],
+            direct_tests=["tests/test_auth.py"],
+        )
+
+        assert report.all_tests == ["tests/test_auth.py", "tests/test_service.py"]
+
+    def test_existing_positional_constructor_order_is_compatible(self):
+        mappings = [SourceTestMapping(source_file="auth.py")]
+
+        report = ChangeImpactReport(["auth.py"], mappings, "abc123")
+
+        assert report.changed_files == ["auth.py"]
+        assert report.mappings is mappings
+        assert report.commit == "abc123"
+
 
 # ---------------------------------------------------------------------------
 # Integration
@@ -130,6 +153,28 @@ class TestAnalyzeChangeImpact:
         report = analyze_change_impact(str(project_with_tests))
         assert report.all_tests == []
 
+    @pytest.mark.parametrize("changed", [
+        ["tests/test_service.py", "tests/test_auth.py"],
+        ["tests/test_auth.py", "tests/test_service.py"],
+    ])
+    def test_direct_only_changes_preserve_input_and_sort_output(
+        self, project_with_tests, changed,
+    ):
+        report = analyze_change_impact(str(project_with_tests), files=changed)
+
+        assert report.changed_files == changed
+        assert report.all_tests == ["tests/test_auth.py", "tests/test_service.py"]
+
+    def test_mixed_changes_include_direct_and_source_derived_tests(
+        self, project_with_tests,
+    ):
+        changed = ["tests/test_service.py", "auth.py"]
+
+        report = analyze_change_impact(str(project_with_tests), files=changed)
+
+        assert report.changed_files == changed
+        assert report.all_tests == ["tests/test_auth.py", "tests/test_service.py"]
+        assert [mapping.source_file for mapping in report.mappings] == ["auth.py"]
 
 class TestFormatChangeImpact:
     def test_format_basic(self):
