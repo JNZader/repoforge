@@ -18,3 +18,4 @@ runners:
     # site-packages supply the dependencies. This is the mechanism that survives
     # javi-forge's per-phase container model (the "missing install phase" bug).
     build-context: .javi-forge
+    lint: ruff check repoforge/

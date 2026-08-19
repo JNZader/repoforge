@@ -41,7 +41,7 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov",
-    "ruff",
+    "ruff==0.15.6",
     "mypy>=1.0",
 ]
 intelligence = [
@@ -114,7 +114,8 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["I"]
+select = ["E", "F", "W"]
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.10"
