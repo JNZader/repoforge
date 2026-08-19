@@ -245,7 +245,7 @@ def watch_docs(
 
             if generation_succeeded:
                 prev_snapshot = new_snapshot
-            _log(f"\n\u23F3 Watching for changes...\n")
+            _log("\n\u23F3 Watching for changes...\n")
 
     except KeyboardInterrupt:
         _log("\n\U0001F44B Watch mode stopped.")

@@ -125,10 +125,10 @@ jobs:
           cache: 'pip'
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.15.6
 
       - name: Lint with ruff
-        run: ruff check repoforge/ --select E,F,W --ignore E501
+        run: ruff check repoforge/
 
   # ── Server Tests ──────────────────────────────────────────
   test-server:

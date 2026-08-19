@@ -393,8 +393,8 @@ def generate_svg_diagram(
     # Defs (arrowhead marker)
     parts.append("  <defs>")
     parts.append(
-        f'    <marker id="arrowhead" markerWidth="10" markerHeight="7" '
-        f'refX="10" refY="3.5" orient="auto">'
+        '    <marker id="arrowhead" markerWidth="10" markerHeight="7" '
+        'refX="10" refY="3.5" orient="auto">'
     )
     parts.append(f'      <polygon points="0 0, 10 3.5, 0 7" fill="{style.edge_color}" />')
     parts.append("    </marker>")

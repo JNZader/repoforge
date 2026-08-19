@@ -18,8 +18,6 @@ import threading
 from pathlib import Path
 from typing import Optional, Union
 
-logger = logging.getLogger(__name__)
-
 from .docs_prompts import get_chapter_prompts
 from .incremental import (
     ChapterEntry,
@@ -49,6 +47,8 @@ from .pipeline.write import (
     write_manifest,
 )
 from .scanner import classify_complexity, scan_repo
+
+logger = logging.getLogger(__name__)
 
 
 def generate_docs(
@@ -559,9 +559,9 @@ def _print_summary(log, generated, docsify_files, corrections,
         )
         log(f"   📋 {total_fixes} correction(s) applied across {len(corrections)} chapter(s)")
 
-    log(f"\n📖 To preview locally:")
+    log("\n📖 To preview locally:")
     log(f"   npx serve {rel_out}   (or: python3 -m http.server 8000 --directory {rel_out})")
-    log(f"\n🚀 To publish on GitHub Pages:")
+    log("\n🚀 To publish on GitHub Pages:")
     log(f"   Push to GitHub → Settings → Pages → Source: /{rel_out} on main branch")
 
     if errors:
