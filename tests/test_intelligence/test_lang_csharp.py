@@ -56,3 +56,73 @@ def test_incidental_dbcontext_body_text_does_not_mark_a_schema():
     )
 
     assert schemas == []
+
+
+def test_custom_return_type_does_not_replace_method_name():
+    symbols = CSharpASTExtractor().extract_symbols(
+        "public class UsersController { public User GetUser(int id) => new User(); }",
+        "UsersController.cs",
+    )
+
+    method = next(symbol for symbol in symbols if symbol.kind == "method")
+    assert (method.name, method.signature, method.return_type) == (
+        "GetUser",
+        "User GetUser(int id)",
+        "User",
+    )
+
+
+def test_builtin_return_type_and_constructor_names_remain_unchanged():
+    symbols = CSharpASTExtractor().extract_symbols(
+        """
+        public class UsersController {
+            public int GetCount() => 1;
+            public UsersController() { }
+        }
+        """,
+        "UsersController.cs",
+    )
+
+    methods = [(symbol.name, symbol.signature) for symbol in symbols if symbol.kind == "method"]
+    assert methods == [
+        ("GetCount", "int GetCount()"),
+        ("UsersController", "UsersController()"),
+    ]
+
+
+def test_route_attributes_accept_zero_one_and_trailing_named_arguments():
+    endpoints = CSharpASTExtractor().extract_endpoints(
+        """
+        public class UsersController {
+            [HttpGet]
+            public User List() => new User();
+
+            [HttpGet("users")]
+            public User ListUsers() => new User();
+
+            [HttpGet("users/{id}", Name = "GetUser")]
+            public User GetUser(int id) => new User();
+        }
+        """,
+        "UsersController.cs",
+    )
+
+    assert [endpoint.value for endpoint in endpoints] == [
+        "GET",
+        "GET users",
+        "GET users/{id}",
+    ]
+
+
+def test_malformed_route_attribute_is_not_extracted():
+    endpoints = CSharpASTExtractor().extract_endpoints(
+        """
+        public class UsersController {
+            [HttpGet("users/{id}", Name = )]
+            public User GetUser(int id) => new User();
+        }
+        """,
+        "UsersController.cs",
+    )
+
+    assert endpoints == []

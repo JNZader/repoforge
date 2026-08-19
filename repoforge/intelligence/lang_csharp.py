@@ -212,7 +212,15 @@ class CSharpASTExtractor:
                 self._walk_symbols(body_node, file_path, symbols)
 
     def _extract_method(self, node, file_path: str) -> ASTSymbol | None:
-        name_node = find_first_child(node, "identifier")
+        name_node = node.child_by_field_name("name")
+        if name_node is None:
+            param_list = find_first_child(node, "parameter_list")
+            name_candidates = [
+                child for child in node.children
+                if child.type in ("identifier", "generic_name")
+                and (param_list is None or child.end_byte <= param_list.start_byte)
+            ]
+            name_node = name_candidates[-1] if name_candidates else None
         if not name_node:
             return None
 
@@ -261,7 +269,8 @@ class CSharpASTExtractor:
 
     _ROUTE_ATTR_RE = re.compile(
         r"\[(HttpGet|HttpPost|HttpPut|HttpDelete|HttpPatch|Route)"
-        r'(?:\(\s*"([^"]*)"\s*\))?\]',
+        r'(?:\(\s*"([^"]*)"\s*'
+        r'(?:,\s*[A-Za-z_]\w*\s*=\s*"[^"]*"\s*)*\))?\]',
     )
     _ATTR_TO_METHOD = {
         "HttpGet": "GET",
@@ -360,6 +369,10 @@ class CSharpASTExtractor:
 
     def _get_return_type(self, node) -> str | None:
         """Extract return type from method declaration."""
+        return_node = node.child_by_field_name("returns")
+        if return_node is not None:
+            return node_text(return_node).strip() or None
+
         for child in node.children:
             if child.type in (
                 "predefined_type", "identifier", "generic_name",
