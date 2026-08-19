@@ -888,7 +888,7 @@ def generate_openapi_diagram(spec_content: str) -> str:
             endpoint_ids[safe_id] = f"{method.upper()} {path}"
 
             lines.append(f"    class {safe_id} {{")
-            lines.append(f"        <<endpoint>>")
+            lines.append("        <<endpoint>>")
             lines.append(f"        +{method.upper()} {_mermaid_safe(path)}")
             lines.append("    }")
 
@@ -962,7 +962,7 @@ def _parse_openapi_yaml_fallback(content: str) -> str:
             op_id = _mermaid_id(f"{method}_{path}")
             paths_found.append(op_id)
             lines.append(f"    class {op_id} {{")
-            lines.append(f"        <<endpoint>>")
+            lines.append("        <<endpoint>>")
             lines.append(f"        +{method} {_mermaid_safe(path)}")
             lines.append("    }")
 
@@ -983,7 +983,7 @@ def _parse_openapi_yaml_fallback(content: str) -> str:
             schema_name = sm.group(1)
             safe_name = _mermaid_id(schema_name)
             lines.append(f"    class {safe_name} {{")
-            lines.append(f"        <<schema>>")
+            lines.append("        <<schema>>")
             lines.append("    }")
 
     if len(lines) == 1:

@@ -102,7 +102,7 @@ class DocScorer:
     def _score_structure(self, content: str) -> float:
         """Score heading hierarchy and section organization."""
         lines = content.split("\n")
-        headings = [l for l in lines if l.startswith("#")]
+        headings = [line for line in lines if line.startswith("#")]
 
         if not headings:
             return 0.0
@@ -227,7 +227,7 @@ class DocScorer:
 
         # Not a wall of text — has formatting breaks
         lines = content.split("\n")
-        blank_lines = sum(1 for l in lines if not l.strip())
+        blank_lines = sum(1 for line in lines if not line.strip())
         if blank_lines >= 3:
             score += 0.2
 

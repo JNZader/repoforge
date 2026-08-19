@@ -903,8 +903,8 @@ def _format_repo_analysis(ra: RepoAnalysis) -> str:
     lines.append("")
 
     lines.append("### Layer Summary")
-    lines.append(f"| Layer | Count |")
-    lines.append(f"|-------|-------|")
+    lines.append("| Layer | Count |")
+    lines.append("|-------|-------|")
     lines.append(f"| L1: AST symbols | {ra.total_functions} |")
     if ra.depth >= 2:
         lines.append(f"| L2: Call edges | {ra.total_call_edges} |")

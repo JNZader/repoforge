@@ -51,7 +51,7 @@ def detect_changed_files(repo_root: Path) -> list[str]:
         )
         if result.returncode == 0:
             changed.extend(
-                l.strip() for l in result.stdout.strip().splitlines() if l.strip()
+                line.strip() for line in result.stdout.strip().splitlines() if line.strip()
             )
 
         # Untracked files
@@ -61,7 +61,7 @@ def detect_changed_files(repo_root: Path) -> list[str]:
         )
         if result.returncode == 0:
             changed.extend(
-                l.strip() for l in result.stdout.strip().splitlines() if l.strip()
+                line.strip() for line in result.stdout.strip().splitlines() if line.strip()
             )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         logger.warning("git not available, cannot detect changed files")

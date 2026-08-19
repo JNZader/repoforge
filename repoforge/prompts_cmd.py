@@ -587,8 +587,8 @@ def render_prompts_markdown(prompts: list[AnalysisPrompt]) -> str:
     lines.append("")
 
     for i, p in enumerate(prompts, 1):
-        lines.append(f"---")
-        lines.append(f"")
+        lines.append("---")
+        lines.append("")
         lines.append(f"## {i}. {p.title}")
         lines.append("")
         lines.append(p.body)

@@ -141,7 +141,7 @@ def _build_graph(root: Path, result: ContextBundle, log) -> None:
             _graph, symbol_graph=_symbol_graph,
         )
         if result.structured_graph_ctx:
-            log(f"   ✅ Structured graph context built")
+            log("   ✅ Structured graph context built")
     except (ImportError, OSError, ValueError, RuntimeError) as e:
         # ImportError: graph module not available; others: graph build failures
         log(f"   ⚠️  Graph analysis skipped: {e}")
@@ -164,7 +164,7 @@ def _build_semantic(root: Path, all_files: list, result: ContextBundle, log) -> 
         if _facts:
             log(f"   ✅ Facts: {len(_facts)} items extracted")
         else:
-            log(f"   ℹ️  No semantic facts found (project may not match patterns)")
+            log("   ℹ️  No semantic facts found (project may not match patterns)")
     except (ImportError, OSError, ValueError, KeyError) as e:
         # ImportError: module missing; OSError: file read; ValueError/KeyError: data issues
         log(f"   ⚠️  Semantic context extraction skipped: {e}")
