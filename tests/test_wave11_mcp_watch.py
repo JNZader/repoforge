@@ -272,8 +272,10 @@ class TestWatchDocsLoop:
 
     @patch("repoforge.docs_generator.generate_docs")
     @patch("repoforge.watch.time.sleep")
-    def test_regeneration_error_does_not_crash(self, mock_sleep, mock_gen, tmp_path):
-        """If generate_docs raises, the loop should continue."""
+    def test_raised_regeneration_error_retries_unchanged_batch(
+        self, mock_sleep, mock_gen, tmp_path,
+    ):
+        """A raised event-generation error remains pending for the next poll."""
         (tmp_path / "app.py").write_text("v1\n")
 
         call_count = 0
@@ -282,7 +284,7 @@ class TestWatchDocsLoop:
             call_count += 1
             if call_count == 1:
                 (tmp_path / "app.py").write_text("v2\n")
-            elif call_count >= 2:
+            elif call_count >= 3:
                 raise KeyboardInterrupt
 
         mock_sleep.side_effect = sleep_side_effect
@@ -290,6 +292,7 @@ class TestWatchDocsLoop:
         mock_gen.side_effect = [
             {"chapters_generated": [], "skipped": []},
             RuntimeError("LLM unavailable"),
+            {"chapters_generated": ["docs/01-overview.md"], "skipped": []},
         ]
 
         with pytest.raises(SystemExit):
@@ -301,11 +304,11 @@ class TestWatchDocsLoop:
                 verbose=False,
             )
 
-        assert mock_gen.call_count == 2
+        assert mock_gen.call_count == 3
 
     @patch("repoforge.docs_generator.generate_docs")
     @patch("repoforge.watch.time.sleep")
-    def test_returned_errors_report_one_failure_and_allow_retry(
+    def test_returned_errors_retry_unchanged_batch_on_next_poll(
         self, mock_sleep, mock_gen, tmp_path, capsys,
     ):
         (tmp_path / "app.py").write_text("v1\n")
@@ -316,9 +319,7 @@ class TestWatchDocsLoop:
             sleep_count += 1
             if sleep_count == 1:
                 (tmp_path / "app.py").write_text("v2\n")
-            elif sleep_count == 2:
-                (tmp_path / "app.py").write_text("v3\n")
-            else:
+            elif sleep_count >= 3:
                 raise KeyboardInterrupt
 
         def generate_side_effect(**kwargs):

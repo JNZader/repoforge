@@ -200,6 +200,7 @@ def watch_docs(
 
             _log(f"\u267B\uFE0F  Regenerating all chapters for {len(events)} event(s)...")
             started = time.monotonic()
+            generation_succeeded = False
 
             try:
                 result = generate_docs(
@@ -234,6 +235,7 @@ def watch_docs(
                         f"in {elapsed:.2f}s — {details}"
                     )
                 else:
+                    generation_succeeded = True
                     _log(f"\u2705 Regenerated {len(gen)} chapter(s), "
                          f"skipped {len(skipped)} in {elapsed:.2f}s")
             except (OSError, ValueError, RuntimeError) as exc:
@@ -241,7 +243,8 @@ def watch_docs(
                 elapsed = time.monotonic() - started
                 _log(f"\u274C Regeneration failed after {elapsed:.2f}s: {exc}")
 
-            prev_snapshot = new_snapshot
+            if generation_succeeded:
+                prev_snapshot = new_snapshot
             _log(f"\n\u23F3 Watching for changes...\n")
 
     except KeyboardInterrupt:
