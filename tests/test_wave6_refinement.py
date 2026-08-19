@@ -1,8 +1,11 @@
 """Tests for Wave 6: Refinement loop (generate → score → critique → regen)."""
 
+from unittest.mock import patch
+
 import pytest
 
 from repoforge.refinement import RefinementResult, refine_chapter
+from repoforge.scoring import DocScore
 
 GOOD_CONTENT = """# Architecture
 
@@ -47,8 +50,10 @@ class FakeLLM:
     def __init__(self, responses=None):
         self._responses = responses or [GOOD_CONTENT]
         self._call_count = 0
+        self.prompts = []
 
     def complete(self, prompt, system=None):
+        self.prompts.append(prompt)
         idx = min(self._call_count, len(self._responses) - 1)
         self._call_count += 1
         return self._responses[idx]
@@ -86,6 +91,9 @@ class TestRefineChapter:
             "user": "Generate architecture docs.",
         }
 
+    def _score(self, value):
+        return DocScore("03-architecture.md", value, value, value, value, value)
+
     def test_returns_refinement_result(self):
         llm = FakeLLM([GOOD_CONTENT])
         result = refine_chapter(llm, self._chapter())
@@ -97,6 +105,9 @@ class TestRefineChapter:
         result = refine_chapter(llm, self._chapter(), threshold=0.5)
         assert result.iterations == 1
         assert result.converged is True
+        assert len(result.score_progression) == 1
+        assert llm.call_count == 1
+        assert result.final_content == GOOD_CONTENT.strip() + "\n"
 
     def test_weak_content_triggers_refinement(self):
         # First call returns weak, second returns good
@@ -106,12 +117,21 @@ class TestRefineChapter:
         assert llm.call_count >= 2
 
     def test_max_iterations_caps_loop(self):
-        # Always returns weak content — should stop at max
-        llm = FakeLLM([WEAK_CONTENT] * 10)
-        result = refine_chapter(llm, self._chapter(), threshold=0.99, max_iterations=3)
+        chapter = self._chapter()
+        llm = FakeLLM(["first", "second", "third"])
+        scores = [self._score(0.1), self._score(0.2), self._score(0.3)]
+        with patch("repoforge.refinement.DocScorer") as scorer_type:
+            scorer_type.return_value.score_content.side_effect = scores
+            result = refine_chapter(llm, chapter, threshold=0.99, max_iterations=3)
+
         assert result.iterations == 3
         assert result.converged is False
         assert llm.call_count == 3
+        assert result.score_progression == [0.1, 0.2, 0.3]
+        assert llm.prompts[0] == chapter["user"]
+        assert "0.10/1.00" in llm.prompts[1]
+        assert "0.20/1.00" in llm.prompts[2]
+        assert result.final_content == "third\n"
 
     def test_score_progression_recorded(self):
         llm = FakeLLM([WEAK_CONTENT, GOOD_CONTENT])

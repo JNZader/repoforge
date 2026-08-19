@@ -51,6 +51,7 @@ def refine_chapter(
     scorer = DocScorer()
     scores: list[float] = []
     content = ""
+    previous_score: DocScore | None = None
 
     for i in range(max_iterations):
         if i == 0:
@@ -59,19 +60,22 @@ def refine_chapter(
             content = content.strip() + "\n"
         else:
             # Refinement: send content back with critique
-            critique_prompt = _build_critique_prompt(chapter, content, last_score)
+            if previous_score is None:
+                raise RuntimeError("refinement iteration is missing its prior score")
+            critique_prompt = _build_critique_prompt(chapter, content, previous_score)
             content = llm.complete(critique_prompt, system=chapter["system"])
             content = content.strip() + "\n"
 
-        last_score = scorer.score_content(content, chapter["file"])
-        scores.append(last_score.overall)
+        current_score = scorer.score_content(content, chapter["file"])
+        scores.append(current_score.overall)
+        previous_score = current_score
 
         logger.info(
             "Refinement iteration %d/%d for %s: score=%.2f (threshold=%.2f)",
-            i + 1, max_iterations, chapter["file"], last_score.overall, threshold,
+            i + 1, max_iterations, chapter["file"], current_score.overall, threshold,
         )
 
-        if last_score.overall >= threshold:
+        if current_score.overall >= threshold:
             return RefinementResult(
                 final_content=content,
                 iterations=i + 1,
