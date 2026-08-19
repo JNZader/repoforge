@@ -10,6 +10,7 @@ Tests cover:
 """
 
 from pathlib import Path
+from typing import get_type_hints
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +21,7 @@ from repoforge.graph_context import (
     build_structured_graph_context,
 )
 from repoforge.ir.context import ContextBundle
+from repoforge.symbols.graph import SymbolGraph
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -167,6 +169,16 @@ class TestFormatModuleSummary:
 
 
 class TestBuildStructuredGraphContext:
+    def test_runtime_type_hints_resolve(self):
+        hints = get_type_hints(build_structured_graph_context)
+
+        assert hints == {
+            "graph": CodeGraph,
+            "symbol_graph": SymbolGraph | None,
+            "max_modules": int,
+            "return": str,
+        }
+
     def test_returns_nonempty_for_graph_with_edges(self, sample_graph):
         result = build_structured_graph_context(sample_graph)
         assert result != ""

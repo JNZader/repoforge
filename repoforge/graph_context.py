@@ -22,6 +22,7 @@ from pathlib import Path
 from .facts import FactItem, extract_facts
 from .graph import CodeGraph, build_graph_v2, detect_communities, get_blast_radius_v2, is_test_file
 from .intelligence.ast_extractor import ASTSymbol
+from .symbols.graph import SymbolGraph
 
 logger = logging.getLogger(__name__)
 
