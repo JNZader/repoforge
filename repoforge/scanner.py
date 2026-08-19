@@ -439,7 +439,7 @@ def _detect_tech_stack(root: Path) -> list:
                     stack.append("Supabase")
             except (json.JSONDecodeError, OSError, KeyError) as e:
                 # JSON parse error, file read error, or missing key in package.json
-                logger.debug("Failed to parse package.json %s: %s", p, e)
+                logger.debug("Failed to parse package.json %s: %s", pkg, e)
 
     # Python framework hints — search all subdirs
     for search_root in search_roots:
