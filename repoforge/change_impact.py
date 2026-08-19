@@ -63,10 +63,13 @@ class ChangeImpactReport:
     commit: str | None = None
     """Commit SHA if triggered by a commit."""
 
+    direct_tests: list[str] = field(default_factory=list)
+    """Test files included directly in the changed paths."""
+
     @property
     def all_tests(self) -> list[str]:
         """All unique test files that should be run."""
-        tests: set[str] = set()
+        tests: set[str] = set(self.direct_tests)
         for m in self.mappings:
             tests.update(m.all_tests)
         return sorted(tests)
@@ -205,7 +208,10 @@ def analyze_change_impact(
 
     # Filter out test files from changed list (they ARE tests, not sources)
     source_files = [f for f in changed if not is_test_file(f)]
-    changed_tests = [f for f in changed if is_test_file(f)]
+    changed_tests = [
+        f for f in changed
+        if is_test_file(f) and (Path(root) / f).is_file()
+    ]
 
     if not source_files:
         # Only test files changed — they test themselves
@@ -213,6 +219,7 @@ def analyze_change_impact(
             changed_files=changed,
             mappings=[],
             commit=commit,
+            direct_tests=changed_tests,
         )
 
     # Build dependency graph
@@ -247,6 +254,7 @@ def analyze_change_impact(
         changed_files=changed,
         mappings=mappings,
         commit=commit,
+        direct_tests=changed_tests,
     )
 
 

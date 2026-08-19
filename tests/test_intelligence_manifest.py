@@ -236,18 +236,21 @@ def test_manifest_parser_emits_ignore_args():
     assert rows is not None
     ignores = _manifest_ignore_args()
     assert ignores is not None
-    # 22 original direct importers + 1 new transitive member = 23.
-    assert len(ignores) == 23, f"expected 23 ignore args, got {len(ignores)}"
-    assert "--ignore=tests/test_symbols/test_extractor.py" in ignores
-    assert len(ignores) == len(set(ignores)), "ignore args contain duplicates"
-    # The original 22 direct importers are preserved: manifest minus the new
-    # transitive member must equal the discovered direct-importer set.
-    source_set = _discover_direct_importers()
-    manifest_paths = {p for p, _ in rows}
-    assert manifest_paths - {"tests/test_symbols/test_extractor.py"} == source_set, (
-        "adding the transitive member must not drop or alter the 22 original "
-        "direct-importer paths"
-    )
+    direct_importers = _discover_direct_importers()
+    documented_transitive = {
+        path for path, annotation in rows
+        if TRANSITIVE_MARKER in (annotation or "")
+    }
+    expected_paths = direct_importers | documented_transitive
+    manifest_paths = [path for path, _ in rows]
+
+    assert len(direct_importers) == 23
+    assert documented_transitive == {"tests/test_symbols/test_extractor.py"}
+    assert len(expected_paths) == 24
+    assert set(manifest_paths) == expected_paths
+    assert len(manifest_paths) == len(set(manifest_paths)) == 24
+    assert set(ignores) == {f"--ignore={path}" for path in expected_paths}
+    assert len(ignores) == len(set(ignores)) == 24
 
 
 def test_undocumented_non_direct_entry_is_rejected():

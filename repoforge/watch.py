@@ -140,8 +140,8 @@ def watch_docs(
 ) -> None:
     """Run continuous watch loop: poll for changes, regenerate stale chapters.
 
-    Uses :class:`FileWatcher` for change detection and delegates to
-    :func:`generate_docs` with ``incremental=True`` for selective regeneration.
+    Uses :class:`FileWatcher` for change detection and delegates each event
+    batch to a full, silent :func:`generate_docs` run.
 
     The loop runs until interrupted with ``Ctrl+C``.
     """
@@ -198,8 +198,9 @@ def watch_docs(
             _log(f"\U0001F4C1 Detected {len(events)} change(s):")
             _log(_format_events(events))
 
-            changed_paths = [ev.path for ev in events]
-            _log(f"\u267B\uFE0F  Regenerating affected chapters...")
+            _log(f"\u267B\uFE0F  Regenerating all chapters for {len(events)} event(s)...")
+            started = time.monotonic()
+            generation_succeeded = False
 
             try:
                 result = generate_docs(
@@ -210,7 +211,7 @@ def watch_docs(
                     api_base=api_base,
                     language=language,
                     project_name=project_name,
-                    verbose=verbose,
+                    verbose=False,
                     dry_run=False,
                     complexity=complexity,
                     chunked=chunked,
@@ -218,20 +219,32 @@ def watch_docs(
                     verify_model=verify_model,
                     no_verify_docs=no_verify_docs,
                     facts_only=facts_only,
-                    incremental=True,
+                    incremental=False,
                 )
+                elapsed = time.monotonic() - started
                 gen = result.get("chapters_generated", [])
                 skipped = result.get("skipped", [])
-                if gen:
-                    _log(f"\u2705 Regenerated {len(gen)} chapter(s), "
-                         f"skipped {len(skipped)}")
+                errors = result.get("errors", [])
+                if errors:
+                    details = "; ".join(
+                        f"{error.get('file', 'unknown')}: {error.get('error', 'unknown error')}"
+                        for error in errors
+                    )
+                    _log(
+                        f"\u274C Regeneration failed: {len(errors)} chapter error(s) "
+                        f"in {elapsed:.2f}s — {details}"
+                    )
                 else:
-                    _log("\u2705 No chapters needed regeneration")
+                    generation_succeeded = True
+                    _log(f"\u2705 Regenerated {len(gen)} chapter(s), "
+                         f"skipped {len(skipped)} in {elapsed:.2f}s")
             except (OSError, ValueError, RuntimeError) as exc:
                 # OSError: file system errors; ValueError: config/parse errors; RuntimeError: LLM/pipeline errors
-                _log(f"\u274C Regeneration failed: {exc}")
+                elapsed = time.monotonic() - started
+                _log(f"\u274C Regeneration failed after {elapsed:.2f}s: {exc}")
 
-            prev_snapshot = new_snapshot
+            if generation_succeeded:
+                prev_snapshot = new_snapshot
             _log(f"\n\u23F3 Watching for changes...\n")
 
     except KeyboardInterrupt:

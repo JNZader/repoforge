@@ -1,6 +1,7 @@
 """Tests for Wave 11: MCP tool definitions + watch mode."""
 
 import json
+import subprocess
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
@@ -11,7 +12,23 @@ from repoforge.mcp_tools import (
     get_mcp_resource_definitions,
     get_mcp_tool_definitions,
 )
-from repoforge.watch import FileWatcher, WatchEvent, _format_events, _make_watch_logger
+from repoforge.watch import (
+    FileWatcher,
+    WatchEvent,
+    _format_events,
+    _make_watch_logger,
+    watch_docs,
+)
+
+
+def _init_watch_repo(root: Path) -> None:
+    (root / "pyproject.toml").write_text('[project]\nname = "watch-app"\n')
+    (root / "app.py").write_text('def version():\n    return "v1"\n')
+    subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "T"], cwd=root, check=True)
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=root, check=True, capture_output=True)
 
 # ── MCP tool definitions ─────────────────────────────────────────────────
 
@@ -196,8 +213,9 @@ class TestWatchDocsLoop:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                # Simulate a file change during first sleep
                 (tmp_path / "app.py").write_text("v2\n")
+                (tmp_path / "worker.py").write_text("new\n")
+                (tmp_path / "README.md").write_text("ignored\n")
             elif call_count >= 2:
                 raise KeyboardInterrupt
 
@@ -216,11 +234,11 @@ class TestWatchDocsLoop:
                 verbose=False,
             )
 
-        # Initial generation + at least one incremental regeneration
-        assert mock_gen.call_count >= 2
-        # All calls should have incremental=True
-        for c in mock_gen.call_args_list:
-            assert c.kwargs.get("incremental") is True or c[1].get("incremental") is True
+        assert mock_gen.call_count == 2
+        initial_call, event_call = mock_gen.call_args_list
+        assert initial_call.kwargs["incremental"] is True
+        assert event_call.kwargs["incremental"] is False
+        assert event_call.kwargs["verbose"] is False
 
     @patch("repoforge.docs_generator.generate_docs")
     @patch("repoforge.watch.time.sleep")
@@ -232,6 +250,8 @@ class TestWatchDocsLoop:
         def sleep_side_effect(_interval):
             nonlocal call_count
             call_count += 1
+            if call_count == 1:
+                (tmp_path / "README.md").write_text("ignored\n")
             if call_count >= 2:
                 raise KeyboardInterrupt
 
@@ -252,8 +272,10 @@ class TestWatchDocsLoop:
 
     @patch("repoforge.docs_generator.generate_docs")
     @patch("repoforge.watch.time.sleep")
-    def test_regeneration_error_does_not_crash(self, mock_sleep, mock_gen, tmp_path):
-        """If generate_docs raises, the loop should continue."""
+    def test_raised_regeneration_error_retries_unchanged_batch(
+        self, mock_sleep, mock_gen, tmp_path,
+    ):
+        """A raised event-generation error remains pending for the next poll."""
         (tmp_path / "app.py").write_text("v1\n")
 
         call_count = 0
@@ -262,7 +284,7 @@ class TestWatchDocsLoop:
             call_count += 1
             if call_count == 1:
                 (tmp_path / "app.py").write_text("v2\n")
-            elif call_count >= 2:
+            elif call_count >= 3:
                 raise KeyboardInterrupt
 
         mock_sleep.side_effect = sleep_side_effect
@@ -270,6 +292,7 @@ class TestWatchDocsLoop:
         mock_gen.side_effect = [
             {"chapters_generated": [], "skipped": []},
             RuntimeError("LLM unavailable"),
+            {"chapters_generated": ["docs/01-overview.md"], "skipped": []},
         ]
 
         with pytest.raises(SystemExit):
@@ -281,4 +304,91 @@ class TestWatchDocsLoop:
                 verbose=False,
             )
 
-        assert mock_gen.call_count == 2
+        assert mock_gen.call_count == 3
+
+    @patch("repoforge.docs_generator.generate_docs")
+    @patch("repoforge.watch.time.sleep")
+    def test_returned_errors_retry_unchanged_batch_on_next_poll(
+        self, mock_sleep, mock_gen, tmp_path, capsys,
+    ):
+        (tmp_path / "app.py").write_text("v1\n")
+        sleep_count = 0
+
+        def sleep_side_effect(_interval):
+            nonlocal sleep_count
+            sleep_count += 1
+            if sleep_count == 1:
+                (tmp_path / "app.py").write_text("v2\n")
+            elif sleep_count >= 3:
+                raise KeyboardInterrupt
+
+        def generate_side_effect(**kwargs):
+            if mock_gen.call_count == 1:
+                return {"chapters_generated": [], "skipped": [], "errors": []}
+            if mock_gen.call_count == 2:
+                if kwargs["verbose"]:
+                    print("🎉 Done!")
+                return {
+                    "chapters_generated": [],
+                    "skipped": [],
+                    "errors": [{"file": "01-overview.md", "error": "LLM failed"}],
+                }
+            return {
+                "chapters_generated": ["docs/01-overview.md"],
+                "skipped": [],
+                "errors": [],
+            }
+
+        mock_sleep.side_effect = sleep_side_effect
+        mock_gen.side_effect = generate_side_effect
+
+        with pytest.raises(SystemExit):
+            watch_docs(working_dir=str(tmp_path), interval=0.1, verbose=True)
+
+        output = capsys.readouterr().out
+        assert "🎉 Done!" not in output
+        assert output.count("❌ Regeneration failed:") == 1
+        assert output.count("✅ Regenerated 1 chapter(s), skipped 0") == 1
+        assert mock_gen.call_count == 3
+        for event_call in mock_gen.call_args_list[1:]:
+            assert event_call.kwargs["incremental"] is False
+            assert event_call.kwargs["verbose"] is False
+
+    @patch("repoforge.intelligence.verifier.build_llm")
+    @patch("repoforge.model_router.build_llm")
+    @patch("repoforge.watch.time")
+    def test_unchanged_head_edit_regenerates_all_real_chapters(
+        self, mock_time, mock_build_llm, mock_verifier_llm, tmp_path,
+    ):
+        _init_watch_repo(tmp_path)
+        generator = MagicMock(model="test-model")
+        generator.complete.return_value = "# Generated\n\nComplete chapter.\n"
+        verifier = MagicMock(model="test-verifier")
+        verifier.complete.return_value = "[]"
+        mock_build_llm.return_value = generator
+        mock_verifier_llm.return_value = verifier
+        initial_model_calls = 0
+        sleep_count = 0
+
+        def sleep_side_effect(_interval):
+            nonlocal initial_model_calls, sleep_count
+            sleep_count += 1
+            if sleep_count == 1:
+                initial_model_calls = generator.complete.call_count
+                (tmp_path / "app.py").write_text('def version():\n    return "v2"\n')
+            else:
+                raise KeyboardInterrupt
+
+        mock_time.sleep.side_effect = sleep_side_effect
+        mock_time.monotonic.side_effect = [10.0, 11.0]
+
+        with pytest.raises(SystemExit):
+            watch_docs(
+                working_dir=str(tmp_path),
+                output_dir="docs",
+                interval=0.1,
+                verbose=False,
+            )
+
+        assert initial_model_calls > 0
+        assert generator.complete.call_count == initial_model_calls * 2

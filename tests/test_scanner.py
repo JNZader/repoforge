@@ -3,6 +3,7 @@ tests/test_scanner.py - Tests for the deterministic scanner (no LLM needed).
 """
 
 import ast
+import logging
 import os
 import tempfile
 from pathlib import Path
@@ -100,6 +101,42 @@ class TestTechStackDetection:
         (tmp_path / "Dockerfile").write_text("FROM python:3.12\n")
         stack = _detect_tech_stack(tmp_path)
         assert "Docker" in stack
+
+    @pytest.mark.parametrize(
+        "manifest_path",
+        ["package.json", "frontend/package.json"],
+    )
+    def test_malformed_package_manifest_reports_its_path_and_continues(
+        self, tmp_path, caplog, manifest_path,
+    ):
+        manifest = tmp_path / manifest_path
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text("{not-json")
+        (tmp_path / "requirements.txt").write_text("fastapi\n")
+        caplog.set_level(logging.DEBUG, logger="repoforge.scanner")
+
+        stack = _detect_tech_stack(tmp_path)
+
+        assert "FastAPI" in stack
+        assert any(str(manifest) in record.getMessage() for record in caplog.records)
+
+    def test_each_malformed_package_manifest_reports_its_own_path(
+        self, tmp_path, caplog,
+    ):
+        root_manifest = tmp_path / "package.json"
+        nested_manifest = tmp_path / "frontend" / "package.json"
+        nested_manifest.parent.mkdir()
+        root_manifest.write_text("{root-invalid")
+        nested_manifest.write_text("{nested-invalid")
+        (tmp_path / "requirements.txt").write_text("fastapi\n")
+        caplog.set_level(logging.DEBUG, logger="repoforge.scanner")
+
+        stack = _detect_tech_stack(tmp_path)
+        diagnostics = [record.getMessage() for record in caplog.records]
+
+        assert "FastAPI" in stack
+        assert sum(str(root_manifest) in message for message in diagnostics) == 1
+        assert sum(str(nested_manifest) in message for message in diagnostics) == 1
 
 
 class TestPythonEnrichment:
