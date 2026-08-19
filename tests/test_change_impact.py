@@ -176,6 +176,49 @@ class TestAnalyzeChangeImpact:
         assert report.all_tests == ["tests/test_auth.py", "tests/test_service.py"]
         assert [mapping.source_file for mapping in report.mappings] == ["auth.py"]
 
+    @pytest.mark.parametrize("discovered", [False, True])
+    def test_nonexistent_direct_test_is_reporting_only(self, project_with_tests,
+        monkeypatch, discovered):
+        changed = ["tests/test_deleted.py"]
+        if discovered:
+            monkeypatch.setattr("repoforge.change_impact._get_changed_files", lambda *_: changed)
+
+        report = analyze_change_impact(
+            str(project_with_tests), files=None if discovered else changed,
+            commit="HEAD" if discovered else None,
+        )
+
+        assert report.changed_files == changed
+        assert report.direct_tests == []
+        assert report.all_tests == []
+
+    def test_nonexistent_source_remains_in_impact_analysis(self, project_with_tests):
+        changed = ["deleted.py"]
+
+        report = analyze_change_impact(str(project_with_tests), files=changed)
+
+        assert report.changed_files == changed
+        assert [mapping.source_file for mapping in report.mappings] == changed
+
+    def test_cli_json_excludes_nonexistent_direct_tests(self, project_with_tests):
+        import json
+
+        from click.testing import CliRunner
+
+        from repoforge.cli import main
+
+        changed = ["tests/test_service.py", "tests/test_deleted.py"]
+        args = ["change-impact", "-w", str(project_with_tests), "--json", "--quiet"]
+        for path in changed:
+            args.extend(["--files", path])
+
+        result = CliRunner().invoke(main, args)
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["changed_files"] == changed
+        assert payload["tests_to_run"] == ["tests/test_service.py"]
+
 class TestFormatChangeImpact:
     def test_format_basic(self):
         report = ChangeImpactReport(

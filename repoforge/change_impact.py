@@ -208,7 +208,10 @@ def analyze_change_impact(
 
     # Filter out test files from changed list (they ARE tests, not sources)
     source_files = [f for f in changed if not is_test_file(f)]
-    changed_tests = [f for f in changed if is_test_file(f)]
+    changed_tests = [
+        f for f in changed
+        if is_test_file(f) and (Path(root) / f).is_file()
+    ]
 
     if not source_files:
         # Only test files changed — they test themselves
