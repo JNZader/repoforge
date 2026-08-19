@@ -10,6 +10,7 @@ tests/test_intelligence/test_build_parser.py
 tests/test_intelligence/test_compressor.py
 tests/test_intelligence/test_extractor_registry.py
 tests/test_intelligence/test_lang_c.py
+tests/test_intelligence/test_lang_csharp.py
 tests/test_intelligence/test_lang_go.py
 tests/test_intelligence/test_lang_java.py
 tests/test_intelligence/test_lang_javascript.py

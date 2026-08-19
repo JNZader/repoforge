@@ -30,7 +30,7 @@ class CSharpASTExtractor:
 
     def __init__(self) -> None:
         # C# may not be available in tree-sitter-language-pack
-        self._parser = get_parser("c_sharp")
+        self._parser = get_parser("csharp")
 
     def extract_symbols(self, content: str, file_path: str) -> list[ASTSymbol]:
         root = parse_source(self._parser, content)
@@ -300,7 +300,6 @@ class CSharpASTExtractor:
             if child.type == "class_declaration":
                 attributes = self._get_attributes(child)
                 has_table = any("[Table" in a for a in attributes)
-                has_entity = any("DbContext" in node_text(child))
                 base_list = self._get_base_list(child)
                 is_entity = has_table or any("DbContext" in b for b in base_list)
 
