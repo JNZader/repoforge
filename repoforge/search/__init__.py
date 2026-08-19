@@ -13,22 +13,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# FAISS availability flag — checked once at import time
-SEARCH_AVAILABLE = False
-try:
-    import faiss  # noqa: F401
-    SEARCH_AVAILABLE = True
-except ImportError:
-    pass
-
-from .bm25 import BM25Index  # noqa: F401
-from .prepare import (  # noqa: F401
+from ._availability import SEARCH_AVAILABLE as SEARCH_AVAILABLE
+from .bm25 import BM25Index as BM25Index
+from .prepare import (
     module_to_text,
     node_to_text,
     prepare_all,
     symbol_to_text,
 )
-from .types import SearchResult  # noqa: F401
+from .types import SearchResult as SearchResult
 
 if TYPE_CHECKING:
     from .embedder import Embedder as Embedder
