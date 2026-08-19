@@ -367,7 +367,6 @@ def format_registry_list(entries: list[RepoEntry]) -> str:
     lines.append("-" * 80)
 
     for e in entries:
-        built = "yes" if e.last_built else "no"
         lines.append(
             f"{e.name:<25} {e.node_count:>6} {e.edge_count:>6} {e.file_count:>6}  {e.path}"
         )
