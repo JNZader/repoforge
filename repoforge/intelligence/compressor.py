@@ -61,7 +61,7 @@ def compress_file(content: str, file_path: str) -> str:
 
     # Try tree-sitter compression
     try:
-        from . import INTELLIGENCE_AVAILABLE
+        from ._availability import INTELLIGENCE_AVAILABLE
         if INTELLIGENCE_AVAILABLE:
             compressed = _compress_with_treesitter(content, ext)
             if compressed is not None:
@@ -212,7 +212,6 @@ def _python_function_skeleton(node, lines: list[str]) -> str:
     sig = " ".join(sig_parts) if sig_parts else _get_first_line(lines, node)
 
     # Reconstruct a clean signature
-    first_line = _get_first_line(lines, node)
     # Find colon position to get full signature
     sig = _extract_until_colon(lines, node)
 

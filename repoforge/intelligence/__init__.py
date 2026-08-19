@@ -8,27 +8,26 @@ The build parser is always available (pure Python, no extra deps).
 Tree-sitter features require: pip install repoforge-ai[intelligence]
 """
 
-# Tree-sitter availability flag — checked once at import time
-INTELLIGENCE_AVAILABLE = False
-try:
-    import tree_sitter  # noqa: F401
-    INTELLIGENCE_AVAILABLE = True
-except ImportError:
-    pass
+from ._availability import INTELLIGENCE_AVAILABLE as INTELLIGENCE_AVAILABLE
 
 # Build parser is always available (no extra deps)
 # AST types are always importable (no native deps)
-from .ast_extractor import ASTLanguageExtractor, ASTSymbol  # noqa: F401
+from .ast_extractor import ASTLanguageExtractor as ASTLanguageExtractor
+from .ast_extractor import ASTSymbol as ASTSymbol
 
 # Token-budgeted context selection (always available)
-from .budget import ContextItem, select_context  # noqa: F401
-from .build_parser import BuildInfo, parse_build_files  # noqa: F401
+from .budget import ContextItem as ContextItem
+from .budget import select_context as select_context
+from .build_parser import BuildInfo as BuildInfo
+from .build_parser import parse_build_files as parse_build_files
 
 # Source code compression (tree-sitter for full, fallback for basic)
-from .compressor import compress_batch, compress_file, compression_stats  # noqa: F401
+from .compressor import compress_batch as compress_batch
+from .compressor import compress_file as compress_file
+from .compressor import compression_stats as compression_stats
 
 # Pre-digested documentation chunks (always available)
-from .doc_chunks import (  # noqa: F401
+from .doc_chunks import (
     build_all_ast_symbols,
     chunk_architecture,
     chunk_cli_commands,
@@ -39,7 +38,7 @@ from .doc_chunks import (  # noqa: F401
 )
 
 # Registry convenience functions (gracefully return empty when tree-sitter unavailable)
-from .extractor_registry import (  # noqa: F401
+from .extractor_registry import (
     ast_extract_endpoints,
     ast_extract_schemas,
     ast_extract_symbols,
@@ -47,7 +46,8 @@ from .extractor_registry import (  # noqa: F401
 )
 
 # PageRank scoring (always available — no tree-sitter needed)
-from .ranker import pagerank, rank_files  # noqa: F401
+from .ranker import pagerank as pagerank
+from .ranker import rank_files as rank_files
 
 __all__ = [
     "INTELLIGENCE_AVAILABLE",

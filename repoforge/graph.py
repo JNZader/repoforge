@@ -477,7 +477,6 @@ def build_graph_v2(root_dir: str, files: list[str] | None = None) -> CodeGraph:
 
         imports = extractor.extract_imports(content)
         exports = extractor.extract_exports(content)
-        is_test = is_test_file(file_path)
 
         # Create node
         node = Node(

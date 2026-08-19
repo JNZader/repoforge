@@ -286,7 +286,6 @@ def _render_edge(
 
     # Control point for curve
     mid_y = (sy + ty) / 2
-    dx = tx - sx
 
     # Simple bezier curve
     path = f"M {sx},{sy} C {sx},{mid_y} {tx},{mid_y} {tx},{ty}"

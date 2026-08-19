@@ -432,7 +432,6 @@ def _extract_call_edges(
     """Extract Layer 2: function calls within each function body."""
     lines = content.split("\n")
     edges: list[CallEdgeInfo] = []
-    known_names = {n.name for n in ast_nodes}
 
     for node in ast_nodes:
         if node.kind != "function":

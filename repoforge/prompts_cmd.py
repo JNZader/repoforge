@@ -365,7 +365,6 @@ For each gap:
 def _build_performance_prompt(ctx: dict) -> AnalysisPrompt:
     """Performance bottlenecks prompt."""
     modules = ctx["modules"]
-    ast_symbols = ctx["ast_symbols"]
 
     # Find complex functions via analysis module
     complexity_lines: list[str] = []

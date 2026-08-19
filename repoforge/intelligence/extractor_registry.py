@@ -101,7 +101,7 @@ def get_ast_registry() -> ASTExtractorRegistry | None:
     if _ast_registry is not None:
         return _ast_registry
 
-    from . import INTELLIGENCE_AVAILABLE
+    from ._availability import INTELLIGENCE_AVAILABLE
     if not INTELLIGENCE_AVAILABLE:
         return None
 

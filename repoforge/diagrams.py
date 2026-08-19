@@ -242,7 +242,6 @@ def _extract_functions_and_calls(
         return [], {}
 
     # For each function, find calls within its body (until next function def)
-    lines = content.split("\n")
     calls_map: dict[str, list[str]] = {}
 
     for i, (fname, start_pos) in enumerate(func_defs):
@@ -969,7 +968,6 @@ def _parse_openapi_yaml_fallback(content: str) -> str:
 
     # Extract schemas
     schema_re = re.compile(r"^\s{4}(\w+):\s*$", re.MULTILINE)
-    in_schemas = False
     schemas_section = ""
 
     # Find the schemas section

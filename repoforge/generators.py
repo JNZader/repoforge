@@ -282,7 +282,6 @@ def _infer_prerequisites(tech_stack: list[str], config_files: list[str]) -> list
 def _infer_setup_steps(tech_stack: list[str], config_files: list[str]) -> list[str]:
     """Infer setup steps from tech stack and config files."""
     steps = ["Clone the repository"]
-    stack_lower = " ".join(tech_stack).lower()
     config_names = [f.lower() for f in config_files]
 
     if "pyproject.toml" in config_names or "requirements.txt" in config_names:

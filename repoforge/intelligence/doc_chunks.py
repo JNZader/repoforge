@@ -281,7 +281,6 @@ def chunk_architecture(
         lines.extend(graph_lines[:max_lines])
 
     if build_info and len(lines) < max_lines:
-        remaining = max_lines - len(lines)
         lines.append("\n### Build Information")
         if build_info.get("build_tool"):
             lines.append(f"- Build tool: {build_info['build_tool']}")
