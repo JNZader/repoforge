@@ -300,7 +300,6 @@ class CSharpASTExtractor:
             if child.type == "class_declaration":
                 attributes = self._get_attributes(child)
                 has_table = any("[Table" in a for a in attributes)
-                has_entity = any("DbContext" in node_text(child))
                 base_list = self._get_base_list(child)
                 is_entity = has_table or any("DbContext" in b for b in base_list)
 

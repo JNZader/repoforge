@@ -97,10 +97,6 @@ def _build_directory_tree(repo_map: dict, max_depth: int = 4) -> str:
 
         for d in dirs:
             child_path = f"{dir_path}/{d}" if dir_path != "." else d
-            child_files = tree.get(child_path, set())
-            # Count non-placeholder files
-            real_files = [f for f in child_files if not f.endswith(".placeholder")]
-            child_dirs = [e.rstrip("/") for e in child_files if e.endswith("/")]
             lines.append(f"{prefix}{d}/")
             render_dir(prefix + "  ", child_path, indent + 1)
 

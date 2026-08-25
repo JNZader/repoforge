@@ -198,8 +198,7 @@ def watch_docs(
             _log(f"\U0001F4C1 Detected {len(events)} change(s):")
             _log(_format_events(events))
 
-            changed_paths = [ev.path for ev in events]
-            _log(f"\u267B\uFE0F  Regenerating affected chapters...")
+            _log("\u267B\uFE0F  Regenerating affected chapters...")
 
             try:
                 result = generate_docs(
@@ -232,7 +231,7 @@ def watch_docs(
                 _log(f"\u274C Regeneration failed: {exc}")
 
             prev_snapshot = new_snapshot
-            _log(f"\n\u23F3 Watching for changes...\n")
+            _log("\n\u23F3 Watching for changes...\n")
 
     except KeyboardInterrupt:
         _log("\n\U0001F44B Watch mode stopped.")

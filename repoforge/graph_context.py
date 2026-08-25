@@ -270,7 +270,7 @@ def _format_module_summary(
 
 def build_structured_graph_context(
     graph: CodeGraph,
-    symbol_graph: "SymbolGraph | None" = None,
+    symbol_graph: "SymbolGraph | None" = None,  # noqa: F821  # forward-ref type hint; SymbolGraph defined in symbols/graph.py and lazily imported
     max_modules: int = 30,
 ) -> str:
     """Build a structured per-module context string for LLM prompts.

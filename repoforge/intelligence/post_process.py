@@ -160,7 +160,7 @@ def _strip_cot_preamble(
         removed_lines = lines[:stripped_count]
         content = "\n".join(lines[stripped_count:]).lstrip("\n")
         corrections.append(Correction(
-            original="\n".join(l for l in removed_lines if l.strip()),
+            original="\n".join(line for line in removed_lines if line.strip()),
             corrected="[removed]",
             reason=f"Stripped {stripped_count} chain-of-thought preamble line(s) from LLM output",
             line=1,
@@ -254,7 +254,7 @@ def _fix_versions(
                 corrections.append(Correction(
                     original=old_ver,
                     corrected=new_ver,
-                    reason=f"Replaced wrong Go version with real version from go.mod",
+                    reason="Replaced wrong Go version with real version from go.mod",
                     line=None,
                 ))
             return new_ver

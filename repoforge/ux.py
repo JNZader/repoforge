@@ -96,15 +96,15 @@ def diff_docs(old: str, new: str) -> DiffResult:
     if not diff:
         return DiffResult()
 
-    additions = sum(1 for l in diff if l.startswith("+") and not l.startswith("+++"))
-    deletions = sum(1 for l in diff if l.startswith("-") and not l.startswith("---"))
+    additions = sum(1 for line in diff if line.startswith("+") and not line.startswith("+++"))
+    deletions = sum(1 for line in diff if line.startswith("-") and not line.startswith("---"))
 
     return DiffResult(
         has_changes=True,
         additions=additions,
         deletions=deletions,
         modifications=min(additions, deletions),
-        diff_lines=[l.rstrip("\n") for l in diff],
+        diff_lines=[line.rstrip("\n") for line in diff],
     )
 
 

@@ -102,7 +102,7 @@ class LlmsTxtRenderer(RendererProtocol):
             "",
         ]
         for ch in chapters:
-            full_lines.append(f"---")
+            full_lines.append("---")
             full_lines.append(f"## {ch['title']}")
             full_lines.append(f"<!-- source: {ch['file']} -->")
             full_lines.append("")

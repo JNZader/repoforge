@@ -18,17 +18,18 @@ except ImportError:
 
 # Build parser is always available (no extra deps)
 # AST types are always importable (no native deps)
-from .ast_extractor import ASTLanguageExtractor, ASTSymbol  # noqa: F401
+# Re-exports are after the availability check (line 13-17) — not first-line imports.
+from .ast_extractor import ASTLanguageExtractor, ASTSymbol  # noqa: E402
 
 # Token-budgeted context selection (always available)
-from .budget import ContextItem, select_context  # noqa: F401
-from .build_parser import BuildInfo, parse_build_files  # noqa: F401
+from .budget import ContextItem, select_context  # noqa: E402
+from .build_parser import BuildInfo, parse_build_files  # noqa: E402
 
 # Source code compression (tree-sitter for full, fallback for basic)
-from .compressor import compress_batch, compress_file, compression_stats  # noqa: F401
+from .compressor import compress_batch, compress_file, compression_stats  # noqa: E402
 
 # Pre-digested documentation chunks (always available)
-from .doc_chunks import (  # noqa: F401
+from .doc_chunks import (  # noqa: E402
     build_all_ast_symbols,
     chunk_architecture,
     chunk_cli_commands,
@@ -39,7 +40,7 @@ from .doc_chunks import (  # noqa: F401
 )
 
 # Registry convenience functions (gracefully return empty when tree-sitter unavailable)
-from .extractor_registry import (  # noqa: F401
+from .extractor_registry import (  # noqa: E402
     ast_extract_endpoints,
     ast_extract_schemas,
     ast_extract_symbols,
@@ -47,7 +48,7 @@ from .extractor_registry import (  # noqa: F401
 )
 
 # PageRank scoring (always available — no tree-sitter needed)
-from .ranker import pagerank, rank_files  # noqa: F401
+from .ranker import pagerank, rank_files  # noqa: E402
 
 __all__ = [
     "INTELLIGENCE_AVAILABLE",

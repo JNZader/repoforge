@@ -286,7 +286,6 @@ def _render_edge(
 
     # Control point for curve
     mid_y = (sy + ty) / 2
-    dx = tx - sx
 
     # Simple bezier curve
     path = f"M {sx},{sy} C {sx},{mid_y} {tx},{mid_y} {tx},{ty}"
@@ -394,8 +393,8 @@ def generate_svg_diagram(
     # Defs (arrowhead marker)
     parts.append("  <defs>")
     parts.append(
-        f'    <marker id="arrowhead" markerWidth="10" markerHeight="7" '
-        f'refX="10" refY="3.5" orient="auto">'
+        '    <marker id="arrowhead" markerWidth="10" markerHeight="7" '
+        'refX="10" refY="3.5" orient="auto">'
     )
     parts.append(f'      <polygon points="0 0, 10 3.5, 0 7" fill="{style.edge_color}" />')
     parts.append("    </marker>")

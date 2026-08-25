@@ -189,7 +189,7 @@ def generate_artifacts(
     _graph_ctx = ""
     try:
         from .graph import build_graph_v2
-        log(f"\n🔗 Building dependency graph...")
+        log("\n🔗 Building dependency graph...")
         _graph = build_graph_v2(str(root))
         _graph_ctx = build_short_graph_context(_graph)
         module_count = len([n for n in _graph.nodes if n.node_type == "module"])
@@ -208,14 +208,14 @@ def generate_artifacts(
     ]
     _facts_ctx = ""
     try:
-        log(f"🔍 Extracting semantic facts...")
+        log("🔍 Extracting semantic facts...")
         from .facts import extract_facts as _extract_facts
         _all_facts = _extract_facts(str(root), _all_files)
         _facts_ctx = format_facts_section(_all_facts)
         if _all_facts:
             log(f"   ✅ Facts: {len(_all_facts)} items extracted")
         else:
-            log(f"   ℹ️  No semantic facts found")
+            log("   ℹ️  No semantic facts found")
     except (ImportError, OSError, ValueError) as e:
         # ImportError: facts module not available; OSError: file read errors
         # ValueError: parse failures in fact extraction
@@ -503,7 +503,7 @@ def generate_artifacts(
         plugin_summary = f", {generated['plugin']['total_commands']} commands (plugin)"
 
     if dry_run:
-        log(f"\n🔍 DRY RUN — no LLM calls, no files written")
+        log("\n🔍 DRY RUN — no LLM calls, no files written")
         log(f"   Would generate {len(generated['skills'])} skills, {len(generated['agents'])} agents{plugin_summary}")
         log(f"   Targets: {targets_summary}")
         log(f"   Output: {_rel(out, root)}")

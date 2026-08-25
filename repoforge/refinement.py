@@ -59,7 +59,7 @@ def refine_chapter(
             content = content.strip() + "\n"
         else:
             # Refinement: send content back with critique
-            critique_prompt = _build_critique_prompt(chapter, content, last_score)
+            critique_prompt = _build_critique_prompt(chapter, content, last_score)  # noqa: F821  # loop-carried: assigned at end of every iteration
             content = llm.complete(critique_prompt, system=chapter["system"])
             content = content.strip() + "\n"
 

@@ -21,14 +21,15 @@ try:
 except ImportError:
     pass
 
-from .bm25 import BM25Index  # noqa: F401
-from .prepare import (  # noqa: F401
+# Re-exports are after the availability check (line 16-22) — not first-line imports.
+from .bm25 import BM25Index  # noqa: E402
+from .prepare import (  # noqa: E402
     module_to_text,
     node_to_text,
     prepare_all,
     symbol_to_text,
 )
-from .types import SearchResult  # noqa: F401
+from .types import SearchResult  # noqa: E402
 
 if TYPE_CHECKING:
     from .embedder import Embedder as Embedder
