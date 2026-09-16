@@ -1180,7 +1180,11 @@ def graph(workspace, output_path, fmt, graph_type, blast_radius, v2, depth, max_
                 else:
                     output = code_graph.to_mermaid()
             elif fmt == "json":
-                output = code_graph.to_json()
+                if v2:
+                    from .incremental import graph_json_identity
+                    output = code_graph.to_json(identity=graph_json_identity(workspace))
+                else:
+                    output = code_graph.to_json()
             elif fmt == "dot":
                 output = code_graph.to_dot()
             else:

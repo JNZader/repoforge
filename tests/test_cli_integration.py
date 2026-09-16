@@ -5,6 +5,7 @@ Exercises real CLI commands via Click's CliRunner against actual
 temp repos. No mocks except where LLM calls are involved.
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -600,6 +601,51 @@ class TestGraphV2Command:
         assert "edges" in data
         assert isinstance(data["nodes"], list)
         assert isinstance(data["edges"], list)
+        expected_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=sample_repo, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        expected_ls = subprocess.run(
+            ["git", "ls-files", "-s"],
+            cwd=sample_repo, capture_output=True, text=True, check=True,
+        ).stdout
+        expected_index = "index-sha256:" + hashlib.sha256(
+            expected_ls.encode("utf-8")
+        ).hexdigest()
+        expected_repo = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=sample_repo, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        assert data["repository"] == expected_repo
+        assert data["source_revision"] == expected_sha
+        assert data["dirty"] is False  # porcelain: True iff git status --porcelain has output
+        assert data["index_revision"] == expected_index
+
+    def test_graph_v2_json_identity_without_git(self, runner, tmp_path):
+        (tmp_path / "main.py").write_text("def hello():\n    return 1\n")
+        result = runner.invoke(main, [
+            "graph", "-w", str(tmp_path),
+            "--v2", "--format", "json", "-q",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["repository"] == str(tmp_path.resolve())
+        assert data["source_revision"] is None
+        assert data["dirty"] is None
+        assert data["index_revision"] is None
+
+    def test_graph_v2_json_identity_empty_head(self, runner, tmp_path):
+        (tmp_path / "main.py").write_text("x = 1\n")
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
+        result = runner.invoke(main, [
+            "graph", "-w", str(tmp_path),
+            "--v2", "--format", "json", "-q",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["source_revision"] is None
+        assert data["dirty"] is True
+        assert data["repository"]
 
     def test_graph_v2_dot(self, runner, sample_repo):
         """--v2 --format dot should produce valid DOT output."""

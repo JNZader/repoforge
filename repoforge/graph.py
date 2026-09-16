@@ -49,6 +49,7 @@ class Edge:
 class CodeGraph:
     nodes: list[Node] = field(default_factory=list)
     edges: list[Edge] = field(default_factory=list)
+    identity: Optional[dict] = None
 
     # Internal indexes (rebuilt on access)
     _node_index: dict[str, Node] = field(default_factory=dict, repr=False)
@@ -158,8 +159,12 @@ class CodeGraph:
 
         return "\n".join(lines)
 
-    def to_json(self) -> str:
-        """Export as JSON (nodes + edges format, compatible with D3/Cytoscape)."""
+    def to_json(self, identity: Optional[dict] = None) -> str:
+        """Export as JSON (nodes + edges format, compatible with D3/Cytoscape).
+
+        Optional identity is merged at the top level only when set (kwarg or
+        CodeGraph.identity). Default output stays {nodes, edges} only.
+        """
         data = {
             "nodes": [
                 {
@@ -183,6 +188,9 @@ class CodeGraph:
                 for e in self.edges
             ],
         }
+        payload = self.identity if identity is None else identity
+        if payload:
+            data.update(payload)
         return json.dumps(data, indent=2) + "\n"
 
     def to_dot(self) -> str:
