@@ -630,6 +630,37 @@ class TestToJSON:
         assert data["nodes"] == []
         assert data["edges"] == []
 
+    def test_json_default_keys_are_only_nodes_and_edges(self, small_graph):
+        data = json.loads(small_graph.to_json())
+        assert set(data) == {"nodes", "edges"}
+
+    def test_json_identity_kwarg_merges_top_level(self, empty_graph):
+        data = json.loads(empty_graph.to_json(identity={
+            "repository": "/tmp/repo",
+            "source_revision": "abc",
+            "dirty": False,
+            "index_revision": "def",
+        }))
+        assert data["repository"] == "/tmp/repo"
+        assert data["source_revision"] == "abc"
+        assert data["dirty"] is False
+        assert data["index_revision"] == "def"
+        assert data["nodes"] == []
+        assert data["edges"] == []
+
+    def test_json_identity_field_merges_top_level(self, empty_graph):
+        empty_graph.identity = {
+            "repository": "/tmp/repo",
+            "source_revision": None,
+            "dirty": None,
+            "index_revision": None,
+        }
+        data = json.loads(empty_graph.to_json())
+        assert data["repository"] == "/tmp/repo"
+        assert data["source_revision"] is None
+        assert data["dirty"] is None
+        assert data["index_revision"] is None
+
 
 # ---------------------------------------------------------------------------
 # Tests: to_dot()

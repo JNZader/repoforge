@@ -125,6 +125,44 @@ def get_git_sha(repo_root: Path) -> str:
     return ""
 
 
+def _git_stdout(repo_root: Path, *args: str) -> Optional[str]:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            return result.stdout
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+    return None
+
+
+def graph_json_identity(workspace: str | Path) -> dict:
+    """Identity fields for graph --v2 --format json. Missing git stays nullable."""
+    root = Path(workspace).resolve()
+    toplevel = _git_stdout(root, "rev-parse", "--show-toplevel")
+    porcelain = _git_stdout(root, "status", "--porcelain")
+    ls_files = _git_stdout(root, "ls-files", "-s")
+    sha = get_git_sha(root)
+    if ls_files is not None:
+        index_revision = (
+            "index-sha256:"
+            + hashlib.sha256(ls_files.encode("utf-8")).hexdigest()
+        )
+    else:
+        index_revision = None
+    return {
+        "repository": (toplevel.strip() if toplevel else str(root)),
+        "source_revision": sha or None,
+        "dirty": bool(porcelain.strip()) if porcelain is not None else None,  # True iff git status --porcelain has output
+        "index_revision": index_revision,
+    }
+
+
 def get_changed_files(repo_root: Path, old_sha: str) -> list[str]:
     """Return list of files changed between *old_sha* and HEAD.
 
