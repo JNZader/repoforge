@@ -87,7 +87,7 @@ pip install repoforge-ai
 Algunos comandos necesitan dependencias extra. Instalá solo lo que uses:
 
 ```bash
-pip install "repoforge-ai[intelligence]"  # análisis AST multi-lenguaje (tree-sitter) para `analyze`, `slice`
+pip install "repoforge-ai[intelligence]"  # firmas tree-sitter en la API surface de docs; no lo usan `analyze` ni `slice`
 pip install "repoforge-ai[search]"        # índice de búsqueda semántica (faiss) para `index`/`query`
 pip install "repoforge-ai[pdf]"           # ingesta de PDF para `skills-from-docs`
 pip install "repoforge-ai[youtube]"       # ingesta de transcripciones de YouTube para `skills-from-docs`
@@ -110,8 +110,7 @@ scoop install ripgrep
 |---|---|
 | `repoforge docs` | Genera documentación técnica lista para Docsify |
 | `repoforge skills` | Genera skills y agentes para herramientas de coding |
-| `repoforge skills-from-docs` | Genera `SKILL.md` desde docs externas (URL, repo de GitHub, directorio local, PDF, YouTube, notebook) |
-| `repoforge index` | Construye un índice de búsqueda semántica a partir de las entidades del código |
+| `repoforge index` | Construye un índice de búsqueda semántica (llama a una API de embeddings) |
 
 ### Comandos determinísticos (sin API key)
 
@@ -126,7 +125,8 @@ scoop install ripgrep
 | `repoforge check` | Valida referencias a código en las docs generadas |
 | `repoforge diff` | Diff semántico a nivel de entidad entre dos refs de git |
 | `repoforge audit` | Corre todos los chequeos de análisis de una sola vez |
-| `repoforge analyze` | Análisis multicapa: AST + grafo de llamadas + CFG + DFG + PDG |
+| `repoforge skills-from-docs` | Rellena una plantilla de `SKILL.md` desde docs externas (URL, repo de GitHub, directorio local, PDF, YouTube, notebook). No llama a un LLM |
+| `repoforge analyze` | Capas por regex: símbolos, llamadas, CFG, DFG, PDG. No necesita `[intelligence]` |
 | `repoforge search` | Búsqueda semántica de código por comportamiento |
 | `repoforge query` | Busca en un índice ya construido |
 | `repoforge blast-radius` | Radio de impacto transitivo de un cambio |
@@ -134,7 +134,7 @@ scoop install ripgrep
 | `repoforge co-change` | Detecta archivos que siempre cambian juntos |
 | `repoforge ownership` | Calcula ownership de archivos/módulos y bus factor |
 | `repoforge dead-code` | Detecta código potencialmente muerto vía análisis de grafo |
-| `repoforge slice` | Program slice para una línea específica |
+| `repoforge slice` | Program slice de una línea, con el mismo análisis por regex. No necesita `[intelligence]` |
 | `repoforge decisions` | Registro de decisiones desde el historial de git y marcadores inline |
 | `repoforge context-prune` | Poda de contexto consciente del grafo para review con LLM |
 | `repoforge prompts` | Genera prompts de análisis reutilizables desde un escaneo |
@@ -564,7 +564,7 @@ También existe un comando `repoforge diagrams` que escribe un archivo markdown 
 Más allá de docs y skills, RepoForge expone un conjunto de comandos de análisis de código determinísticos (sin API key salvo que se indique). Sirven para planificar refactors, delimitar el alcance de un review y hacer arqueología del código.
 
 ```bash
-# Análisis multicapa: AST + grafo de llamadas + CFG + DFG + PDG (necesita el extra [intelligence])
+# Capas por regex: símbolos, llamadas, CFG, DFG, PDG. Sin extra [intelligence].
 repoforge analyze -w .
 
 # Radio de impacto transitivo de un cambio
@@ -602,15 +602,14 @@ Para trabajo cross-repo, `repoforge registry` mantiene un registro de repositori
 
 ## Servidor MCP
 
-RepoForge trae un servidor MCP (Model Context Protocol) que expone su análisis determinístico a agentes compatibles con MCP. Provee estas tools:
+RepoForge trae un servidor MCP (Model Context Protocol) que expone su análisis determinístico a agentes compatibles con MCP. `list_tools` registra estas tools:
 
-- `repoforge_generate_docs`
 - `repoforge_score`
 - `repoforge_graph`
-- `repoforge_scan`
+- `repoforge_changelog`
 - `repoforge_drift`
-
-más recursos de contexto (documentación generada, `LLMs.txt`, el grafo de conocimiento del código, los scores de calidad y la superficie de API pública).
+- `repoforge_analyze`
+- `repoforge_context`
 
 Agregalo a la configuración de tu cliente MCP (por ejemplo `~/.claude/settings.json`):
 
@@ -919,7 +918,7 @@ Distinción importante: el LLM genera el texto, pero el análisis estructural, e
 
 ## Costo
 
-El único paso pago es la generación de texto por LLM (`docs`, `skills`, `skills-from-docs`, `index`). Todos los demás comandos son gratis de correr.
+El único paso pago es la generación de texto por LLM (`docs`, `skills`, `index`). `skills-from-docs` rellena una plantilla y no llama a un modelo. Todos los demás comandos son gratis de correr.
 
 | Modelo | Costo |
 |---|---|
@@ -933,7 +932,7 @@ El costo real depende del tamaño del repo, la cantidad de capítulos y el prici
 
 ## Stacks soportados
 
-Escaneo agnóstico del lenguaje, con análisis profundo a nivel de AST (el pipeline `analyze`/`slice`) en 13 lenguajes: Python, TypeScript, JavaScript, Go, Java, Kotlin, Rust, Ruby, PHP, C, C++, C# y Swift.
+El escaneo es agnóstico del lenguaje. `analyze` y `slice` son regex sobre Python, TypeScript, JavaScript, Go, Java y Rust. No usan tree-sitter. El extra `[intelligence]` aporta firmas tree-sitter para la API surface de la documentación.
 
 Los extractores de grafo (`graph --v2`, radio de impacto) cubren un subconjunto central — Python, TypeScript, JavaScript, Go, Java y Rust — más monorepos mixtos.
 

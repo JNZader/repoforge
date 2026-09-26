@@ -74,6 +74,8 @@ The `[intelligence]` extra already parses signatures with tree-sitter. Python, T
 
 **Check:** a test asserts the names `list_tools` returns. The README sections above match those names and the cost table.
 
+**Status:** done on `roadmap/generation-truth`. `pytest tests/test_mcp_contract.py` — 2 passed. Both READMEs list the six registered tools, move `skills-from-docs` out of the paid commands, and stop saying `analyze`/`slice` need `[intelligence]`. The 8x claim stays out of the README. `repoforge docs` still does not fail a chapter on the S3 checker.
+
 ### S5 — Stale chapters
 
 Only after S3 is green. Regenerating a false chapter faster is not a product.
