@@ -19,15 +19,18 @@ from pathlib import Path
 from typing import Optional, Union
 
 from .docs_prompts import get_chapter_prompts
+from .factuality import repair_invented_chapter
 from .incremental import (
     ChapterEntry,
     Manifest,
-    build_chapter_deps,
     content_hash,
     get_changed_files,
     get_git_sha,
     get_stale_chapters,
     now_iso,
+    prompt_consumed_files,
+    recorded_consumed_files,
+    _all_source_files,
 )
 from .incremental import (
     load_manifest as _load_manifest,
@@ -198,12 +201,12 @@ def generate_docs(
     # ------------------------------------------------------------------
     _git_sha = get_git_sha(root) if incremental else ""
     _manifest = None
-    _chapter_deps: dict[str, list[str]] = {}
+    _chapter_deps = prompt_consumed_files(chapters, _all_source_files(repo_map))
     skipped_chapters: list[str] = []
 
     if incremental:
         _manifest = _load_manifest(out)
-        _chapter_deps = build_chapter_deps(repo_map, chapters)
+        _stale_deps = recorded_consumed_files(chapters, _manifest, _chapter_deps)
         if _manifest is None:
             log("\n⚠️  No manifest found — full generation will run")
         else:
@@ -216,7 +219,7 @@ def generate_docs(
                     "skipped": [c["file"] for c in chapters],
                     "incremental": True,
                 }
-            stale = get_stale_chapters(chapters, _manifest, changed, _chapter_deps)
+            stale = get_stale_chapters(chapters, _manifest, changed, _stale_deps)
 
             # Semantic dedup: second-pass filter by embedding similarity
             if semantic_dedup and stale:
@@ -226,7 +229,7 @@ def generate_docs(
                     cache_dir=out,
                 )
                 pre_count = len(stale)
-                stale = _sem_filter.filter_stale(stale, _chapter_deps, root)
+                stale = _sem_filter.filter_stale(stale, _stale_deps, root)
                 sem_skipped = pre_count - len(stale)
                 if sem_skipped:
                     log(f"🧠 Semantic dedup: {sem_skipped} chapter(s) skipped (similarity >= {semantic_threshold})")
@@ -310,6 +313,13 @@ def generate_docs(
             if pt:
                 content = render_page_sections(pt, content)
                 safe_log(" 📄", end="")
+
+            content, block = repair_invented_chapter(
+                llm, content, list(_pp_facts or []),
+            )
+            if block:
+                safe_log(f"❌ {block}")
+                return {"error": {"file": chapter["file"], "error": block}}
 
             safe_log("")
 

@@ -87,7 +87,7 @@ pip install repoforge-ai
 Some commands need extra dependencies. Install only what you use:
 
 ```bash
-pip install "repoforge-ai[intelligence]"  # multi-language AST analysis (tree-sitter) for `analyze`, `slice`
+pip install "repoforge-ai[intelligence]"  # tree-sitter signatures in the docs API surface; not used by `analyze` or `slice`
 pip install "repoforge-ai[search]"        # semantic search index (faiss) for `index`/`query`
 pip install "repoforge-ai[pdf]"           # PDF ingestion for `skills-from-docs`
 pip install "repoforge-ai[youtube]"       # YouTube transcript ingestion for `skills-from-docs`
@@ -110,8 +110,7 @@ scoop install ripgrep
 |---|---|
 | `repoforge docs` | Generate Docsify-ready technical documentation |
 | `repoforge skills` | Generate skills and agents for coding tools |
-| `repoforge skills-from-docs` | Generate `SKILL.md` from external docs (URL, GitHub repo, local dir, PDF, YouTube, notebook) |
-| `repoforge index` | Build a semantic search index from codebase entities |
+| `repoforge index` | Build a semantic search index from codebase entities (calls an embedding API) |
 
 ### Deterministic commands (no API key)
 
@@ -126,7 +125,8 @@ scoop install ripgrep
 | `repoforge check` | Validate code references in generated docs |
 | `repoforge diff` | Entity-level semantic diff between two git refs |
 | `repoforge audit` | Run all analysis checks in one shot |
-| `repoforge analyze` | Multi-layer analysis: AST + call graph + CFG + DFG + PDG |
+| `repoforge skills-from-docs` | Fill a `SKILL.md` template from external docs (URL, GitHub repo, local dir, PDF, YouTube, notebook). No LLM call |
+| `repoforge analyze` | Regex layers: symbols, calls, CFG, DFG, PDG. Does not need `[intelligence]` |
 | `repoforge search` | Semantic code search by behavior |
 | `repoforge query` | Search a previously built index |
 | `repoforge blast-radius` | Transitive blast radius of a change |
@@ -134,7 +134,7 @@ scoop install ripgrep
 | `repoforge co-change` | Detect files that always change together |
 | `repoforge ownership` | Compute file/module ownership and bus factor |
 | `repoforge dead-code` | Detect potentially dead code via graph analysis |
-| `repoforge slice` | Program slice for a specific line |
+| `repoforge slice` | Program slice for a specific line, from the same regex analysis. Does not need `[intelligence]` |
 | `repoforge decisions` | Decision registry from git history and inline markers |
 | `repoforge context-prune` | Graph-aware context pruning for LLM review |
 | `repoforge prompts` | Generate reusable analysis prompts from a scan |
@@ -564,7 +564,7 @@ There is also a `repoforge diagrams` command that writes a combined markdown fil
 Beyond docs and skills, RepoForge exposes a set of deterministic code-analysis commands (no API key required unless noted). These power refactor planning, review scoping, and codebase archaeology.
 
 ```bash
-# Multi-layer analysis: AST + call graph + CFG + DFG + PDG (needs [intelligence] extra)
+# Regex layers: symbols, calls, CFG, DFG, PDG. No [intelligence] extra.
 repoforge analyze -w .
 
 # Transitive blast radius of a change
@@ -602,15 +602,14 @@ For cross-repo work, `repoforge registry` maintains a registry of repositories a
 
 ## MCP Server
 
-RepoForge ships an MCP (Model Context Protocol) server that exposes its deterministic analysis to MCP-capable agents. It provides these tools:
+RepoForge ships an MCP (Model Context Protocol) server that exposes its deterministic analysis to MCP-capable agents. `list_tools` registers these tools:
 
-- `repoforge_generate_docs`
 - `repoforge_score`
 - `repoforge_graph`
-- `repoforge_scan`
+- `repoforge_changelog`
 - `repoforge_drift`
-
-plus context resources (generated documentation, `LLMs.txt`, the code knowledge graph, quality scores, and the public API surface).
+- `repoforge_analyze`
+- `repoforge_context`
 
 Add it to your MCP client config (for example `~/.claude/settings.json`):
 
@@ -919,7 +918,7 @@ Important distinction: the LLM generates text, but the structural analysis, grap
 
 ## Cost
 
-The only paid step is LLM text generation (`docs`, `skills`, `skills-from-docs`, `index`). Every other command is free to run.
+The only paid step is LLM text generation (`docs`, `skills`, `index`). `skills-from-docs` fills a template and does not call a model. Every other command is free to run.
 
 | Model | Cost |
 |---|---|
@@ -933,7 +932,7 @@ Actual cost depends on repo size, chapter count, and model pricing. Use `--dry-r
 
 ## Supported Stacks
 
-Language-agnostic scanning, with deep AST-level analysis (the `analyze`/`slice` pipeline) across 13 languages: Python, TypeScript, JavaScript, Go, Java, Kotlin, Rust, Ruby, PHP, C, C++, C#, and Swift.
+Scanning is language-agnostic. `analyze` and `slice` are regex over Python, TypeScript, JavaScript, Go, Java, and Rust. They do not use tree-sitter. The `[intelligence]` extra supplies tree-sitter signatures for the docs API surface.
 
 The graph extractors (`graph --v2`, blast radius) cover a core subset — Python, TypeScript, JavaScript, Go, Java, and Rust — plus mixed monorepos.
 

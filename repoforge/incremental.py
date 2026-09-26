@@ -284,6 +284,101 @@ def _match_chapter_to_layers(
 # ---------------------------------------------------------------------------
 
 
+def _norm_repo_path(path: str) -> str:
+    """Compare repo-relative paths without a leading ./ or backslashes."""
+    text = path.replace("\\", "/").strip()
+    while text.startswith("./"):
+        text = text[2:]
+    return text
+
+
+def stale_chapter_names(
+    changed_files: list[str],
+    consumed_by_chapter: dict[str, list[str]],
+) -> list[str]:
+    """Return chapters whose consumed files include a changed path.
+
+    A chapter that did not consume a changed path stays current. This does
+    not regenerate prose. Order follows ``consumed_by_chapter``.
+    """
+    changed = {_norm_repo_path(path) for path in changed_files if path.strip()}
+    stale: list[str] = []
+    for name, files in consumed_by_chapter.items():
+        consumed = {_norm_repo_path(path) for path in files}
+        if changed & consumed:
+            stale.append(name)
+    return stale
+
+
+def files_cited_in_prompt(prompt: str, known_files: list[str]) -> list[str]:
+    """Known repo paths that appear in ``prompt`` as whole paths.
+
+    ``app/main.py`` does not match inside ``apps/server/app/main.py``.
+    Result order follows ``known_files``.
+    """
+    cited: list[str] = []
+    for path in known_files:
+        if path and _path_is_cited(prompt, path):
+            cited.append(path)
+    return cited
+
+
+def _path_is_cited(prompt: str, path: str) -> bool:
+    start = 0
+    while True:
+        index = prompt.find(path, start)
+        if index < 0:
+            return False
+        before = prompt[index - 1] if index else ""
+        after_at = index + len(path)
+        after = prompt[after_at] if after_at < len(prompt) else ""
+        if before not in "/\\" and after not in "/_\\" and not after.isalnum():
+            return True
+        start = index + 1
+
+
+def prompt_consumed_files(
+    chapters: list[dict],
+    known_files: list[str],
+) -> dict[str, list[str]]:
+    """Files cited in each chapter's graph context, not the module catalog.
+
+    The overview prompt lists every scanned module. That catalog is the
+    all-files guess again. Consumption is ``context_source``: the graph,
+    facts, or API surface interpolated into the prompt. Chapters built
+    before that field existed fall back to the full user prompt.
+    """
+    consumed: dict[str, list[str]] = {}
+    for chapter in chapters:
+        source = chapter.get("context_source")
+        if source is None:
+            source = chapter.get("user", "")
+        consumed[chapter["file"]] = files_cited_in_prompt(source, known_files)
+    return consumed
+
+
+def recorded_consumed_files(
+    chapters: list[dict],
+    manifest: Optional[Manifest],
+    guessed: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """Prefer the files a chapter already recorded over a fresh guess.
+
+    ``build_chapter_deps`` marks overview and architecture as depending on
+    every scanned file. After a manifest exists, staleness uses the files
+    that chapter actually consumed.
+    """
+    consumed: dict[str, list[str]] = {}
+    for chapter in chapters:
+        fname = chapter["file"]
+        entry = None if manifest is None else manifest.chapters.get(fname)
+        if entry is not None and entry.source_files:
+            consumed[fname] = list(entry.source_files)
+        else:
+            consumed[fname] = list(guessed.get(fname, []))
+    return consumed
+
+
 def get_stale_chapters(
     chapters: list[dict],
     manifest: Optional[Manifest],
@@ -294,8 +389,12 @@ def get_stale_chapters(
 
     A chapter is stale if:
     - It has no entry in the manifest (new chapter).
-    - Any of its source file dependencies appear in *changed_files*.
+    - Any file it consumed appears in *changed_files*.
     - The manifest is None (first run / corrupt manifest).
+
+    ``deps`` is the consumed-file list. Callers that already have a
+    manifest should pass :func:`recorded_consumed_files`, not a fresh
+    all-files guess.
     """
     if manifest is None:
         return list(chapters)
@@ -304,15 +403,12 @@ def get_stale_chapters(
         # No files changed — nothing is stale
         return []
 
-    changed_set = set(changed_files)
+    consumed = {chapter["file"]: deps.get(chapter["file"], []) for chapter in chapters}
+    stale_names = set(stale_chapter_names(changed_files, consumed))
     stale: list[dict] = []
     for chapter in chapters:
         fname = chapter["file"]
-        if fname not in manifest.chapters:
-            stale.append(chapter)
-            continue
-        chapter_deps = set(deps.get(fname, []))
-        if chapter_deps & changed_set:
+        if fname not in manifest.chapters or fname in stale_names:
             stale.append(chapter)
     return stale
 

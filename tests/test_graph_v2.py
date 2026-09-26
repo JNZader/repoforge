@@ -186,6 +186,33 @@ class TestBuildGraphV2:
         deps = graph.get_dependencies("tests/test_core.py")
         assert "lib/core.py" in deps
 
+    def test_python_absolute_import_under_app_prefix(self, tmp_path):
+        """from app.config in apps/server links that app, not a sibling decoy."""
+        from repoforge.graph import build_graph_v2
+
+        server = tmp_path / "apps" / "server" / "app"
+        other = tmp_path / "apps" / "other" / "app"
+        server.mkdir(parents=True)
+        other.mkdir(parents=True)
+        (server / "__init__.py").write_text("")
+        (other / "__init__.py").write_text("")
+        (server / "config.py").write_text("SETTINGS = {}\n")
+        (other / "config.py").write_text("SETTINGS = {}\n")
+        (server / "main.py").write_text("from app.config import SETTINGS\n")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "routes.ts").write_text(
+            "import { foo } from './foo';\nexport const routes = foo;\n"
+        )
+        (tmp_path / "src" / "foo.ts").write_text("export const foo = 1;\n")
+        (tmp_path / "src" / "foo.py").write_text("foo = 1\n")
+
+        graph = build_graph_v2(str(tmp_path))
+        assert graph.get_dependencies("apps/server/app/main.py") == [
+            "apps/server/app/config.py",
+        ]
+        assert "src/foo.ts" in graph.get_dependencies("src/routes.ts")
+        assert "src/foo.py" not in graph.get_dependencies("src/routes.ts")
+
     def test_no_self_edges(self, multi_lang_project):
         from repoforge.graph import build_graph_v2
         graph = build_graph_v2(str(multi_lang_project))

@@ -4,18 +4,13 @@ Exposes repoforge's analysis capabilities as MCP tools that AI agents
 (Claude Code, Claude Desktop) can call directly. No LLM calls inside —
 the host agent uses its own model for generation.
 
-Tools (deterministic, free):
-  - repoforge_score: Score documentation quality
-  - repoforge_graph: Build code knowledge graph + detect architecture patterns
-  - repoforge_scan: Security scan generated output
-  - repoforge_changelog: Generate changelog from git history
-  - repoforge_drift: Check if docs are stale vs source
-  - repoforge_analyze: Dead code + complexity analysis
-
-Resources (context for the host agent):
-  - repoforge://context/{path}: Full project context (facts, API surface, graph)
-  - repoforge://facts/{path}: Extracted facts only
-  - repoforge://api-surface/{path}: Public API surface
+Tools registered by list_tools (deterministic, free):
+  - repoforge_score
+  - repoforge_graph
+  - repoforge_changelog
+  - repoforge_drift
+  - repoforge_analyze
+  - repoforge_context
 
 Usage:
   Add to ~/.claude/settings.json:
@@ -52,7 +47,6 @@ app = Server("repoforge")
 # ---------------------------------------------------------------------------
 
 
-@app.list_tools()
 async def list_tools() -> list[Tool]:
     return [
         Tool(
@@ -128,7 +122,6 @@ async def list_tools() -> list[Tool]:
     ]
 
 
-@app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     try:
         if name == "repoforge_score":
@@ -149,6 +142,15 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         # OSError: file I/O errors; ValueError: invalid arguments
         # RuntimeError: tool execution errors; KeyError: missing required args
         return [TextContent(type="text", text=f"Error: {e}")]
+
+
+# MCP 1.x registers tools with decorators. MCP 2.0's low-level Server does not
+# have them; the names still live on these functions so tests and callers can
+# read them. Serving tools on MCP 2.0 needs MCPServer and is not this module yet.
+if hasattr(app, "list_tools"):
+    app.list_tools()(list_tools)
+if hasattr(app, "call_tool"):
+    app.call_tool()(call_tool)
 
 
 # ---------------------------------------------------------------------------

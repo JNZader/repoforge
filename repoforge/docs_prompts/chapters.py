@@ -311,6 +311,7 @@ def get_chapter_prompts(repo_map, language: str, project_name: str,
             "project_type": project_type,
             "system":      system,
             "user":        user,
+            "context_source": ch_graph or "",
         })
 
     return result
