@@ -1,5 +1,8 @@
 # Repoforge Master Roadmap — DX-Optimized Implementation Plan
 
+> **Active plan (2026-09-26):** [docs/roadmap/2026-09-generation-truth.md](docs/roadmap/2026-09-generation-truth.md).
+> The waves below are the March 2026 research plan. The architecture they describe (OpenAI hardcoded, no pipeline IR) is already behind `main`. Do not implement those waves as written.
+
 > **Date**: 2026-03-28
 > **Based on**: [COMPETITION_ANALYSIS.md](./COMPETITION_ANALYSIS.md) (38 repos, 75 ideas)
 > **Total items**: ~93 (75 original + grouped sub-tasks)

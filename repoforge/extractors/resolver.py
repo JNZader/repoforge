@@ -22,21 +22,51 @@ _JAVA_EXTENSIONS = [".java"]
 _RUST_EXTENSIONS = [".rs"]
 
 _ALL_EXTENSIONS = (
-    _TS_JS_EXTENSIONS + _PYTHON_EXTENSIONS + _GO_EXTENSIONS
-    + _JAVA_EXTENSIONS + _RUST_EXTENSIONS
+    _TS_JS_EXTENSIONS + _PYTHON_EXTENSIONS + _GO_EXTENSIONS + _JAVA_EXTENSIONS + _RUST_EXTENSIONS
 )
 
-# Index files to try when import resolves to a directory
+# Index files to try when import resolves to a directory.
+# Kept for callers that do not identify a language. Language-scoped
+# resolution uses _INDEX_BY_FAMILY instead.
 _INDEX_FILES = [
-    "index.ts", "index.tsx", "index.js", "index.jsx",
+    "index.ts",
+    "index.tsx",
+    "index.js",
+    "index.jsx",
     "__init__.py",
     "mod.rs",
 ]
+
+_TS_JS_SUFFIXES = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
+
+
+def _resolution_family(importer_path: str) -> tuple[list[str], list[str]]:
+    """Extensions and index files legal for the importer's language.
+
+    Unknown suffixes keep the historical cross-language search so a caller
+    that does not pass a real source path still resolves something.
+    """
+    suffix = PurePosixPath(importer_path).suffix.lower()
+    if suffix in _TS_JS_SUFFIXES:
+        return (
+            _TS_JS_EXTENSIONS,
+            ["index.ts", "index.tsx", "index.js", "index.jsx"],
+        )
+    if suffix == ".py":
+        return _PYTHON_EXTENSIONS, ["__init__.py"]
+    if suffix == ".go":
+        return _GO_EXTENSIONS, []
+    if suffix == ".java":
+        return _JAVA_EXTENSIONS, []
+    if suffix == ".rs":
+        return _RUST_EXTENSIONS, ["mod.rs"]
+    return list(_ALL_EXTENSIONS), list(_INDEX_FILES)
 
 
 # ---------------------------------------------------------------------------
 # Main resolver
 # ---------------------------------------------------------------------------
+
 
 def resolve_import(
     importer_path: str,
@@ -67,32 +97,32 @@ def resolve_import(
 
     # Compute the absolute resolved path from importer dir + relative import
     importer_dir = str(PurePosixPath(importer_path).parent)
-    resolved = str(PurePosixPath(os.path.normpath(
-        PurePosixPath(importer_dir) / import_source
-    )))
+    resolved = str(PurePosixPath(os.path.normpath(PurePosixPath(importer_dir) / import_source)))
 
     # Normalize: remove leading ./
     if resolved.startswith("./"):
         resolved = resolved[2:]
 
+    extensions, index_files = _resolution_family(importer_path)
+
     # 1. Exact match
     if resolved in available_files:
         return resolved
 
-    # 2. Try with extensions
-    for ext in _ALL_EXTENSIONS:
+    # 2. Try with extensions of the importer's language
+    for ext in extensions:
         candidate = f"{resolved}{ext}"
         if candidate in available_files:
             return candidate
 
     # 3. Try index files (directory imports)
-    for index_file in _INDEX_FILES:
+    for index_file in index_files:
         candidate = f"{resolved}/{index_file}"
         if candidate in available_files:
             return candidate
 
     # 4. .js → .ts cross-resolution (TypeScript projects often use .js in imports)
-    if resolved.endswith(".js"):
+    if resolved.endswith(".js") and PurePosixPath(importer_path).suffix.lower() in _TS_JS_SUFFIXES:
         ts_path = resolved[:-3] + ".ts"
         if ts_path in available_files:
             return ts_path
@@ -106,6 +136,7 @@ def resolve_import(
 # ---------------------------------------------------------------------------
 # Go-specific resolver
 # ---------------------------------------------------------------------------
+
 
 def resolve_go_import(
     import_path: str,
@@ -137,7 +168,7 @@ def resolve_go_import(
         return None  # External dependency
 
     # Strip module prefix to get relative path
-    relative = import_path[len(module_path):].lstrip("/")
+    relative = import_path[len(module_path) :].lstrip("/")
     if not relative:
         return None  # Importing the module root itself
 
@@ -161,13 +192,14 @@ def _parse_go_module(go_mod_content: str) -> str | None:
     for line in go_mod_content.splitlines():
         line = line.strip()
         if line.startswith("module "):
-            return line[len("module "):].strip()
+            return line[len("module ") :].strip()
     return None
 
 
 # ---------------------------------------------------------------------------
 # Python-specific resolver
 # ---------------------------------------------------------------------------
+
 
 def resolve_python_import(
     importer_path: str,
@@ -196,7 +228,11 @@ def resolve_python_import(
         return _resolve_python_relative(importer_path, import_source, available_files)
 
     # Absolute import — try to match as internal package path
-    return _resolve_python_absolute(import_source, available_files)
+    return _resolve_python_absolute(
+        import_source,
+        available_files,
+        importer_path=importer_path,
+    )
 
 
 def _resolve_python_relative(
@@ -250,26 +286,53 @@ def _resolve_python_relative(
     return None
 
 
+def _shared_directory_count(left: str, right: str) -> int:
+    """How many leading path segments the two project-relative paths share."""
+    shared = 0
+    for part_a, part_b in zip(PurePosixPath(left).parts, PurePosixPath(right).parts, strict=False):
+        if part_a != part_b:
+            break
+        shared += 1
+    return shared
+
+
 def _resolve_python_absolute(
     import_source: str,
     available_files: set[str],
+    importer_path: str = "",
 ) -> str | None:
     """Resolve an absolute Python import against project files.
 
-    Converts dotted module path to file path and checks if it exists.
-    E.g., "app.models.user" → "app/models/user.py" or "app/models/user/__init__.py"
+    Converts a dotted module to path segments and matches a file that ends
+    on those segments. ``app.config`` matches ``app/config.py`` and also
+    ``apps/server/app/config.py``. It does not match ``myapp/config.py``.
+
+    When several files match, the one that shares the longest directory
+    prefix with the importer wins. A tie resolves to nothing: guessing
+    between two packages would put the wrong module in the docs graph.
+    A module file (``x.py``) wins over ``x/__init__.py`` at the same distance.
     """
-    # Convert dotted path to file path
     as_path = import_source.replace(".", "/")
+    module_file = f"{as_path}.py"
+    package_init = f"{as_path}/__init__.py"
+    suffixes = (module_file, package_init)
 
-    # Try .py file
-    py_candidate = f"{as_path}.py"
-    if py_candidate in available_files:
-        return py_candidate
+    candidates = [
+        path
+        for path in available_files
+        if any(path == suffix or path.endswith("/" + suffix) for suffix in suffixes)
+    ]
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
 
-    # Try __init__.py (package)
-    init_candidate = f"{as_path}/__init__.py"
-    if init_candidate in available_files:
-        return init_candidate
+    def sort_key(path: str) -> tuple[int, int]:
+        module_rank = 1 if path.endswith(module_file) else 0
+        return (_shared_directory_count(importer_path, path), module_rank)
 
-    return None
+    ranked = sorted(candidates, key=sort_key, reverse=True)
+    best_key = sort_key(ranked[0])
+    if sum(1 for path in ranked if sort_key(path) == best_key) > 1:
+        return None
+    return ranked[0]

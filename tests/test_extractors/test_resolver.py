@@ -148,6 +148,15 @@ class TestTSJSResolution:
         )
         assert result is None
 
+    def test_relative_stays_in_importer_language(self):
+        """A TypeScript ./foo must not bind to a sibling foo.py."""
+        files = {"src/foo.ts", "src/foo.py", "src/routes.ts"}
+        result = resolve_import(
+            "src/routes.ts", "./foo", files,
+            is_relative=True,
+        )
+        assert result == "src/foo.ts"
+
 
 # ---------------------------------------------------------------------------
 # Tests: Go import resolution via go.mod
@@ -283,6 +292,40 @@ class TestPythonResolution:
         result = resolve_python_import(
             "app/services/auth.py", ".nonexistent", PYTHON_PROJECT_FILES,
             is_relative=True,
+        )
+        assert result is None
+
+    def test_absolute_nested_package_root(self):
+        """from app.config inside apps/server resolves under that app."""
+        files = {
+            "apps/server/app/main.py",
+            "apps/server/app/config.py",
+            "apps/other/app/config.py",
+        }
+        result = resolve_python_import(
+            "apps/server/app/main.py", "app.config", files,
+            is_relative=False,
+        )
+        assert result == "apps/server/app/config.py"
+
+    def test_absolute_does_not_match_longer_segment(self):
+        """app.config must not match myapp/config.py."""
+        files = {"myapp/config.py"}
+        result = resolve_python_import(
+            "myapp/main.py", "app.config", files,
+            is_relative=False,
+        )
+        assert result is None
+
+    def test_absolute_tie_resolves_nothing(self):
+        """Two matches at the same distance are not a guess."""
+        files = {
+            "apps/server/app/config.py",
+            "apps/other/app/config.py",
+        }
+        result = resolve_python_import(
+            "tools/check.py", "app.config", files,
+            is_relative=False,
         )
         assert result is None
 
