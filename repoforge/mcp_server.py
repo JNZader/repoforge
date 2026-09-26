@@ -4,7 +4,8 @@ Exposes repoforge's analysis capabilities as MCP tools that AI agents
 (Claude Code, Claude Desktop) can call directly. No LLM calls inside —
 the host agent uses its own model for generation.
 
-Tools registered by list_tools (deterministic, free):
+Tools served to the client (deterministic, free). MCP 1.x registers them
+with Server.list_tools. MCP 2.0 registers the same six on MCPServer:
   - repoforge_score
   - repoforge_graph
   - repoforge_changelog
@@ -39,7 +40,31 @@ from mcp.types import (
 
 logger = logging.getLogger(__name__)
 
-app = Server("repoforge")
+_SCORE_DESC = (
+    "Score documentation quality across 4 dimensions (structure, completeness, "
+    "code quality, clarity). Returns per-file scores with PASS/WARN/FAIL grades. "
+    "No LLM needed."
+)
+_GRAPH_DESC = (
+    "Build code knowledge graph from a repository. Detects architecture patterns "
+    "(layered, multi-layer, hub-spoke, circular deps) and generates Mermaid diagrams."
+)
+_CHANGELOG_DESC = (
+    "Generate a Keep-a-Changelog-style changelog from git history. "
+    "Groups by conventional commit type. No LLM needed."
+)
+_DRIFT_DESC = (
+    "Check if generated documentation is stale relative to source code "
+    "by comparing file hashes."
+)
+_ANALYZE_DESC = (
+    "Analyze code quality: dead code detection + cyclomatic complexity. No LLM needed."
+)
+_CONTEXT_DESC = (
+    "Extract rich project context (facts, API surface, graph, architecture patterns) "
+    "for documentation generation. Returns structured context that you can use to "
+    "write docs yourself."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +76,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="repoforge_score",
-            description="Score documentation quality across 4 dimensions (structure, completeness, code quality, clarity). Returns per-file scores with PASS/WARN/FAIL grades. No LLM needed.",
+            description=_SCORE_DESC,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -63,7 +88,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="repoforge_graph",
-            description="Build code knowledge graph from a repository. Detects architecture patterns (layered, multi-layer, hub-spoke, circular deps) and generates Mermaid diagrams.",
+            description=_GRAPH_DESC,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -75,7 +100,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="repoforge_changelog",
-            description="Generate a Keep-a-Changelog-style changelog from git history. Groups by conventional commit type. No LLM needed.",
+            description=_CHANGELOG_DESC,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -87,7 +112,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="repoforge_drift",
-            description="Check if generated documentation is stale relative to source code by comparing file hashes.",
+            description=_DRIFT_DESC,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -99,7 +124,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="repoforge_analyze",
-            description="Analyze code quality: dead code detection + cyclomatic complexity. No LLM needed.",
+            description=_ANALYZE_DESC,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -110,7 +135,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="repoforge_context",
-            description="Extract rich project context (facts, API surface, graph, architecture patterns) for documentation generation. Returns structured context that you can use to write docs yourself.",
+            description=_CONTEXT_DESC,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -142,15 +167,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         # OSError: file I/O errors; ValueError: invalid arguments
         # RuntimeError: tool execution errors; KeyError: missing required args
         return [TextContent(type="text", text=f"Error: {e}")]
-
-
-# MCP 1.x registers tools with decorators. MCP 2.0's low-level Server does not
-# have them; the names still live on these functions so tests and callers can
-# read them. Serving tools on MCP 2.0 needs MCPServer and is not this module yet.
-if hasattr(app, "list_tools"):
-    app.list_tools()(list_tools)
-if hasattr(app, "call_tool"):
-    app.call_tool()(call_tool)
 
 
 # ---------------------------------------------------------------------------
@@ -359,11 +375,64 @@ def _tool_context(args: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def main():
+def _register_mcp2(server) -> None:
+    """Publish the six tools on MCP 2.0's MCPServer."""
+
+    @server.tool(name="repoforge_score", description=_SCORE_DESC)
+    def repoforge_score(docs_dir: str, format: str = "table") -> str:
+        return _tool_score({"docs_dir": docs_dir, "format": format})
+
+    @server.tool(name="repoforge_graph", description=_GRAPH_DESC)
+    def repoforge_graph(working_dir: str, format: str = "summary") -> str:
+        return _tool_graph({"working_dir": working_dir, "format": format})
+
+    @server.tool(name="repoforge_changelog", description=_CHANGELOG_DESC)
+    def repoforge_changelog(working_dir: str, max_commits: int = 50) -> str:
+        return _tool_changelog({"working_dir": working_dir, "max_commits": max_commits})
+
+    @server.tool(name="repoforge_drift", description=_DRIFT_DESC)
+    def repoforge_drift(working_dir: str, docs_dir: str = "docs") -> str:
+        return _tool_drift({"working_dir": working_dir, "docs_dir": docs_dir})
+
+    @server.tool(name="repoforge_analyze", description=_ANALYZE_DESC)
+    def repoforge_analyze(working_dir: str) -> str:
+        return _tool_analyze({"working_dir": working_dir})
+
+    @server.tool(name="repoforge_context", description=_CONTEXT_DESC)
+    def repoforge_context(working_dir: str) -> str:
+        return _tool_context({"working_dir": working_dir})
+
+
+def _build_app():
+    """Use MCP 2.0 when the low-level Server no longer registers tools."""
+    if not hasattr(Server, "list_tools"):
+        from mcp.server import MCPServer
+
+        server = MCPServer("repoforge")
+        _register_mcp2(server)
+        return server
+
+    server = Server("repoforge")
+    server.list_tools()(list_tools)
+    server.call_tool()(call_tool)
+    return server
+
+
+app = _build_app()
+
+
+async def _run_stdio_v1() -> None:
     async with stdio_server() as (read_stream, write_stream):
         await app.run(read_stream, write_stream, app.create_initialization_options())
 
 
-if __name__ == "__main__":
+def main() -> None:
+    if hasattr(app, "run_stdio_async"):
+        app.run(transport="stdio")
+        return
     import asyncio
-    asyncio.run(main())
+    asyncio.run(_run_stdio_v1())
+
+
+if __name__ == "__main__":
+    main()

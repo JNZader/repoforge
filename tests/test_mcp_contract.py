@@ -3,7 +3,9 @@
 import asyncio
 from pathlib import Path
 
-from repoforge.mcp_server import list_tools
+import pytest
+
+from repoforge.mcp_server import app, list_tools
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTERED_TOOLS = (
@@ -19,6 +21,26 @@ REGISTERED_TOOLS = (
 def test_list_tools_returns_the_registered_names():
     tools = asyncio.run(list_tools())
     assert tuple(tool.name for tool in tools) == REGISTERED_TOOLS
+
+
+def _call_text(result) -> str:
+    content = getattr(result, "content", None)
+    if content:
+        return content[0].text
+    return str(result)
+
+
+def test_mcp2_server_lists_the_tools_and_calls_changelog(tmp_path):
+    if not hasattr(app, "run_stdio_async"):
+        pytest.skip("MCP 2 MCPServer is not the active runtime")
+
+    listed = asyncio.run(app.list_tools())
+    assert tuple(tool.name for tool in listed) == REGISTERED_TOOLS
+
+    result = asyncio.run(
+        app.call_tool("repoforge_changelog", {"working_dir": str(tmp_path)}),
+    )
+    assert _call_text(result) == "(no git history found)"
 
 
 def test_readmes_match_registered_tools_and_cost():
