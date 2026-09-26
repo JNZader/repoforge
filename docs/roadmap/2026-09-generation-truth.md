@@ -59,6 +59,8 @@ The `[intelligence]` extra already parses signatures with tree-sitter. Python, T
 
 **Check:** markdown that says `8080` fails when the only port fact is `7437`. Markdown that says `7437` passes. No live model in CI.
 
+**Status:** done on `roadmap/generation-truth`. `pytest tests/test_factuality.py` — 12 passed. The checker lives in `repoforge/factuality.py`. `eval/harness.py` appends a `factuality` score only when the caller passes the facts for that chapter. The port rewrite in `post_process.py` is unchanged.
+
 ### S4 — Say what the product does
 
 **Change:** README and `mcp_server.py` module doc.

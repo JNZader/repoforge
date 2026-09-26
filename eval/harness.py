@@ -8,6 +8,10 @@ output quality across 4 dimensions:
   3. Pattern detection   - do conventions reflect real patterns found in the code?
   4. Multilang coverage  - does a skill cover all languages present in its layer?
 
+When the caller passes the facts that grounded a chapter, a fifth score is
+appended: factuality. It fails if the prose names a port, endpoint, table,
+or env var those facts do not contain, or omits one they do.
+
 Usage:
   python -m eval.harness                         # run all scenarios
   python -m eval.harness --scenario fastapi_crud # run one scenario
@@ -483,7 +487,28 @@ class EvalResult:
         return "❌ FAIL"
 
 
-def run_scenario(scenario_name: str, llm=None, verbose: bool = True) -> EvalResult:
+def score_factuality(output: str, facts: list) -> ScoreResult:
+    """Score whether prose claims match the facts handed to this chapter.
+
+    Score is 1.0 when nothing is invented or missing, otherwise 0.0.
+    The port-rewrite pass in post-process is a separate edit. This score
+    is the gate.
+    """
+    from repoforge.factuality import check_factuality
+
+    report = check_factuality(output, facts)
+    result = ScoreResult(dimension="factuality")
+    if report.ok:
+        result.passed.append("structural claims match extracted facts")
+        result.score = 1.0
+        return result
+    result.failed.extend(f"invented {item}" for item in report.invented)
+    result.failed.extend(f"missing {item}" for item in report.missing)
+    result.score = 0.0
+    return result
+
+
+def run_scenario(scenario_name: str, llm=None, verbose: bool = True, facts=None) -> EvalResult:
     """
     Run a single eval scenario.
 
@@ -496,6 +521,7 @@ def run_scenario(scenario_name: str, llm=None, verbose: bool = True) -> EvalResu
 
     kind, *args = scenario_fn()
     scores = []
+    output = ""
 
     if kind == "module":
         module, repo_map = args
@@ -534,6 +560,9 @@ def run_scenario(scenario_name: str, llm=None, verbose: bool = True) -> EvalResu
 
         if verbose:
             _print_output(output, scenario_name)
+
+    if facts is not None:
+        scores.append(score_factuality(output, facts))
 
     return EvalResult(scenario=scenario_name, prompt_type=kind, scores=scores)
 
