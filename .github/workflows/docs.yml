@@ -177,7 +177,7 @@ jobs:
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
 
       - name: Generate documentation
-        uses: JNZader/repoforge@v0.2.0
+        uses: JNZader/repoforge@main
         with:
           command: docs
           language: English
@@ -204,14 +204,14 @@ jobs:
 
       - name: Upload Pages artifact
         if: steps.plan.outputs.deploy == 'true' && steps.plan.outputs.target == 'main'
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site/
 
       - name: Deploy main site (workflow Pages)
         if: steps.plan.outputs.deploy == 'true' && steps.plan.outputs.target == 'main'
         id: deploy_main
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       - name: Deploy subpath (preserve existing files)
         if: steps.plan.outputs.deploy == 'true' && steps.plan.outputs.target == 'subpath'
