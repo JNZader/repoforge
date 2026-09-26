@@ -122,10 +122,21 @@ PROVIDER_PRESETS = {
 # Default model if nothing is configured
 DEFAULT_MODEL = "claude-haiku-3-5"
 
-# One call plus four waits. Groq's 429 names the pause ("try again in 15.3s").
+# One call plus four waits. A token-per-minute overflow waits out the
+# minute. The "try again in 21s" hint does not drop thousands of tokens
+# out of that window.
 _RATE_LIMIT_RETRIES = 4
-_RATE_LIMIT_WAIT_CAP_S = 60.0
+_RATE_LIMIT_WAIT_CAP_S = 90.0
+_TPM_WINDOW_S = 60.0
 _RETRY_AFTER = re.compile(r"try again in ([0-9]+(?:\.[0-9]+)?)s", re.IGNORECASE)
+_TPM_FIGURES = re.compile(
+    r"Limit\s+([0-9]+),\s*Used\s+([0-9]+),\s*Requested\s+([0-9]+)",
+    re.IGNORECASE,
+)
+_DURATION = re.compile(
+    r"^(?:(\d+)m)?(\d+(?:\.\d+)?)s$",
+    re.IGNORECASE,
+)
 
 # Auto-detection order from env vars.
 # GitHub Models is the default provider (free tier with GITHUB_TOKEN).
@@ -196,18 +207,59 @@ class LLM:
         return kwargs
 
 
-def _retry_after_seconds(exc: BaseException) -> float:
-    """Seconds to wait after a 429. Prefer the provider's own pause."""
+def _header_value(exc: BaseException, name: str) -> Optional[str]:
     response = getattr(exc, "response", None)
     headers = getattr(response, "headers", None)
-    raw = None
-    if headers is not None and hasattr(headers, "get"):
-        raw = headers.get("retry-after") or headers.get("Retry-After")
+    if headers is None or not hasattr(headers, "get"):
+        return None
+    value = headers.get(name) or headers.get(name.lower()) or headers.get(name.title())
+    if value is None:
+        return None
+    return str(value)
+
+
+def _parse_duration(value: str) -> Optional[float]:
+    text = value.strip()
+    try:
+        return float(text)
+    except ValueError:
+        pass
+    match = _DURATION.match(text)
+    if not match:
+        return None
+    minutes = float(match.group(1) or 0)
+    return minutes * 60 + float(match.group(2))
+
+
+def _tpm_overflow(exc: BaseException) -> bool:
+    """True when this request cannot fit in the tokens still left this minute."""
+    match = _TPM_FIGURES.search(str(exc))
+    if not match:
+        return False
+    limit, used, requested = (int(group) for group in match.groups())
+    return used + requested > limit
+
+
+def _retry_after_seconds(exc: BaseException) -> float:
+    """Seconds to wait after a 429.
+
+    A token-per-minute overflow waits for ``x-ratelimit-reset-tokens``,
+    and at least one minute when that header is missing or shorter than
+    the window. Other 429s use ``retry-after`` or the "try again in" hint.
+    """
+    if _tpm_overflow(exc):
+        reset = _parse_duration(_header_value(exc, "x-ratelimit-reset-tokens") or "")
+        wait = _TPM_WINDOW_S if reset is None else max(reset, _TPM_WINDOW_S)
+        return min(wait, _RATE_LIMIT_WAIT_CAP_S)
+
+    raw = _header_value(exc, "retry-after")
     if raw is not None:
         try:
             return min(max(float(raw), 0.0), _RATE_LIMIT_WAIT_CAP_S)
-        except (TypeError, ValueError):
-            pass
+        except ValueError:
+            parsed = _parse_duration(raw)
+            if parsed is not None:
+                return min(parsed, _RATE_LIMIT_WAIT_CAP_S)
     match = _RETRY_AFTER.search(str(exc))
     if match:
         return min(float(match.group(1)), _RATE_LIMIT_WAIT_CAP_S)

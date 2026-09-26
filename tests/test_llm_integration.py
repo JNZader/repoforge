@@ -420,6 +420,50 @@ class TestErrorHandling:
         assert mock_sleep.call_count == 4
         assert mock_completion.call_count == 5
 
+    @patch("repoforge.llm.time.sleep")
+    @patch("repoforge.llm.litellm.completion")
+    def test_tpm_overflow_waits_a_full_minute_without_reset_header(
+        self, mock_completion, mock_sleep
+    ):
+        from litellm.exceptions import RateLimitError
+
+        ok = MagicMock()
+        ok.choices = [MagicMock(message=MagicMock(content="done"))]
+        mock_completion.side_effect = [
+            RateLimitError(
+                message=(
+                    "Limit 8000, Used 5361, Requested 5503. "
+                    "Please try again in 21.48s."
+                ),
+                llm_provider="groq",
+                model="groq/openai/gpt-oss-120b",
+            ),
+            ok,
+        ]
+        llm = LLM(model="groq/openai/gpt-oss-120b")
+        assert llm.complete("Hello") == "done"
+        mock_sleep.assert_called_once_with(60.0)
+
+    @patch("repoforge.llm.time.sleep")
+    @patch("repoforge.llm.litellm.completion")
+    def test_tpm_overflow_waits_at_least_the_token_reset(
+        self, mock_completion, mock_sleep
+    ):
+        from litellm.exceptions import RateLimitError
+
+        ok = MagicMock()
+        ok.choices = [MagicMock(message=MagicMock(content="done"))]
+        limited = RateLimitError(
+            message="Limit 8000, Used 5361, Requested 5503. Please try again in 21.48s.",
+            llm_provider="groq",
+            model="groq/openai/gpt-oss-120b",
+        )
+        limited.response = MagicMock(headers={"x-ratelimit-reset-tokens": "7.66s"})
+        mock_completion.side_effect = [limited, ok]
+        llm = LLM(model="groq/openai/gpt-oss-120b")
+        assert llm.complete("Hello") == "done"
+        mock_sleep.assert_called_once_with(60.0)
+
 
 # ---------------------------------------------------------------------------
 # _is_reasoning_model
