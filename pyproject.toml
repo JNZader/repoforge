@@ -90,7 +90,8 @@ exclude = [
   "Makefile",
   "*.log",
   ".coverage",
-  "coverage/",
+  # Anchored at the repo root. `coverage/` also excludes repoforge/coverage/.
+  "/coverage/",
   "htmlcov/",
   ".hypothesis/",
   ".pytest_cache/",
