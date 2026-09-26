@@ -1,7 +1,35 @@
 # Repoforge Master Roadmap — DX-Optimized Implementation Plan
 
 > **Active plan (2026-09-26):** [docs/roadmap/2026-09-generation-truth.md](docs/roadmap/2026-09-generation-truth.md).
-> The waves below are the March 2026 research plan. The architecture they describe (OpenAI hardcoded, no pipeline IR) is already behind `main`. Do not implement those waves as written.
+> The waves below are the March 2026 research plan. Do not implement them as written. The package on this branch is `0.6.0` alpha. The "ships as v0.N" labels were never the release train.
+
+## Status on 2026-09-26
+
+Checked against the files this plan names. "Partial" means the behavior exists in another shape. "Not done" means the named path is absent and the behavior is not there either.
+
+| Wave | Verdict | What is actually in the tree |
+|---|---|---|
+| 0 Hygiene | Partial | CI workflow and `tests/conftest.py` exist. Config is `repoforge.yaml` loaded by the scanner, not `config.py`. No `filtering.py`. |
+| 1 LLM gateway | Partial | `llm.py` calls LiteLLM. The `llm/` package and provider protocol in the sketch were not created. |
+| 2 Pipeline and IR | Partial | `pipeline/` and `ir/repo.py` exist. No `ir/model.py`, no renderer plugin, no pipeline hooks. |
+| 3 AST | Partial | The `[intelligence]` extra extracts tree-sitter signatures for the docs API surface. No `chunking/ast_chunker.py`, no `analysis/cross_ref.py`. `analyze` and `slice` stay regex. |
+| 4 Incremental | Partial | `incremental.py` hashes chapters and can skip unchanged ones. No `cache/` package, no LLM response cache, no `repoforge status`. |
+| 5 Scoring | Partial | `scorer.py` scores skills. `factuality.py` blocks invented claims. No `scoring/engine.py`, no badges. |
+| 6 Refinement loop | Not done | No `refinement/`. `docs --verify` is a second model pass, not generate → score → refine. |
+| 7 Knowledge graph | Partial | `graph.py`, `diagrams.py`, and blast radius exist. No `knowledge/` package. |
+| 8 Other output formats | Not done | Docs are Markdown / Docsify. No HTML, PDF, RST, or Docusaurus renderer. The PDF extra reads PDFs for `skills-from-docs`. |
+| 9 Personas | Partial | `docs_prompts/` and a language flag exist. No persona package and no framework template pack. |
+| 10 CI | Partial | `action.yml` and the docs workflow exist. Drift is an MCP tool. No pre-commit package and no score gate that fails a PR. |
+| 11 MCP and IDE | Partial | `mcp_server.py` registers six tools. No MCP resources, no LSP, no VS Code extension, no watch mode. |
+| 12 More generators | Partial | `generate_changelog`, `generate_api_reference`, and `generate_onboarding` exist. Changelog is exposed as an MCP tool. No migration or security generator, and those functions are not CLI commands. |
+| 13 Team | Partial | The scanner handles more than one package, and `ownership` is a command. No style enforcer, no review bot, no profiles. |
+| 14 Performance | Partial | Chapter generation can run in parallel, with a rate limiter, and `--dry-run` estimates cost. No streaming and no design for 10k-file repos. |
+| 15 Deeper analysis | Partial | `dead_code.py` and the regex complexity in `analyze` exist. No tech-debt or design-pattern document generators. |
+| 16 UX | Partial | `apps/web` and `apps/server` exist. They are not the htmx dashboard in this plan. No TUI and no telemetry. |
+| 17 Distribution | Partial | PyPI extras and a `Dockerfile` exist. No Homebrew formula and no plugin marketplace. |
+| 18 Enterprise | Not done | `model_router.py` picks a model tier. No DAG orchestrator, no per-tag docs, no compliance generator, no planner/reviewer agents. |
+
+The wave tables under this section stay as the March proposal. They are not a backlog.
 
 > **Date**: 2026-03-28
 > **Based on**: [COMPETITION_ANALYSIS.md](./COMPETITION_ANALYSIS.md) (38 repos, 75 ideas)
