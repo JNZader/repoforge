@@ -17,6 +17,7 @@ from repoforge.incremental import (
     get_stale_chapters,
     load_manifest,
     now_iso,
+    prompt_consumed_files,
     recorded_consumed_files,
     save_manifest,
     stale_chapter_names,
@@ -280,6 +281,71 @@ class TestGetStaleChapters:
             consumed,
         )
         assert [chapter["file"] for chapter in stale] == ["06-api-reference.md"]
+
+    def test_overview_records_only_the_file_its_graph_context_cites(self):
+        from repoforge.docs_prompts import get_chapter_prompts
+
+        server = "apps/server/app/main.py"
+        web = "apps/web/src/lib/api.ts"
+        repo_map = {
+            "root": "/fixture",
+            "tech_stack": ["Python", "TypeScript"],
+            "entry_points": [server],
+            "config_files": [],
+            "layers": {
+                "backend": {
+                    "path": "apps/server",
+                    "modules": [{
+                        "path": server,
+                        "name": "main",
+                        "language": "Python",
+                        "exports": ["app"],
+                        "imports": [],
+                        "summary_hint": "server",
+                    }],
+                },
+                "frontend": {
+                    "path": "apps/web",
+                    "modules": [{
+                        "path": web,
+                        "name": "api",
+                        "language": "TypeScript",
+                        "exports": ["api"],
+                        "imports": [],
+                        "summary_hint": "client",
+                    }],
+                },
+            },
+            "stats": {
+                "total_files": 2,
+                "by_extension": {".py": 1, ".ts": 1},
+                "rg_available": False,
+                "rg_version": None,
+            },
+        }
+        graph = f"The server entry is {server}."
+        chapters = get_chapter_prompts(
+            repo_map,
+            "English",
+            "Fixture",
+            graph_context=graph,
+            short_graph_context=graph,
+        )
+        overview = next(chapter for chapter in chapters if chapter["file"] == "01-overview.md")
+        assert server in overview["context_source"]
+        assert web not in overview["context_source"]
+        consumed = prompt_consumed_files(chapters, [server, web])
+        assert consumed["01-overview.md"] == [server]
+
+        manifest = Manifest(
+            chapters={
+                "01-overview.md": ChapterEntry(source_files=consumed["01-overview.md"]),
+            },
+        )
+        chapter = [{"file": "01-overview.md", "title": "Overview"}]
+        assert get_stale_chapters(chapter, manifest, [web], consumed) == []
+        stale = get_stale_chapters(chapter, manifest, [server], consumed)
+        assert [item["file"] for item in stale] == ["01-overview.md"]
 
 
 # ---------------------------------------------------------------------------

@@ -50,7 +50,8 @@ from .system import _base_system
 
 def _monorepo_root_chapters(repo_map: dict, language: str,
                              project_name: str, layer_types: dict[str, str],
-                             graph_context: str = "") -> list[dict]:
+                             graph_context: str = "",
+                             short_graph_context: str = "") -> list[dict]:
     """
     Build the root-level chapters for a monorepo.
     These describe the whole project and link to per-layer docs.
@@ -73,6 +74,7 @@ def _monorepo_root_chapters(repo_map: dict, language: str,
     for ch in root_chapters_meta:
         f = ch["file"]
         sys_ = _base_system(language)
+        ch_graph = graph_context if f == "03-architecture.md" else short_graph_context
 
         if f == "index.md":
             # Special monorepo index: links to all layer sub-docs
@@ -82,7 +84,7 @@ def _monorepo_root_chapters(repo_map: dict, language: str,
             )
             user = f"""Generate **index.md** — the home page for the monorepo **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
+{_repo_context(repo_map, graph_context=ch_graph)}
 
 ### Layers in this monorepo
 {layer_summary}
@@ -102,7 +104,7 @@ Language: {language}"""
         elif f == "01-overview.md":
             user = f"""Generate **01-overview.md** — the global overview for the monorepo **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
+{_repo_context(repo_map, graph_context=ch_graph)}
 
 ### Layers
 {layer_summary}
@@ -120,7 +122,7 @@ Language: {language}"""
         elif f == "02-quickstart.md":
             user = f"""Generate **02-quickstart.md** — the Quick Start for the full monorepo **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
+{_repo_context(repo_map, graph_context=ch_graph)}
 
 ### Layers to start
 {layer_summary}
@@ -138,7 +140,7 @@ Language: {language}"""
         elif f == "03-architecture.md":
             user = f"""Generate **03-architecture.md** — the Architecture chapter for the monorepo **{project_name}**.
 
-{_repo_context(repo_map, graph_context=graph_context)}
+{_repo_context(repo_map, graph_context=ch_graph)}
 
 ### Layers and their types
 {layer_summary}
@@ -163,7 +165,7 @@ Language: {language}"""
             # Reuse existing dispatcher for service-map and dev-guide
             sys_, user = _dispatch_prompt(f, repo_map, language, project_name,
                                            "monorepo", root_chapters_meta,
-                                           graph_context=graph_context)
+                                           graph_context=ch_graph)
 
         result.append({
             "file":         f,
@@ -173,6 +175,7 @@ Language: {language}"""
             "subdir":       None,   # root level
             "system":       sys_,
             "user":         user,
+            "context_source": ch_graph or "",
         })
 
     return result
@@ -250,7 +253,9 @@ Language: {language}"""
 
 
 def get_monorepo_chapter_prompts(repo_map: dict, language: str,
-                                  project_name: str) -> list[dict]:
+                                  project_name: str,
+                                  graph_context: str = "",
+                                  short_graph_context: str = "") -> list[dict]:
     """
     Build the full hierarchical chapter list for a monorepo.
 
@@ -273,7 +278,11 @@ def get_monorepo_chapter_prompts(repo_map: dict, language: str,
     all_chapters = []
 
     # 1. Root-level chapters (monorepo global)
-    root_chapters = _monorepo_root_chapters(repo_map, language, project_name, layer_types)
+    root_chapters = _monorepo_root_chapters(
+        repo_map, language, project_name, layer_types,
+        graph_context=graph_context,
+        short_graph_context=short_graph_context,
+    )
     all_chapters.extend(root_chapters)
 
     # 2. Per-layer chapters

@@ -9,17 +9,17 @@ Two cuts left from the March 2026 roadmap. Everything else in that plan stays cl
 
 ## Cuts
 
-Each cut is one commit on `roadmap/generation-truth` and a check that fails in CI without an API key. Start R2 only after R1 is green. R1 does not call a model.
+Both cuts are on `roadmap/generation-truth`. The checks run in CI without an API key. R1 does not call a model. R2 calls a fake model.
 
 ### R1 — Record the files the prompt actually used
 
 `build_chapter_deps` gives `index.md`, `01-overview.md`, `02-quickstart.md`, `03-architecture.md`, and `07-dev-guide.md` every scanned file. The first manifest write stores that list. The next `--incremental` run treats the list as truth, so any change marks those chapters stale.
 
-**Change:** when a chapter is generated, `source_files` in the manifest is the subset of scanned paths that appear in that chapter's user prompt. A path that was scanned and never cited is not a dependency. `recorded_consumed_files` stays as it is: a later run trusts the stored list.
+**Change:** when a chapter is generated, `source_files` in the manifest is the scanned paths cited in that chapter's graph context (`context_source`), not every path in the module catalog. The catalog lists every scanned file and would recreate the all-files guess. `recorded_consumed_files` still decides staleness from the stored list. A chapter regenerated on this run stores the paths its current graph context cites.
 
-**Check:** `pytest tests/test_incremental.py`. A fixture with `apps/server/app/main.py` and `apps/web/src/lib/api.ts` generates an overview prompt that cites only the server file. The stored list for `01-overview.md` is `apps/server/app/main.py`. Changing `apps/web/src/lib/api.ts` does not mark overview stale. Changing `apps/server/app/main.py` does.
+**Check:** `pytest tests/test_incremental.py`. A monorepo fixture with `apps/server/app/main.py` and `apps/web/src/lib/api.ts` gives overview a graph context that cites only the server file. The consumed list for `01-overview.md` is `apps/server/app/main.py`. Changing the web file does not mark overview stale. Changing the server file does.
 
-**Status:** not started.
+**Status:** done on `roadmap/generation-truth`. `pytest tests/test_incremental.py tests/test_factuality.py tests/test_docs.py` — 79 passed.
 
 ### R2 — One repair after the factuality gate
 
@@ -29,7 +29,7 @@ Each cut is one commit on `roadmap/generation-truth` and a check that fails in C
 
 **Check:** `pytest tests/test_factuality.py` with a fake model. A reply that replaces port `8080` with the extracted `7437` is written. A reply that still says `8080` is not written. The fake model is called once in each case. No network.
 
-**Status:** not started.
+**Status:** done on `roadmap/generation-truth`. The fake model in `tests/test_factuality.py` is called once. A reply that says `7437` is writable. A reply that still says `8080` returns the factuality error and is not written. A chapter that is already clean does not call the model.
 
 ## Out of scope
 

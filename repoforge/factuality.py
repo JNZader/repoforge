@@ -72,6 +72,34 @@ def check_factuality(markdown: str, facts: list[FactItem]) -> FactualityReport:
     return FactualityReport(tuple(invented), tuple(missing))
 
 
+def repair_invented_chapter(llm, markdown: str, facts: list[FactItem]) -> tuple[str, str | None]:
+    """Return prose to write, and an error when it still invents a claim.
+
+    A clean chapter is returned without calling the model. An invented
+    claim gets one ``llm.complete`` call. The reply is checked once. A
+    clean reply is writable. A reply that still invents is not.
+    """
+    block = invented_claim_block(markdown, facts)
+    if block is None:
+        return markdown, None
+    report = check_factuality(markdown, facts)
+    repaired = llm.complete(_repair_prompt(markdown, report.invented, facts))
+    second = invented_claim_block(repaired, facts)
+    return repaired, second
+
+
+def _repair_prompt(markdown: str, invented: tuple[str, ...], facts: list[FactItem]) -> str:
+    fact_lines = "\n".join(f"- {fact.fact_type}: {fact.value}" for fact in facts)
+    invented_lines = "\n".join(f"- {item}" for item in invented)
+    return (
+        "Rewrite the chapter. Replace every invented claim with an extracted fact. "
+        "Do not add a port, endpoint, table, or env var that is not in the facts.\n\n"
+        f"Invented:\n{invented_lines}\n\n"
+        f"Facts:\n{fact_lines}\n\n"
+        f"Chapter:\n{markdown}"
+    )
+
+
 def invented_claim_block(markdown: str, facts: list[FactItem]) -> str | None:
     """Block a write when the prose invents a checked claim.
 

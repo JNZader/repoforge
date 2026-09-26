@@ -1,7 +1,7 @@
 """Chapter prose must match the facts it was given."""
 
 from repoforge.facts import FactItem
-from repoforge.factuality import check_factuality, invented_claim_block
+from repoforge.factuality import check_factuality, invented_claim_block, repair_invented_chapter
 
 
 def _port(value: str) -> FactItem:
@@ -103,6 +103,46 @@ def test_invented_port_blocks_the_write_and_a_real_port_does_not():
 
 def test_omitted_fact_does_not_block_the_write():
     assert invented_claim_block("This chapter explains the module layout.", [_port("7437")]) is None
+
+
+class _FakeLLM:
+    def __init__(self, reply: str) -> None:
+        self.reply = reply
+        self.calls = 0
+
+    def complete(self, prompt: str, system: str | None = None) -> str:
+        self.calls += 1
+        return self.reply
+
+
+def test_one_repair_with_the_real_port_is_writable():
+    llm = _FakeLLM("The server listens on port 7437.")
+    text, error = repair_invented_chapter(
+        llm, "The server listens on port 8080.", [_port("7437")],
+    )
+    assert error is None
+    assert text == "The server listens on port 7437."
+    assert llm.calls == 1
+
+
+def test_one_repair_that_still_invents_is_not_writable():
+    llm = _FakeLLM("The server listens on port 8080.")
+    _text, error = repair_invented_chapter(
+        llm, "The server listens on port 8080.", [_port("7437")],
+    )
+    assert error is not None
+    assert "port:8080" in error
+    assert llm.calls == 1
+
+
+def test_clean_chapter_does_not_call_the_repair_model():
+    llm = _FakeLLM("unused")
+    text, error = repair_invented_chapter(
+        llm, "The server listens on port 7437.", [_port("7437")],
+    )
+    assert error is None
+    assert text == "The server listens on port 7437."
+    assert llm.calls == 0
 
 
 def test_harness_appends_factuality_score_when_facts_are_passed():

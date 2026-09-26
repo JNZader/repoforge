@@ -272,6 +272,53 @@ def stale_chapter_names(
     return stale
 
 
+def files_cited_in_prompt(prompt: str, known_files: list[str]) -> list[str]:
+    """Known repo paths that appear in ``prompt`` as whole paths.
+
+    ``app/main.py`` does not match inside ``apps/server/app/main.py``.
+    Result order follows ``known_files``.
+    """
+    cited: list[str] = []
+    for path in known_files:
+        if path and _path_is_cited(prompt, path):
+            cited.append(path)
+    return cited
+
+
+def _path_is_cited(prompt: str, path: str) -> bool:
+    start = 0
+    while True:
+        index = prompt.find(path, start)
+        if index < 0:
+            return False
+        before = prompt[index - 1] if index else ""
+        after_at = index + len(path)
+        after = prompt[after_at] if after_at < len(prompt) else ""
+        if before not in "/\\" and after not in "/_\\" and not after.isalnum():
+            return True
+        start = index + 1
+
+
+def prompt_consumed_files(
+    chapters: list[dict],
+    known_files: list[str],
+) -> dict[str, list[str]]:
+    """Files cited in each chapter's graph context, not the module catalog.
+
+    The overview prompt lists every scanned module. That catalog is the
+    all-files guess again. Consumption is ``context_source``: the graph,
+    facts, or API surface interpolated into the prompt. Chapters built
+    before that field existed fall back to the full user prompt.
+    """
+    consumed: dict[str, list[str]] = {}
+    for chapter in chapters:
+        source = chapter.get("context_source")
+        if source is None:
+            source = chapter.get("user", "")
+        consumed[chapter["file"]] = files_cited_in_prompt(source, known_files)
+    return consumed
+
+
 def recorded_consumed_files(
     chapters: list[dict],
     manifest: Optional[Manifest],

@@ -83,7 +83,11 @@ def get_chapter_prompts(repo_map, language: str, project_name: str,
     project_type = cfg_type or classify_project(repo_map)
 
     if project_type == "monorepo":
-        return get_monorepo_chapter_prompts(repo_map, language, project_name)
+        return get_monorepo_chapter_prompts(
+            repo_map, language, project_name,
+            graph_context=graph_context,
+            short_graph_context=short_graph_context,
+        )
 
     # Single project: use original adaptive path, add subdir=None for compatibility
     chapters = _original_get_chapter_prompts(
