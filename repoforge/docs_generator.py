@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 from .docs_prompts import get_chapter_prompts
+from .factuality import invented_claim_block
 from .incremental import (
     ChapterEntry,
     Manifest,
@@ -315,6 +316,11 @@ def generate_docs(
             if pt:
                 content = render_page_sections(pt, content)
                 safe_log(" 📄", end="")
+
+            block = invented_claim_block(content, list(_pp_facts or []))
+            if block:
+                safe_log(f"❌ {block}")
+                return {"error": {"file": chapter["file"], "error": block}}
 
             safe_log("")
 

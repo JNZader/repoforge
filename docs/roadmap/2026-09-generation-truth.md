@@ -86,6 +86,16 @@ Only after S3 is green. Regenerating a false chapter faster is not a product.
 
 **Status:** done on `roadmap/generation-truth`. `pytest tests/test_incremental.py` — 22 passed. `stale_chapter_names` uses the files each chapter consumed. `--incremental` prefers those recorded files over the all-files guess for overview and architecture. This cut does not regenerate prose.
 
+### S6 — Do not write an invented claim
+
+`check_factuality` existed, and `docs` did not call it.
+
+**Change:** after post-processing, `invented_claim_block` runs on the text that would be written, against the full extracted fact list. Invented ports, endpoints, tables, and env vars become a chapter error and `write_chapter` is not called. A chapter that omits a fact still writes. The port rewrite still runs first, so a hardcoded wrong port that was corrected is not blocked.
+
+**Check:** `pytest tests/test_factuality.py`.
+
+**Status:** done on `roadmap/generation-truth`. `pytest tests/test_factuality.py` — 14 passed.
+
 ## Out of scope
 
 CFG, DFG, and PDG. New CLI commands. Packing parity with Repomix. A hosted wiki. The March waves 8 through 18.

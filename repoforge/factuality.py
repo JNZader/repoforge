@@ -72,6 +72,20 @@ def check_factuality(markdown: str, facts: list[FactItem]) -> FactualityReport:
     return FactualityReport(tuple(invented), tuple(missing))
 
 
+def invented_claim_block(markdown: str, facts: list[FactItem]) -> str | None:
+    """Block a write when the prose invents a checked claim.
+
+    Missing facts do not block. A chapter does not have to repeat every
+    fact it was shown. An invented port, endpoint, table, or env var must
+    not be written. Run this on the text that would hit disk, after the
+    port rewrite.
+    """
+    report = check_factuality(markdown, facts)
+    if not report.invented:
+        return None
+    return "factuality: " + ", ".join(report.invented)
+
+
 def _ports(markdown: str, known: set[str], invented: list[str], missing: list[str]) -> None:
     claimed: set[str] = set()
     for match in _PORT_CLAIM.finditer(markdown):

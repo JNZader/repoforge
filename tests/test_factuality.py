@@ -1,7 +1,7 @@
 """Chapter prose must match the facts it was given."""
 
 from repoforge.facts import FactItem
-from repoforge.factuality import check_factuality
+from repoforge.factuality import check_factuality, invented_claim_block
 
 
 def _port(value: str) -> FactItem:
@@ -93,6 +93,16 @@ def test_no_facts_and_a_port_claim_is_invented():
     report = check_factuality("The server listens on port 8080.", [])
     assert report.invented == ("port:8080",)
     assert report.missing == ()
+
+
+def test_invented_port_blocks_the_write_and_a_real_port_does_not():
+    facts = [_port("7437")]
+    assert invented_claim_block("The server listens on port 8080.", facts) == "factuality: port:8080"
+    assert invented_claim_block("The server listens on port 7437.", facts) is None
+
+
+def test_omitted_fact_does_not_block_the_write():
+    assert invented_claim_block("This chapter explains the module layout.", [_port("7437")]) is None
 
 
 def test_harness_appends_factuality_score_when_facts_are_passed():
