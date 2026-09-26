@@ -231,6 +231,7 @@ class TestFindPreset:
     def test_exact_match_groq(self):
         preset = _find_preset("groq")
         assert preset["api_key_env"] == "GROQ_API_KEY"
+        assert preset["max_tokens"] == 1536
 
     def test_exact_match_ollama(self):
         preset = _find_preset("ollama")
@@ -382,6 +383,42 @@ class TestErrorHandling:
         llm = LLM(model="test-model")
         with pytest.raises(TimeoutError):
             llm.complete("Hello")
+
+    @patch("repoforge.llm.time.sleep")
+    @patch("repoforge.llm.litellm.completion")
+    def test_rate_limit_waits_then_retries(self, mock_completion, mock_sleep):
+        from litellm.exceptions import RateLimitError
+
+        ok = MagicMock()
+        ok.choices = [MagicMock(message=MagicMock(content="done"))]
+        mock_completion.side_effect = [
+            RateLimitError(
+                message="try again in 15.3s",
+                llm_provider="groq",
+                model="groq/openai/gpt-oss-120b",
+            ),
+            ok,
+        ]
+        llm = LLM(model="groq/openai/gpt-oss-120b")
+        assert llm.complete("Hello") == "done"
+        mock_sleep.assert_called_once_with(15.3)
+        assert mock_completion.call_count == 2
+
+    @patch("repoforge.llm.time.sleep")
+    @patch("repoforge.llm.litellm.completion")
+    def test_rate_limit_gives_up_after_four_waits(self, mock_completion, mock_sleep):
+        from litellm.exceptions import RateLimitError
+
+        mock_completion.side_effect = RateLimitError(
+            message="try again in 15.3s",
+            llm_provider="groq",
+            model="groq/openai/gpt-oss-120b",
+        )
+        llm = LLM(model="groq/openai/gpt-oss-120b")
+        with pytest.raises(RateLimitError):
+            llm.complete("Hello")
+        assert mock_sleep.call_count == 4
+        assert mock_completion.call_count == 5
 
 
 # ---------------------------------------------------------------------------

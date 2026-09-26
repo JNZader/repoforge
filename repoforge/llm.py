@@ -29,10 +29,13 @@ Usage:
 """
 
 import os
+import re
+import time
 from dataclasses import dataclass, field
 from typing import Iterator, Optional, Protocol, runtime_checkable
 
 import litellm
+from litellm.exceptions import RateLimitError
 
 # Silence LiteLLM's verbose success logging
 litellm.success_callback = []
@@ -81,7 +84,9 @@ PROVIDER_PRESETS = {
     },
     "groq": {
         "api_key_env": "GROQ_API_KEY",
-        "max_tokens": 4096,
+        # Free-tier chat models share 8k tokens per minute. Reserving 4096
+        # on every call leaves no room for the next one in that minute.
+        "max_tokens": 1536,
         "temperature": 0.0,
     },
     "ollama": {
@@ -116,6 +121,11 @@ PROVIDER_PRESETS = {
 
 # Default model if nothing is configured
 DEFAULT_MODEL = "claude-haiku-3-5"
+
+# One call plus four waits. Groq's 429 names the pause ("try again in 15.3s").
+_RATE_LIMIT_RETRIES = 4
+_RATE_LIMIT_WAIT_CAP_S = 60.0
+_RETRY_AFTER = re.compile(r"try again in ([0-9]+(?:\.[0-9]+)?)s", re.IGNORECASE)
 
 # Auto-detection order from env vars.
 # GitHub Models is the default provider (free tier with GITHUB_TOKEN).
@@ -154,7 +164,7 @@ class LLM:
         messages.append({"role": "user", "content": prompt})
 
         kwargs = self._base_kwargs()
-        response = litellm.completion(messages=messages, **kwargs)
+        response = _completion_with_rate_limit_retry(messages, kwargs)
         return response.choices[0].message.content or ""
 
     def stream(self, prompt: str, system: Optional[str] = None) -> Iterator[str]:
@@ -184,6 +194,35 @@ class LLM:
         if self.api_base:
             kwargs["api_base"] = self.api_base
         return kwargs
+
+
+def _retry_after_seconds(exc: BaseException) -> float:
+    """Seconds to wait after a 429. Prefer the provider's own pause."""
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None)
+    raw = None
+    if headers is not None and hasattr(headers, "get"):
+        raw = headers.get("retry-after") or headers.get("Retry-After")
+    if raw is not None:
+        try:
+            return min(max(float(raw), 0.0), _RATE_LIMIT_WAIT_CAP_S)
+        except (TypeError, ValueError):
+            pass
+    match = _RETRY_AFTER.search(str(exc))
+    if match:
+        return min(float(match.group(1)), _RATE_LIMIT_WAIT_CAP_S)
+    return 20.0
+
+
+def _completion_with_rate_limit_retry(messages: list, kwargs: dict):
+    """Call LiteLLM, waiting out a token-per-minute 429 before failing."""
+    for attempt in range(_RATE_LIMIT_RETRIES + 1):
+        try:
+            return litellm.completion(messages=messages, **kwargs)
+        except RateLimitError as exc:
+            if attempt == _RATE_LIMIT_RETRIES:
+                raise
+            time.sleep(_retry_after_seconds(exc))
 
 
 # ---------------------------------------------------------------------------
