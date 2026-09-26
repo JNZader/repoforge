@@ -17,7 +17,9 @@ from repoforge.incremental import (
     get_stale_chapters,
     load_manifest,
     now_iso,
+    recorded_consumed_files,
     save_manifest,
+    stale_chapter_names,
 )
 
 # ---------------------------------------------------------------------------
@@ -235,6 +237,49 @@ class TestGetStaleChapters:
         stale = get_stale_chapters(chapters, sample_manifest, changed, deps)
         assert len(stale) == 1
         assert stale[0]["file"] == "99-new-chapter.md"
+
+    def test_server_change_marks_only_the_chapter_that_consumed_it(self):
+        consumed = {
+            "06-api-reference.md": [
+                "apps/server/app/main.py",
+                "apps/server/app/routes/auth.py",
+            ],
+            "05-data-models.md": ["apps/server/app/models/user.py"],
+            "04-frontend.md": ["apps/web/src/lib/api.ts"],
+        }
+        stale = stale_chapter_names(["apps/server/app/main.py"], consumed)
+        assert stale == ["06-api-reference.md"]
+
+    def test_recorded_files_beat_the_all_files_guess(self):
+        chapters = [
+            {"file": "01-overview.md", "title": "Overview", "description": ""},
+            {"file": "06-api-reference.md", "title": "API", "description": "endpoints"},
+        ]
+        manifest = Manifest(
+            chapters={
+                "01-overview.md": ChapterEntry(
+                    source_files=["apps/web/src/lib/api.ts"],
+                ),
+                "06-api-reference.md": ChapterEntry(
+                    source_files=["apps/server/app/main.py"],
+                ),
+            },
+        )
+        guessed = {
+            chapter["file"]: [
+                "apps/server/app/main.py",
+                "apps/web/src/lib/api.ts",
+            ]
+            for chapter in chapters
+        }
+        consumed = recorded_consumed_files(chapters, manifest, guessed)
+        stale = get_stale_chapters(
+            chapters,
+            manifest,
+            ["./apps/server/app/main.py"],
+            consumed,
+        )
+        assert [chapter["file"] for chapter in stale] == ["06-api-reference.md"]
 
 
 # ---------------------------------------------------------------------------

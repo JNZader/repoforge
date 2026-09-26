@@ -84,6 +84,8 @@ Only after S3 is green. Regenerating a false chapter faster is not a product.
 
 **Check:** changing `apps/server/app/main.py` marks the chapter that included it, and leaves the others current.
 
+**Status:** done on `roadmap/generation-truth`. `pytest tests/test_incremental.py` — 22 passed. `stale_chapter_names` uses the files each chapter consumed. `--incremental` prefers those recorded files over the all-files guess for overview and architecture. This cut does not regenerate prose.
+
 ## Out of scope
 
 CFG, DFG, and PDG. New CLI commands. Packing parity with Repomix. A hosted wiki. The March waves 8 through 18.

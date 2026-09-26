@@ -28,6 +28,7 @@ from .incremental import (
     get_git_sha,
     get_stale_chapters,
     now_iso,
+    recorded_consumed_files,
 )
 from .incremental import (
     load_manifest as _load_manifest,
@@ -203,7 +204,11 @@ def generate_docs(
 
     if incremental:
         _manifest = _load_manifest(out)
-        _chapter_deps = build_chapter_deps(repo_map, chapters)
+        _chapter_deps = recorded_consumed_files(
+            chapters,
+            _manifest,
+            build_chapter_deps(repo_map, chapters),
+        )
         if _manifest is None:
             log("\n⚠️  No manifest found — full generation will run")
         else:
