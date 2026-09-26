@@ -1,25 +1,25 @@
 ---
-name: fetch-api-data
+name: add-api-functions
 description: >
-  This skill covers patterns for fetching and managing API data.
-  Trigger: When working with API interactions in the frontend.
+  Patterns for integrating the API layer with React Query.
+  Trigger: When the api module is imported or used.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
-  token_estimate: 350
-  dependencies: []
-  related_skills: []
-  load_priority: high
+complexity: low
+token_estimate: 350
+dependencies: []
+related_skills: [handle-react-query, manage-errors]
+load_priority: high
 ---
 
 <!-- L1:START -->
-# fetch-api-data
+# add-api-functions
 
-This skill covers patterns for fetching and managing API data.
+Provides concise patterns for calling backend services via the `api` module.
 
-**Trigger**: When working with API interactions in the frontend.
+**Trigger**: When the api module is imported or used.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,73 +27,82 @@ This skill covers patterns for fetching and managing API data.
 
 | Task | Pattern |
 |------|---------|
-| Fetch API data | `fetchApi` |
-| Start a generation process | `startGeneration` |
+| Fetch data with React Query | `useQuery(['key'], fetchApi)` |
+| Start a generation | `startGeneration(params)` |
+| Cancel streaming | `cancelGeneration(id)` |
 
 ## Critical Patterns (Summary)
-- **Fetch API Data**: Use `fetchApi` to retrieve data from the API.
-- **Start Generation Process**: Utilize `startGeneration` to initiate a data generation process.
+- **Query API with `fetchApi`**: Wrap `fetchApi` in `useQuery` for caching and error handling.
+- **Stream generation safely**: Use `streamGeneration` with `cancelGeneration` to manage aborts.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Fetch API Data
+### Query API with `fetchApi`
 
-Use `fetchApi` to retrieve data from the API, handling errors with `ApiError`.
+Leverage `@tanstack/react-query` to call `fetchApi` and automatically handle loading, caching, and errors.
 
 ```typescript
-import { fetchApi, ApiError } from './lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { fetchApi } from '@/lib/api';
 
-async function getData() {
-  try {
-    const data = await fetchApi('/endpoint');
-    console.log(data);
-  } catch (error) {
-    if (error instanceof ApiError) {
-      console.error('API Error:', error.message);
-    }
-  }
-}
+export const useUser = (userId: string) =>
+  useQuery(['user', userId], () => fetchApi(`/users/${userId}`), {
+    retry: 2,
+    onError: (err: ApiError) => console.error(err.message),
+  });
 ```
 
-### Start Generation Process
+### Stream generation safely with `streamGeneration` and `cancelGeneration`
 
-Utilize `startGeneration` to initiate a data generation process, allowing for real-time updates.
+Start a streaming generation, subscribe to updates, and provide a cancel button that calls `cancelGeneration`.
 
 ```typescript
-import { startGeneration } from './lib/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { streamGeneration, cancelGeneration } from '@/lib/api';
 
-function initiateGeneration() {
-  startGeneration({ type: 'example' })
-    .then(response => console.log('Generation started:', response))
-    .catch(error => console.error('Error starting generation:', error));
-}
+export const useGeneration = () => {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation(
+    (payload) => streamGeneration(payload),
+    {
+      onSuccess: (data) => queryClient.setQueryData(['generation', data.id], data),
+    }
+  );
+
+  const cancel = (id: string) => cancelGeneration(id);
+  return { ...mutation, cancel };
+};
 ```
 
 ## When to Use
 
-- When you need to fetch data from an external API.
-- When initiating a data generation process that requires real-time updates.
+- Fetching any REST endpoint where caching and stale‑while‑revalidate are desired.
+- Initiating or cancelling long‑running AI generation streams.
+- Displaying analytics data via `fetchAnalyticsSummary` or `fetchAnalyticsUsage`.
 
 ## Commands
 
 ```bash
-docker-compose up
-python repoforge/cli.py fetch-data
+# Run the Python CLI entry point
+python -m repoforge.cli run
+
+# Build and start the Docker environment
+docker compose up --build
 ```
 
 ## Anti-Patterns
 
-### Don't: Ignore ApiError Handling
+### Don't: swallow `ApiError` without handling
 
-Ignoring `ApiError` can lead to unhandled exceptions and poor user experience.
+Ignoring the structured error loses context and makes debugging hard.
 
 ```typescript
 // BAD
-async function getData() {
-  const data = await fetchApi('/endpoint'); // No error handling
-  console.log(data);
-}
+fetchApi('/bad-endpoint')
+  .then(res => res.json())
+  .catch(() => {/* silently ignore */});
 ```
 <!-- L3:END -->

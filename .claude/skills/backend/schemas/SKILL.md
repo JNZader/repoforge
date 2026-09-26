@@ -1,25 +1,27 @@
 ---
-name: define-request-response-schemas
+name: add-schemas-model
 description: >
-  This skill covers the creation of Pydantic v2 request and response schemas.
-  Trigger: Load this skill when defining schemas for the RepoForge Web API.
+  Provides concise patterns for defining and returning Pydantic v2 schemas in the RepoForge API.
+  Trigger: when working with `schemas` in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
-  token_estimate: 350
-  dependencies: []
-  related_skills: []
-  load_priority: high
+complexity: low
+token_estimate: 250
+dependencies: []
+related_skills:
+  - extend-pydantic-model
+  - handle-auth-responses
+load_priority: high
 ---
 
 <!-- L1:START -->
-# Define Request and Response Schemas
+# add-schemas-model
 
-This skill covers the creation of Pydantic v2 request and response schemas.
+Defines and returns Pydantic v2 request/response schemas for the RepoForge Web API.
 
-**Trigger**: Load this skill when defining schemas for the RepoForge Web API.
+**Trigger**: when working with `schemas` in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,57 +29,77 @@ This skill covers the creation of Pydantic v2 request and response schemas.
 
 | Task | Pattern |
 |------|---------|
-| Define user info schema | `UserInfo` |
-| Create token response schema | `TokenResponse` |
+| Create a request payload | `GenerateRequest(prompt=str, temperature=float)` |
+| Return a detailed generation | `GenerationDetailWithEvents(id=UUID, events=list[GenerationEventDetail])` |
+| Validate auth token | `AuthValidateResponse(valid=bool, user=UserInfo)` |
 
 ## Critical Patterns (Summary)
-- **User Info Schema**: Defines the structure for user information.
-- **Token Response Schema**: Specifies the format for token responses.
+- **Define request schemas**: Use `GenerateRequest` with strict typing.
+- **Structure response schemas**: Nest `GenerationDetail` inside `GenerationDetailWithEvents` for event tracking.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### User Info Schema
+### Define request schemas with `GenerateRequest`
 
-Defines the structure for user information using Pydantic.
+Use the exported `GenerateRequest` to enforce input validation and automatic documentation.
 
 ```python
-from apps.server.app.models.schemas import UserInfo
+from apps.server.app.models.schemas import GenerateRequest
 
-user_info = UserInfo(username="john_doe", email="john@example.com")
+def parse_generate_body(body: dict) -> GenerateRequest:
+    """Parse incoming JSON into a validated GenerateRequest."""
+    return GenerateRequest(**body)
 ```
 
-### Token Response Schema
+### Structure response schemas with `GenerationDetailWithEvents`
 
-Specifies the format for token responses, ensuring proper validation.
+Combine `GenerationDetail` and `GenerationEventDetail` to return comprehensive generation data.
 
 ```python
-from apps.server.app.models.schemas import TokenResponse
+from apps.server.app.models.schemas import (
+    GenerationDetail,
+    GenerationEventDetail,
+    GenerationDetailWithEvents,
+)
 
-token_response = TokenResponse(access_token="abc123", token_type="bearer")
+def build_generation_response(gen_id, detail, events):
+    """Create a full response payload for a generation request."""
+    return GenerationDetailWithEvents(
+        id=gen_id,
+        detail=GenerationDetail(**detail),
+        events=[GenerationEventDetail(**e) for e in events],
+    )
 ```
 
 ## When to Use
 
-- When creating API endpoints that require user information validation.
-- When handling authentication responses in the RepoForge Web API.
+- When implementing a new endpoint that accepts generation parameters.
+- When returning detailed generation results, including step‑by‑step events.
+- When validating authentication responses with `AuthValidateResponse`.
 
 ## Commands
 
 ```bash
-docker-compose up
-python repoforge/cli.py run
+# Run the API locally with Docker
+docker compose up --build
+
+# Execute a CLI command that uses the schemas (e.g., generate)
+python -m repoforge.cli generate --prompt "Explain quantum computing"
 ```
 
 ## Anti-Patterns
 
-### Don't: Use Unvalidated Data
+### Don't: expose raw ORM models directly in API responses
 
-Using unvalidated data can lead to security vulnerabilities and data integrity issues.
+Returning database models bypasses validation and leaks internal fields.
 
 ```python
 # BAD
-user_info = UserInfo(username="john_doe", email="not-an-email")
+from apps.server.db.models import Generation  # ORM model
+
+def get_generation(gen_id):
+    return Generation.query.get(gen_id)  # Returns ORM object directly
 ```
 <!-- L3:END -->

@@ -1,25 +1,27 @@
 ---
-name: generate-request-types
+name: add-types-definitions
 description: >
-  This skill covers the creation and management of generation request types.
-  Trigger: Load this skill when working with types related to generation requests.
+  Provides patterns for defining core TypeScript types used across the web frontend.
+  Trigger: types
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: low
-  token_estimate: 350
-  dependencies: []
-  related_skills: []
-  load_priority: high
+complexity: low
+token_estimate: 350
+dependencies: []
+related_skills:
+  - type-safe-api
+  - frontend-models
+load_priority: high
 ---
 
 <!-- L1:START -->
-# Generate Request Types
+# add-types-definitions
 
-This skill covers the creation and management of generation request types.
+Defines reusable TypeScript types for users, providers, and generation workflows.
 
-**Trigger**: Load this skill when working with types related to generation requests.
+**Trigger**: When working with the `types` module.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,59 +29,82 @@ This skill covers the creation and management of generation request types.
 
 | Task | Pattern |
 |------|---------|
-| Create a user type | `User` |
-| Define generation mode | `GenerationMode` |
+| Define a user model | `type User = { id: string; name: string; email?: string };` |
+| Enumerate generation modes | `enum GenerationMode { TEXT = "text", IMAGE = "image" }` |
+| Shape a generate request | `interface GenerateRequest { prompt: string; mode: GenerationMode; }` |
 
 ## Critical Patterns (Summary)
-- **User**: Defines the structure for user-related data.
-- **GenerationMode**: Specifies the mode of generation for requests.
+- **Define Strongly Typed Generation Enums**: Use `enum` for `GenerationMode` and `GenerationStatus`.
+- **Structure API Payload Types**: Model `GenerateRequest` and `GenerateResponse` with explicit fields.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### User
+### Define Strongly Typed Generation Enums
 
-Defines the structure for user-related data, encapsulating user attributes.
+Export enums to guarantee valid mode and status values throughout the app.
 
 ```typescript
-// Example of User type usage
-const newUser: User = {
-  id: '123',
-  name: 'John Doe',
-  email: 'john@example.com'
-};
+export enum GenerationMode {
+  TEXT = "text",
+  IMAGE = "image",
+  AUDIO = "audio",
+}
+
+export enum GenerationStatus {
+  PENDING = "pending",
+  RUNNING = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+}
 ```
 
-### GenerationMode
+### Structure API Payload Types
 
-Specifies the mode of generation for requests, allowing for different generation strategies.
+Create precise request/response interfaces that reference the enums above, avoiding loose `any` types.
 
 ```typescript
-// Example of GenerationMode usage
-const mode: GenerationMode = GenerationMode.AUTOMATIC;
+export interface GenerateRequest {
+  prompt: string;
+  mode: GenerationMode;
+  provider?: ProviderKey;
+}
+
+export interface GenerateResponse {
+  id: string;
+  status: GenerationStatus;
+  result?: string; // populated when status === COMPLETED
+}
 ```
 
 ## When to Use
 
-- When defining user data structures in your application.
-- When specifying how generation requests should be processed.
+- When adding new endpoints that accept generation parameters.
+- When extending the UI to display generation status or results.
+- When refactoring loosely‑typed payloads to improve IDE autocomplete and runtime safety.
 
 ## Commands
 
 ```bash
-docker-compose up
-python repoforge/cli.py generate
+# Run the Python CLI inside Docker
+docker compose run --rm app python -m repoforge.cli
+
+# Rebuild the frontend container after type changes
+docker compose build web
 ```
 
 ## Anti-Patterns
 
-### Don't: Use generic types
+### Don't: Use `any` for API payloads
 
-Using overly generic types can lead to confusion and errors in type safety.
+Using `any` defeats TypeScript’s safety guarantees and leads to runtime errors.
 
 ```typescript
 // BAD
-const genericUser: any = {};
+export interface GenerateRequest {
+  prompt: any;          // loses type checking
+  mode: any;            // any value accepted
+}
 ```
 <!-- L3:END -->
