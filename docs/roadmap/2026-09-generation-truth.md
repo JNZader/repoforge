@@ -2,7 +2,7 @@
 
 `repoforge docs` and `repoforge skills` must describe the repo they scanned. The structural claims in that prose (ports, endpoints, tables, env vars, and which module imports which) have to match the facts and the file graph. A new command does not move that.
 
-This is the plan to fulfill. The March 2026 wave list in `ROADMAP.md` is research history.
+This plan is fulfilled on `roadmap/generation-truth`. The next plan is [2026-09-remaining-gaps.md](2026-09-remaining-gaps.md). The March 2026 wave list in `ROADMAP.md` is research history.
 
 ## What "functional" means
 
