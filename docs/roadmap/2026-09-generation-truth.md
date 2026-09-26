@@ -51,6 +51,8 @@ The `[intelligence]` extra already parses signatures with tree-sitter. Python, T
 
 **Check:** a fixture prompt for one Python route and one TypeScript function contains the signature text from the source file. No network.
 
+**Status:** done on `roadmap/generation-truth`. `pytest tests/test_signature_context.py` — passed. `format_api_surface` keeps route decorators on the signature line (`@app.get("/health")` plus `def health(...)`). Without the intelligence extra the section stays empty and is not labeled as AST. The regex symbol extractor is unchanged.
+
 ### S3 — Factuality check
 
 `eval/harness.py` scores skill shape (trigger, concreteness, patterns, multi-language). With no LLM it scores a fake paragraph. `post_process.py` rewrites a hardcoded list of ports (`8080`, `3000`, `5000`, `8000`, `4000`, `9090`). Neither one checks that the chapter agrees with the extracted facts.

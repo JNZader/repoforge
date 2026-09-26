@@ -539,6 +539,19 @@ def select_code_snippets(
 # Semantic context — combines graph + facts + snippets
 # ---------------------------------------------------------------------------
 
+def _render_signature(sym: ASTSymbol) -> str:
+    """Signature text a chapter should quote.
+
+    Route decorators stay on the line. The API surface used to drop them,
+    so a FastAPI ``@app.get`` never reached the prompt.
+    """
+    body = " ".join(sym.signature.split())
+    if sym.decorators and sym.kind in ("function", "method"):
+        decorators = " ".join(" ".join(item.split()) for item in sym.decorators)
+        return f"{decorators} {body}"
+    return body
+
+
 def format_api_surface(
     root_dir: str,
     files: list[str],
@@ -627,23 +640,12 @@ def format_api_surface(
 
         sig_lines: list[str] = []
         for sym in symbols:
-            # Build a concise line based on symbol kind
-            if sym.kind in ("struct", "interface"):
-                line = f"- `{sym.signature}`"
-                if sym.fields:
-                    # Show first few fields inline
-                    preview = "; ".join(sym.fields[:5])
-                    if len(sym.fields) > 5:
-                        preview += "; ..."
-                    line += f" {{ {preview} }}"
-            elif sym.kind in ("function", "method"):
-                line = f"- `{sym.signature}`"
-            elif sym.kind in ("constant", "variable"):
-                line = f"- `{sym.signature}`"
-            elif sym.kind == "type":
-                line = f"- `{sym.signature}`"
-            else:
-                line = f"- `{sym.signature}`"
+            line = f"- `{_render_signature(sym)}`"
+            if sym.kind in ("struct", "interface") and sym.fields:
+                preview = "; ".join(sym.fields[:5])
+                if len(sym.fields) > 5:
+                    preview += "; ..."
+                line += f" {{ {preview} }}"
 
             if sym.docstring:
                 line += f"  — {sym.docstring[:60]}"
@@ -846,7 +848,7 @@ def format_snippets_section(snippets: list[CodeSnippet]) -> str:
                 if symbols:
                     lines.append("**Signatures:**\n")
                     for sym in symbols[:15]:  # Cap at 15 to avoid bloat
-                        lines.append(f"- `{sym.signature}`\n")
+                        lines.append(f"- `{_render_signature(sym)}`\n")
                     lines.append("\n")
             except (SyntaxError, ValueError, TypeError, AttributeError):
                 pass  # Graceful fallback — AST parse error, just show the raw code
