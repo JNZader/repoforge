@@ -182,8 +182,8 @@ jobs:
           command: docs
           language: English
           output-dir: docs-build
-          model: github/gpt-4o-mini
-          github-token: ${{ secrets.GH_MODELS_TOKEN }}
+          model: groq/openai/gpt-oss-120b
+          api-key: ${{ secrets.GROQ_API_KEY }}
 
       - name: Prepare root artifact
         if: steps.plan.outputs.target == 'main'
