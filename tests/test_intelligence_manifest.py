@@ -244,13 +244,13 @@ def test_manifest_parser_emits_ignore_args():
     expected_paths = direct_importers | documented_transitive
     manifest_paths = [path for path, _ in rows]
 
-    assert len(direct_importers) == 23
+    assert len(direct_importers) == 24
     assert documented_transitive == {"tests/test_symbols/test_extractor.py"}
-    assert len(expected_paths) == 24
+    assert len(expected_paths) == 25
     assert set(manifest_paths) == expected_paths
-    assert len(manifest_paths) == len(set(manifest_paths)) == 24
+    assert len(manifest_paths) == len(set(manifest_paths)) == 25
     assert set(ignores) == {f"--ignore={path}" for path in expected_paths}
-    assert len(ignores) == len(set(ignores)) == 24
+    assert len(ignores) == len(set(ignores)) == 25
 
 
 def test_undocumented_non_direct_entry_is_rejected():
