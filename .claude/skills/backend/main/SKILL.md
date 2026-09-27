@@ -1,14 +1,14 @@
 ---
 name: configure-main-app
 description: >
-  Sets up core FastAPI entry point with health routes and essential middleware.
-  Trigger: loading the main FastAPI application.
+  Sets up core FastAPI entry point patterns for RepoForge Web.
+  Trigger: main
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
 complexity: low
-token_estimate: 350
+token_estimate: 250
 dependencies: []
 related_skills:
   - add-health-endpoint
@@ -19,81 +19,103 @@ load_priority: high
 <!-- L1:START -->
 # configure-main-app
 
-Configures the FastAPI `main` app with health checks and middleware stack.
+Configure the FastAPI `main` application with health routes, middleware, and error handling.
 
-**Trigger**: When the `main` module is imported to start the server.
+**Trigger**: main
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task                     | Pattern |
-|--------------------------|---------|
-| expose health routes    | `health`, `health_detailed` |
-| add request middleware  | `correlation_id_middleware`, `request_logging_middleware`, `security_headers_middleware` |
+| Task | Pattern |
+|------|---------|
+| Add health endpoint | `@app.get("/health")(health)` |
+| Register correlation ID middleware | `app.middleware("http")(correlation_id_middleware)` |
+| Global error handling | `app.exception_handler(Exception)(global_error_handler)` |
 
 ## Critical Patterns (Summary)
-- **Add health endpoints**: Register `/health` and `/health/detailed` using `health` and `health_detailed`.
-- **Integrate request middleware**: Attach correlation, logging, and security headers middleware before the app runs.
+- **Lifespan Hook**: Use `lifespan` to manage startup/shutdown resources.
+- **HTTP Middleware Stack**: Attach `correlation_id_middleware`, `request_logging_middleware`, and `security_headers_middleware` in order.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Add health endpoints
+### Lifespan Hook
 
-Expose lightweight and detailed health checks for monitoring. Register the routes on the FastAPI instance before the app starts.
+Define an async generator to run initialization (e.g., DB connections) and cleanup when the app starts and stops.
 
 ```python
 from fastapi import FastAPI
-from apps.server.app.main import health, health_detailed
+from typing import AsyncGenerator
 
-app = FastAPI(lifespan=lifespan)
-
-app.add_api_route("/health", health, methods=["GET"])
-app.add_api_route("/health/detailed", health_detailed, methods=["GET"])
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    # startup logic
+    await app.state.db.connect()
+    yield
+    # shutdown logic
+    await app.state.db.disconnect()
 ```
 
-### Integrate request middleware
-
-Apply correlation IDs, structured request logging, and security headers early in the request lifecycle to ensure consistent tracing and protection.
+Register it when creating the FastAPI instance:
 
 ```python
-from apps.server.app.main import (
-    correlation_id_middleware,
-    request_logging_middleware,
-    security_headers_middleware,
-)
+app = FastAPI(lifespan=lifespan)
+```
 
-app.add_middleware(correlation_id_middleware)
-app.add_middleware(request_logging_middleware)
-app.add_middleware(security_headers_middleware)
+### HTTP Middleware Stack
+
+Add request‑wide middleware for correlation IDs, logging, and security headers using the exported functions.
+
+```python
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+app.middleware("http")(correlation_id_middleware)
+app.middleware("http")(request_logging_middleware)
+app.middleware("http")(security_headers_middleware)
+```
+
+Each middleware follows the signature:
+
+```python
+@app.middleware("http")
+async def correlation_id_middleware(request: Request, call_next):
+    # implementation …
+    response = await call_next(request)
+    return response
 ```
 
 ## When to Use
 
-- Initializing the server for the first time or during CI/CD container builds.
-- Adding or updating health monitoring in production deployments.
-- Refactoring request tracing or security policies.
+- When initializing the server and need deterministic startup/shutdown steps.
+- To ensure every request carries a correlation ID, is logged, and receives security headers.
+- To provide consistent JSON error responses via `global_error_handler`.
 
 ## Commands
 
 ```bash
-docker build -t repoforge-server .
-docker run --rm -p 8000:8000 repoforge-server
-uvicorn apps.server.app.main:app --reload
+# Build the Docker image
+docker build -t repoforge/server:0.3.0 .
+
+# Run the container
+docker run -p 8000:8000 repoforge/server:0.3.0
+
+# Start locally with Uvicorn
+uvicorn apps.server.app.main:app --host 0.0.0.0 --port 8000
 ```
 
 ## Anti-Patterns
 
-### Don't: Register middleware after the app has started
+### Don't: Omit `call_next` in middleware
 
-Adding middleware after the FastAPI instance is running bypasses the request lifecycle and leaves requests untracked.
+Skipping `call_next` prevents the request from reaching downstream handlers, causing 404s or hanging connections.
 
 ```python
-# BAD
-app = FastAPI()
-# ... later in code
-app.add_middleware(request_logging_middleware)  # too late
+@app.middleware("http")
+async def bad_middleware(request: Request, call_next):
+    # BAD: never calls the next handler
+    return JSONResponse({"error": "middleware blocked"})
 ```
 <!-- L3:END -->

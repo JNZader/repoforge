@@ -1,8 +1,8 @@
 ---
 name: build-graph-context
-description: >-
-  Build structured graph_context objects for code‑snippet selection.
-  Trigger: when a module needs a graph_context for analysis.
+description: >
+  Generates concise graph‑based context for LLM prompts.
+  Trigger: when graph_context is needed for code analysis.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -10,16 +10,16 @@ metadata:
 complexity: low
 token_estimate: 350
 dependencies: []
-related_skills: [select-code-snippets, format-api-surface]
+related_skills: [format-api-surface, select-code-snippets]
 load_priority: high
 ---
 
 <!-- L1:START -->
 # build-graph-context
 
-Create a `graph_context` that aggregates facts, API surface and snippets for downstream tooling.
+Creates a string representation of a code graph for downstream LLM consumption.
 
-**Trigger**: when a module needs a `graph_context` for analysis.
+**Trigger**: when graph_context is needed for code analysis.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,85 +27,49 @@ Create a `graph_context` that aggregates facts, API surface and snippets for dow
 
 | Task                     | Pattern |
 |--------------------------|---------|
-| Build full context       | `build_graph_context(...)` |
-| Build concise context    | `build_short_graph_context(...)` |
-| Pick relevant snippets   | `select_code_snippets(...)` |
+| Full graph context       | `build_graph_context(root, files)` |
+| Relevant snippets        | `select_code_snippets(graph, root, entry_points, token_budget)` |
+| API surface formatting   | `format_api_surface(root, files, max_tokens)` |
 
 ## Critical Patterns (Summary)
-- **Build Full Graph Context**: use `build_graph_context` (or its variants) to assemble a complete, structured context.
-- **Select Relevant Code Snippets**: filter snippets with `select_code_snippets` and the `CodeSnippet` dataclass.
+- **Build full graph context**: use `build_graph_context` to serialize selected files.
+- **Select token‑budgeted snippets**: use `select_code_snippets` with an explicit `token_budget`.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Build Full Graph Context
+### Build full graph context
 
-Assemble facts, API surface and optional module graph into a single `dict` ready for serialization.
+Serialize a set of source files into a single context string that captures imports, definitions, and relationships.
 
 ```python
-from repoforge.graph_context import (
-    build_graph_context,
-    format_api_surface,
-    format_facts_section,
-)
+from repoforge.graph_context import build_graph_context
 
-def make_context(facts, api):
-    # Convert raw API surface and facts to strings
-    api_str = format_api_surface(api)
-    facts_str = format_facts_section(facts)
-    # Build the complete context object
-    return build_graph_context(
-        facts_section=facts_str,
-        api_surface=api_str,
-        short=False,          # set True for a concise version
-    )
+root_dir = "/app/src"
+files = ["module/__init__.py", "module/utils.py"]
+graph_context = build_graph_context(root_dir, files)
+print(graph_context)
 ```
 
-### Select Relevant Code Snippets
+### Select token‑budgeted code snippets
 
-Leverage `select_code_snippets` to retrieve only the snippets that match a given predicate, returning `CodeSnippet` instances.
+Extract the most relevant `CodeSnippet` objects from a `CodeGraph` while respecting a token budget to stay within LLM limits.
 
 ```python
-from repoforge.graph_context import select_code_snippets, CodeSnippet
+from repoforge.graph_context import select_code_snippets
 
-def snippets_for_keyword(snippets, keyword):
-    # Keep snippets whose code contains the keyword
-    return select_code_snippets(
-        snippets,
-        lambda s: isinstance(s, CodeSnippet) and keyword in s.code,
-    )
+snippets = select_code_snippets(
+    graph,                     # CodeGraph instance
+    "/app/src",                # root directory
+    entry_points=["main.py"], # optional entry points
+    token_budget=1500         # keep under LLM token limit
+)
+for snippet in snippets:
+    print(snippet.code)
 ```
 
 ## When to Use
 
-- Generating a complete context for a new module before running static analysis.
-- Creating a short context for quick previews in CI pipelines.
-- Filtering snippets to feed a language model with only relevant code.
-
-## Commands
-
-```bash
-# Build a full graph context via the CLI
-python -m repoforge.cli build-graph-context --full
-
-# Build a short context
-python -m repoforge.cli build-graph-context --short
-
-# Run inside Docker (image built from the repo)
-docker build -t repoforge .
-docker run --rm repoforge python -m repoforge.cli build-graph-context
-```
-
-## Anti-Patterns
-
-### Don't: Format a graph context without building it first
-
-Formatting raw strings bypasses validation and can produce mismatched sections.
-
-```python
-# BAD: manually concatenating strings
-raw = "Facts: ..." + "API: ..."
-# Missing the structured build step leads to incomplete context
-```
-<!-- L3:END -->
+- Generating a complete context for a new module during CI linting.
+- Providing focused

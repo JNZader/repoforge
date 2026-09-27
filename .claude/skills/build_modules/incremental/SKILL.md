@@ -1,8 +1,8 @@
 ---
-name: extend-incremental-model
+name: add-incremental-manifest
 description: >
-  Provides patterns for managing incremental manifests and detecting changes.
-  Trigger: incremental data model updates.
+  Manage incremental build manifests for reproducible pipelines.
+  Trigger: incremental
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -10,16 +10,16 @@ metadata:
 complexity: low
 token_estimate: 350
 dependencies: []
-related_skills: [load-manifest, git-integration]
+related_skills: [load-manifest, save-manifest]
 load_priority: high
 ---
 
 <!-- L1:START -->
-# extend-incremental-model
+# add-incremental-manifest
 
-Manage incremental manifests and change detection in a reproducible way.
+Manage incremental build manifests for reproducible pipelines.
 
-**Trigger**: when the `incremental` data model is read or updated.
+**Trigger**: incremental
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,69 +27,48 @@ Manage incremental manifests and change detection in a reproducible way.
 
 | Task | Pattern |
 |------|---------|
-| Load a manifest | `manifest = load_manifest(Path("manifest.json"))` |
-| Save a manifest | `save_manifest(Path("manifest.json"), manifest)` |
-| List changed files | `changed = get_changed_files(get_git_sha())` |
+| Load manifest | `load_manifest(Path)` |
+| Save manifest | `save_manifest(Path, manifest)` |
+| Detect stale chapters | `stale_chapter_names(get_changed_files(...), ...)` |
 
 ## Critical Patterns (Summary)
-- **Load & Save Manifest**: use `load_manifest` / `save_manifest` with `Manifest` objects.
-- **Detect Changed Files**: combine `get_git_sha` and `get_changed_files` for reliable diffing.
+- **Load & Save Manifest Safely**: Use `load_manifest` with fallback and `save_manifest` to persist changes.
+- **Detect Stale Chapters After Git Changes**: Combine `get_git_sha`, `get_changed_files`, `build_chapter_deps`, and `stale_chapter_names`.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Load & Save Manifest
+### Load & Save Manifest Safely
 
-Persist and retrieve the full `Manifest` safely, avoiding manual JSON handling.
+Read an existing `Manifest` (or create a new one) and persist modifications without risking `None` errors.
 
 ```python
 from pathlib import Path
 from repoforge.incremental import load_manifest, save_manifest, Manifest
 
-manifest_path = Path("manifest.json")
-manifest: Manifest = load_manifest(manifest_path)
-
-# ... modify manifest ...
-
-save_manifest(manifest_path, manifest)
+out_dir = Path("build")
+manifest = load_manifest(out_dir) or Manifest()
+# modify manifest as needed
+manifest_path = save_manifest(out_dir, manifest)
+print(f"Manifest written to {manifest_path}")
 ```
 
-### Detect Changed Files
+### Detect Stale Chapters After Git Changes
 
-Leverage Git SHA to compute the set of files that have changed since the last commit.
+Identify which chapters need rebuilding by comparing the current Git SHA with changed files and chapter dependencies.
 
 ```python
-from repoforge.incremental import get_git_sha, get_changed_files
+from pathlib import Path
+from repoforge.incremental import (
+    get_git_sha,
+    get_changed_files,
+    build_chapter_deps,
+    stale_chapter_names,
+)
 
-current_sha = get_git_sha()
-changed_files = get_changed_files(current_sha)
-print(f"Changed since {current_sha}: {changed_files}")
-```
+repo_root = Path(".")
+old_sha = get_git_sha(repo_root)
+changed_files = get_changed_files(repo_root, old_sha)
 
-## When to Use
-
-- Building a new release where only modified chapters should be re‑processed.
-- Running CI pipelines that need to skip unchanged files.
-- Debugging incremental builds by inspecting the manifest state.
-
-## Commands
-
-```bash
-python -m repoforge.cli build          # run the incremental build process
-docker build . -t repoforge:latest      # containerize the build environment
-```
-
-## Anti-Patterns
-
-### Don't: Re‑implement content hashing manually
-
-Re‑creating hash logic bypasses the module’s canonical `content_hash` utility and can diverge from the stored manifest.
-
-```python
-# BAD
-import hashlib
-def bad_hash(text: str) -> str:
-    return hashlib.sha256(text.encode()).hexdigest()
-```
-<!-- L3:END -->
+# Example: empty

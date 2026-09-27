@@ -1,27 +1,27 @@
 ---
-name: add-types-definitions
+name: define-types-model
 description: >
-  Provides patterns for defining core TypeScript types used across the web frontend.
-  Trigger: types
+  Defines core TypeScript types for generation workflow.
+  Trigger: When the `types` module is imported or generation data structures are needed.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
 complexity: low
-token_estimate: 350
+token_estimate: 120
 dependencies: []
 related_skills:
-  - type-safe-api
-  - frontend-models
+  - add-generation-endpoint
+  - extend-user-model
 load_priority: high
 ---
 
 <!-- L1:START -->
-# add-types-definitions
+# define-types-model
 
-Defines reusable TypeScript types for users, providers, and generation workflows.
+Defines the core TypeScript interfaces and enums used throughout the generation pipeline.
 
-**Trigger**: When working with the `types` module.
+**Trigger**: When the `types` module is imported or generation data structures are needed.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,82 +29,80 @@ Defines reusable TypeScript types for users, providers, and generation workflows
 
 | Task | Pattern |
 |------|---------|
-| Define a user model | `type User = { id: string; name: string; email?: string };` |
-| Enumerate generation modes | `enum GenerationMode { TEXT = "text", IMAGE = "image" }` |
-| Shape a generate request | `interface GenerateRequest { prompt: string; mode: GenerationMode; }` |
+| Create user type | `interface User { github_user_id: number; login: string; avatar_url: string; }` |
+| Define generation mode | `type GenerationMode = 'docs' | 'skills' | 'both';` |
+| Emit generation started event | `type GenerationStartedEvent = { type: 'generation_started'; generation_id: string; repo_url: string; mode: GenerationMode; };` |
 
 ## Critical Patterns (Summary)
-- **Define Strongly Typed Generation Enums**: Use `enum` for `GenerationMode` and `GenerationStatus`.
-- **Structure API Payload Types**: Model `GenerateRequest` and `GenerateResponse` with explicit fields.
+- **Domain data structures**: Define `User` and `ProviderKey` interfaces to model external entities.
+- **Typed generation enums & events**: Use `GenerationMode`, `GenerationStatus`, and `GenerationStartedEvent` for strict type safety.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Define Strongly Typed Generation Enums
+### Domain data structures (User, ProviderKey)
 
-Export enums to guarantee valid mode and status values throughout the app.
+Model external entities with explicit interfaces to enable IDE autocomplete and runtime validation.
 
 ```typescript
-export enum GenerationMode {
-  TEXT = "text",
-  IMAGE = "image",
-  AUDIO = "audio",
+export interface User {
+  github_user_id: number;
+  login: string;
+  avatar_url: string;
 }
 
-export enum GenerationStatus {
-  PENDING = "pending",
-  RUNNING = "running",
-  COMPLETED = "completed",
-  FAILED = "failed",
+export interface ProviderKey {
+  provider: string;
+  key_hint: string | null;
+  validated_at: string | null;
+  status?: string;
+  note?: string;
+  storage?: 'persistent' | 'session';
 }
 ```
 
-### Structure API Payload Types
+### Typed generation enums & events (GenerationMode, GenerationStatus, GenerationStartedEvent)
 
-Create precise request/response interfaces that reference the enums above, avoiding loose `any` types.
+Leverage union types and discriminated event interfaces to enforce valid states and simplify switch‑case handling.
 
 ```typescript
-export interface GenerateRequest {
-  prompt: string;
-  mode: GenerationMode;
-  provider?: ProviderKey;
-}
+export type GenerationMode = 'docs' | 'skills' | 'both';
+export type GenerationStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
-export interface GenerateResponse {
-  id: string;
-  status: GenerationStatus;
-  result?: string; // populated when status === COMPLETED
+export interface GenerationStartedEvent {
+  type: 'generation_started';
+  generation_id: string;
+  repo_url: string;
+  mode: GenerationMode;
 }
 ```
 
 ## When to Use
 
-- When adding new endpoints that accept generation parameters.
-- When extending the UI to display generation status or results.
-- When refactoring loosely‑typed payloads to improve IDE autocomplete and runtime safety.
+- When building API payloads that include user or provider information.
+- When handling generation lifecycle events in the frontend or SSE streams.
+- When validating request bodies for generation jobs.
 
 ## Commands
 
 ```bash
 # Run the Python CLI inside Docker
-docker compose run --rm app python -m repoforge.cli
+docker compose run --rm app python -m repoforge.cli generate --repo https://github.com/example/repo
 
-# Rebuild the frontend container after type changes
-docker compose build web
+# Rebuild containers after type changes
+docker compose up --build -d
 ```
 
 ## Anti-Patterns
 
-### Don't: Use `any` for API payloads
+### Don't: Use loose string literals for generation mode
 
-Using `any` defeats TypeScript’s safety guarantees and leads to runtime errors.
+Using arbitrary strings defeats the purpose of the `GenerationMode` union and introduces runtime errors.
 
 ```typescript
 // BAD
-export interface GenerateRequest {
-  prompt: any;          // loses type checking
-  mode: any;            // any value accepted
-}
+type BadMode = string; // loses type safety
+const mode: BadMode = 'documentation'; // not part of the allowed set
 ```
 <!-- L3:END -->

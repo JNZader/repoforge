@@ -1,27 +1,27 @@
 ---
 name: add-schemas-model
 description: >
-  Provides concise patterns for defining and returning Pydantic v2 schemas in the RepoForge API.
-  Trigger: when working with `schemas` in the backend.
+  Provides patterns for defining and using Pydantic v2 request/response schemas in the RepoForge API.
+  Trigger: When working with schemas for request/response validation.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
 complexity: low
-token_estimate: 250
+token_estimate: 350
 dependencies: []
 related_skills:
-  - extend-pydantic-model
-  - handle-auth-responses
+  - define-pydantic-models
+  - handle-auth
 load_priority: high
 ---
 
 <!-- L1:START -->
 # add-schemas-model
 
-Defines and returns Pydantic v2 request/response schemas for the RepoForge Web API.
+Defines concise, type‑safe Pydantic schemas for API payloads.
 
-**Trigger**: when working with `schemas` in the backend.
+**Trigger**: When working with schemas for request/response validation.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,77 +29,77 @@ Defines and returns Pydantic v2 request/response schemas for the RepoForge Web A
 
 | Task | Pattern |
 |------|---------|
-| Create a request payload | `GenerateRequest(prompt=str, temperature=float)` |
-| Return a detailed generation | `GenerationDetailWithEvents(id=UUID, events=list[GenerationEventDetail])` |
-| Validate auth token | `AuthValidateResponse(valid=bool, user=UserInfo)` |
+| Create user response | `class UserResponse(BaseModel): ...` |
+| Return token payload | `class TokenResponse(BaseModel): ...` |
+| List generations | `class GenerationListResponse(BaseModel): ...` |
 
 ## Critical Patterns (Summary)
-- **Define request schemas**: Use `GenerateRequest` with strict typing.
-- **Structure response schemas**: Nest `GenerationDetail` inside `GenerationDetailWithEvents` for event tracking.
+- **UserResponse schema**: model API user data with `UserResponse`.
+- **TokenResponse schema**: standardize JWT payload using `TokenResponse`.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Define request schemas with `GenerateRequest`
+### UserResponse schema
 
-Use the exported `GenerateRequest` to enforce input validation and automatic documentation.
+Encapsulate user data returned by the API in a single, validated model.
 
 ```python
-from apps.server.app.models.schemas import GenerateRequest
+from pydantic import BaseModel, Field
+from uuid import UUID
 
-def parse_generate_body(body: dict) -> GenerateRequest:
-    """Parse incoming JSON into a validated GenerateRequest."""
-    return GenerateRequest(**body)
+class UserInfo(BaseModel):
+    id: UUID
+    username: str
+    email: str
+
+class UserResponse(BaseModel):
+    user: UserInfo = Field(..., description="Authenticated user details")
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
 ```
 
-### Structure response schemas with `GenerationDetailWithEvents`
+### TokenResponse schema
 
-Combine `GenerationDetail` and `GenerationEventDetail` to return comprehensive generation data.
+Provide a consistent shape for JWT access/refresh tokens.
 
 ```python
-from apps.server.app.models.schemas import (
-    GenerationDetail,
-    GenerationEventDetail,
-    GenerationDetailWithEvents,
-)
+from pydantic import BaseModel, Field
+from datetime import datetime, timedelta
 
-def build_generation_response(gen_id, detail, events):
-    """Create a full response payload for a generation request."""
-    return GenerationDetailWithEvents(
-        id=gen_id,
-        detail=GenerationDetail(**detail),
-        events=[GenerationEventDetail(**e) for e in events],
-    )
+class TokenResponse(BaseModel):
+    access_token: str = Field(..., description="Bearer token")
+    token_type: str = Field(default="bearer")
+    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=1))
 ```
 
 ## When to Use
 
-- When implementing a new endpoint that accepts generation parameters.
-- When returning detailed generation results, including step‑by‑step events.
-- When validating authentication responses with `AuthValidateResponse`.
+- When returning user information from `/auth/me` or similar endpoints.  
+- When issuing JWTs after successful authentication.  
+- When serializing generation results for `/generate` responses.
 
 ## Commands
 
 ```bash
-# Run the API locally with Docker
-docker compose up --build
+# Build and run the Docker environment
+docker compose up --build -d
 
-# Execute a CLI command that uses the schemas (e.g., generate)
-python -m repoforge.cli generate --prompt "Explain quantum computing"
+# Run the CLI entry point to start the server
+python -m repoforge.cli serve
+
+# Validate schemas with pytest
+pytest -q apps/server/app/models/test_schemas.py
 ```
 
 ## Anti-Patterns
 
-### Don't: expose raw ORM models directly in API responses
+### Don't: Use mutable defaults in Pydantic models
 
-Returning database models bypasses validation and leaks internal fields.
+Mutable defaults (e.g., `list = []`) bypass validation and cause shared state across instances.
 
 ```python
-# BAD
-from apps.server.db.models import Generation  # ORM model
-
-def get_generation(gen_id):
-    return Generation.query.get(gen_id)  # Returns ORM object directly
+class BadSchema(BaseModel):
+    tags: list = []  # BAD: mutable default
 ```
 <!-- L3:END -->

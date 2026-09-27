@@ -24,11 +24,11 @@ Before handling any task:
 
 ## Routing Table
 
-| Task type                     | Delegate to          |
-|-------------------------------|----------------------|
-| Work in `apps/web/`           | frontend-agent       |
-| Work in `apps/server/`        | backend-agent        |
-| Work in `./`                  | build_modules-agent  |
+| Task type | Delegate to |
+|-----------|-------------|
+| Work in `apps/web/` | frontend-agent |
+| Work in `apps/server/` | backend-agent |
+| Work in `./` | build_modules-agent |
 
 ## Delegation Protocol
 
@@ -43,11 +43,11 @@ Before handling any task:
 6. Report back to user
 ```
 
-## Sub‑agents
+## Sub-agents
 
 - **frontend-agent** – handles the `apps/web/` TypeScript frontend (22 modules)  
 - **backend-agent** – handles the `apps/server/` Python backend (37 modules)  
-- **build_modules-agent** – handles the root `./` build modules (207 Python modules)  
+- **build_modules-agent** – handles the root `./` build modules (208 Python modules)  
 
 ## For Complex Features (SDD mode)
 
@@ -65,3 +65,5 @@ When the task is substantial (new feature, refactor, multi‑layer change):
 - ALWAYS read the skill‑registry before any delegation.  
 - ALWAYS obtain user approval before any multi‑file changes.  
 - ALWAYS report sub‑agent results back to the user.  
+- NEVER skip the skill‑registry read.  
+- ALWAYS enforce the “NEVER writes code” rule.  

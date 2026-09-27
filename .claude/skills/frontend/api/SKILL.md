@@ -1,8 +1,8 @@
 ---
-name: add-api-functions
+name: add-api-client
 description: >
-  Patterns for integrating the API layer with React Query.
-  Trigger: When the api module is imported or used.
+  Provides patterns for robust API interaction in the web frontend.
+  Trigger: when working with the `api` utilities.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -10,16 +10,16 @@ metadata:
 complexity: low
 token_estimate: 350
 dependencies: []
-related_skills: [handle-react-query, manage-errors]
+related_skills: [handle-errors, use-react-query]
 load_priority: high
 ---
 
 <!-- L1:START -->
-# add-api-functions
+# add-api-client
 
-Provides concise patterns for calling backend services via the `api` module.
+Provides concise patterns for using the API layer in the web app.
 
-**Trigger**: When the api module is imported or used.
+**Trigger**: when working with the `api` utilities.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,82 +27,83 @@ Provides concise patterns for calling backend services via the `api` module.
 
 | Task | Pattern |
 |------|---------|
-| Fetch data with React Query | `useQuery(['key'], fetchApi)` |
-| Start a generation | `startGeneration(params)` |
-| Cancel streaming | `cancelGeneration(id)` |
+| Fetch a generation | `fetchGeneration(id)` |
+| Start a generation | `useStartGeneration()` |
+| Handle API errors | `throw new ApiError(...)` |
 
 ## Critical Patterns (Summary)
-- **Query API with `fetchApi`**: Wrap `fetchApi` in `useQuery` for caching and error handling.
-- **Stream generation safely**: Use `streamGeneration` with `cancelGeneration` to manage aborts.
+- **Error handling with `ApiError`**: Throw and catch typed errors for HTTP failures.
+- **React Query hooks**: Use provided `use*` hooks to keep UI in sync with API state.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Query API with `fetchApi`
+### Error handling with `ApiError`
 
-Leverage `@tanstack/react-query` to call `fetchApi` and automatically handle loading, caching, and errors.
+Wrap `fetchApi` calls in try/catch and re‑throw `ApiError` to expose status and code to UI components.
 
 ```typescript
-import { useQuery } from '@tanstack/react-query';
-import { fetchApi } from '@/lib/api';
+import { fetchApi, ApiError } from './api';
 
-export const useUser = (userId: string) =>
-  useQuery(['user', userId], () => fetchApi(`/users/${userId}`), {
-    retry: 2,
-    onError: (err: ApiError) => console.error(err.message),
-  });
+async function loadProviders() {
+  try {
+    return await fetchApi<ProviderKey[]>('/api/providers');
+  } catch (e) {
+    if (e instanceof ApiError) {
+      console.error(`API ${e.status} – ${e.code}: ${e.message}`);
+    }
+    throw e;
+  }
+}
 ```
 
-### Stream generation safely with `streamGeneration` and `cancelGeneration`
+### React Query hooks for generation lifecycle
 
-Start a streaming generation, subscribe to updates, and provide a cancel button that calls `cancelGeneration`.
+Leverage `useStartGeneration`, `useCancelGeneration`, and `useGeneration` to trigger mutations and keep cached data fresh.
 
 ```typescript
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { streamGeneration, cancelGeneration } from '@/lib/api';
+import { useStartGeneration, useCancelGeneration, useGeneration } from './api';
 
-export const useGeneration = () => {
-  const queryClient = useQueryClient();
+function GenerationPanel({ id }: { id: string }) {
+  const { data: gen } = useGeneration(id);
+  const start = useStartGeneration();
+  const cancel = useCancelGeneration();
 
-  const mutation = useMutation(
-    (payload) => streamGeneration(payload),
-    {
-      onSuccess: (data) => queryClient.setQueryData(['generation', data.id], data),
-    }
+  return (
+    <>
+      <button onClick={() => start.mutate({ prompt: 'Hello' })}>Start</button>
+      <button onClick={() => cancel.mutate(id)}>Cancel</button>
+      <pre>{JSON.stringify(gen, null, 2)}</pre>
+    </>
   );
-
-  const cancel = (id: string) => cancelGeneration(id);
-  return { ...mutation, cancel };
-};
+}
 ```
 
 ## When to Use
 
-- Fetching any REST endpoint where caching and stale‑while‑revalidate are desired.
-- Initiating or cancelling long‑running AI generation streams.
-- Displaying analytics data via `fetchAnalyticsSummary` or `fetchAnalyticsUsage`.
+- Fetching or mutating generation data from the `/api/generate` endpoints.  
+- Populating provider lists or analytics dashboards with React Query.  
+- Implementing global error boundaries that need HTTP status details.
 
 ## Commands
 
 ```bash
-# Run the Python CLI entry point
-python -m repoforge.cli run
-
-# Build and start the Docker environment
+# Run the full stack locally
 docker compose up --build
+
+# Execute the CLI entry point
+python -m repoforge.cli run
 ```
 
 ## Anti-Patterns
 
-### Don't: swallow `ApiError` without handling
+### Don't: swallow `ApiError` without handling status
 
-Ignoring the structured error loses context and makes debugging hard.
+Ignoring the structured error loses valuable debugging information.
 
 ```typescript
 // BAD
-fetchApi('/bad-endpoint')
-  .then(res => res.json())
-  .catch(() => {/* silently ignore */});
+await fetchApi('/api/providers'); // errors are silently ignored
 ```
 <!-- L3:END -->

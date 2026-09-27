@@ -1,117 +1,79 @@
 ---
-name: build_modules-layer
+name: auth-layer
 description: >
-  Generates and caches code modules for FastAPI, Next.js, Go services, and mixed layers.
-  It orchestrates module factories, snapshot caching, and impact analysis.
+  This layer owns all authentication and authorization logic.
+  Trigger: When working in auth/ — adding, modifying, or debugging login,
+  token issuance, and permission checks.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: medium
-token_estimate: 340
-dependencies: []
-related_skills:
-  - frontend-layer
-  - backend-layer
-load_priority: high
 ---
 
-<!-- L1:START -->
-# build_modules-layer
-
-Creates all build‑time modules (FastAPI CRUD, Next.js pages, Go services, mixed layers) and manages incremental caching.
-
-**Trigger**: When working in the `build_modules/` directory — adding, modifying, or debugging module generation logic.
-<!-- L1:END -->
-
-<!-- L2:START -->
-## Quick Reference
-
-| Task | Pattern |
-|------|---------|
-| Add a new FastAPI CRUD module | `make_fastapi_crud_module` |
-| Update cache after code change | `hash_content` → `compute_repo_snapshot` |
-| Compute blast radius for a commit | `blast_radius_from_commit` |
-
-## Critical Patterns (Summary)
-- **Module Factory Pattern**: Use exported `make_*_module` helpers to keep generation consistent.
-- **Incremental Cache Pattern**: Hash content & diff snapshots to avoid full regeneration.
-<!-- L2:END -->
-
-<!-- L3:START -->
 ## Layer Structure
 
 ```
-./
-├── eval/harness.py — entry point, exports make_*_module helpers
-├── repoforge/cache.py — hashing & snapshot diff utilities
-└── repoforge/blast_radius.py — impact analysis for changes
+auth/
+├── src/auth/index.ts — entry point that wires service and controller
+├── src/auth/service.ts — core business logic for login, token creation
+└── src/auth/controller.ts — HTTP handlers exposing auth endpoints
 ```
 
-## Critical Patterns (Detailed)
+## Critical Patterns
 
-### Module Factory Pattern
+### Export functions with explicit return types
 
-All generated modules must be created via the factory helpers in `eval/harness.py`.  
-This guarantees uniform naming, routing, and dependency injection.
+All public functions must declare their return type to aid static analysis.
 
-```python
-from eval.harness import make_fastapi_crud_module, make_nextjs_page_module
-
-# FastAPI CRUD endpoint for a new model
-crud_module = make_fastapi_crud_module(model_name="User", schema=UserSchema)
-
-# Next.js page for the same model
-page_module = make_nextjs_page_module(model_name="User")
+```typescript
+export async function login(
+  credentials: { email: string; password: string }
+): Promise<{ accessToken: string; refreshToken: string }> {
+  // implementation
+}
 ```
 
-### Incremental Cache Pattern
+### Use async/await for all I/O
 
-Before regenerating modules, compute a content hash and compare snapshots.  
-Only changed files trigger regeneration, keeping builds fast.
+Never mix callbacks or `.then()` with `await`; keep the async flow consistent.
 
-```python
-from repoforge.cache import hash_content, compute_repo_snapshot, diff_snapshots
-
-# Hash a source file
-file_hash = hash_content(open("repoforge/adapters.py").read())
-
-# Take a repo snapshot
-snapshot = compute_repo_snapshot(root_path=".")
-
-# Detect changes since last run
-changed = diff_snapshots(previous_snapshot, snapshot)
-if changed:
-    # regenerate affected modules
-    ...
+```typescript
+export async function verifyToken(token: string): Promise<User | null> {
+  const payload = await jwt.verifyAsync(token, process.env.JWT_SECRET);
+  return payload ? await userRepo.findById(payload.sub) : null;
+}
 ```
 
 ## When to Use
 
-- Adding a new backend service (FastAPI, Go) or frontend page (Next.js) via the layer.
-- Updating existing module logic and needing fast, incremental rebuilds.
-- Assessing the blast radius of a commit to decide which modules must be regenerated.
+- Implement a new login strategy (e.g., OAuth, SSO) within the auth layer.
+- Add or modify token payload claims or expiration policies.
+- Integrate auth checks into other layers (e.g., guard middleware in the API layer).
+
+## Adding a New Endpoint
+
+1. Create a handler in `src/auth/controller.ts` following the existing naming convention (`<action>Handler`).
+2. Wire the handler in `src/auth/index.ts` under the exported router.
+3. Implement the business logic in `src/auth/service.ts` and export it.
+4. Run `npm test` and verify the new route appears in the integration test suite.
 
 ## Commands
 
 ```bash
-# Run the harness with a real scenario (generates all modules)
-python -m eval.harness --scenario real
-
-# Show cache diff after a code change
-python -c "from repoforge.cache import compute_repo_snapshot, diff_snapshots; \
-print(diff_snapshots(prev, compute_repo_snapshot('.')))"
+npm run lint          # lint the auth layer
+npm test              # run unit & integration tests for auth
+npm run build          # compile TypeScript for the auth package
 ```
 
 ## Anti-Patterns
 
-### Don't: Modify generated module files directly
+- **Don't**: Hard‑code secrets or JWT keys in source files — they must come from `process.env`.
+- **Don't**: Return raw database entities from service functions — expose only DTOs to keep layers decoupled.
 
-Changing files produced by `make_*_module` breaks the deterministic cache and invalidates blast‑radius calculations, causing downstream layers (frontend, backend) to diverge.
+## Quick Reference
 
-```python
-# BAD: editing a generated file
-with open("generated/user_crud.py", "a") as f:
-    f.write("# manual tweak")  # <-- leads to cache mismatch
-```
-<!-- L3:END -->
+| Task                     | File                         | Pattern |
+|--------------------------|------------------------------|---------|
+| Add login handler        | `src/auth/controller.ts`     | `async function loginHandler(req, res)` |
+| Create token service     | `src/auth/service.ts`        | `export async function generateToken(user)` |
+| Register route           | `src/auth/index.ts`          | `router.post('/login', loginHandler)` |
