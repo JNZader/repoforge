@@ -1,7 +1,10 @@
 """The skill draft gate rejects literals and calls the source does not contain."""
 
+from pathlib import Path
+
 from repoforge.skill_bindings import (
     declarations_block,
+    include_local_imports,
     settle_skill_draft,
     skill_draft_problems,
 )
@@ -109,3 +112,51 @@ def test_one_repair_keeps_a_fixed_draft_and_drops_a_second_failure():
     assert problems == []
     assert dropped is None
     assert still
+
+
+def test_repair_quotes_only_the_broken_signature():
+    source = """
+def stale_chapter_names(changed_files, consumed_by_chapter):
+    return []
+
+def unrelated(a, b, c, d, e):
+    return []
+"""
+    captured: list[str] = []
+
+    class _Capture:
+        def complete(self, prompt: str, system: str | None = None) -> str:
+            captured.append(prompt)
+            return _skill("stale_chapter_names(changed, consumed)")
+
+    settle_skill_draft(
+        _Capture(),
+        _skill("stale_chapter_names(changed, consumed, extra)"),
+        [("repoforge/incremental.py", source)],
+        system="system",
+    )
+
+    prompt = captured[0]
+    assert "def stale_chapter_names(changed_files, consumed_by_chapter)" in prompt
+    assert "unrelated" not in prompt
+    assert "API Surface" not in prompt
+
+
+def test_imported_union_rejects_a_mode_from_the_other_file(tmp_path: Path):
+    (tmp_path / "types.ts").write_text(TYPES, encoding="utf-8")
+    api = "import type { GenerateRequest } from './types';\nexport function start() {}\n"
+    (tmp_path / "api.ts").write_text(api, encoding="utf-8")
+    sources = include_local_imports(tmp_path, [("api.ts", api)])
+
+    rejected = skill_draft_problems(
+        _skill("startGeneration({ mode: 'auto' })"),
+        sources,
+    )
+    accepted = skill_draft_problems(
+        _skill("startGeneration({ mode: 'skills' })"),
+        sources,
+    )
+
+    assert any("auto" in problem and "GenerationMode" in problem for problem in rejected)
+    assert accepted == []
+    assert any(rel.endswith("types.ts") for rel, _text in sources)

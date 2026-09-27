@@ -45,7 +45,12 @@ from .prompts import (
     skill_prompt,
 )
 from .scanner import classify_complexity, scan_repo
-from .skill_bindings import declarations_block, read_sources, settle_skill_draft
+from .skill_bindings import (
+    declarations_block,
+    include_local_imports,
+    read_sources,
+    settle_skill_draft,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -599,8 +604,10 @@ def _write(path: Path, content: str, dry_run: bool):
 
 
 def _bindings_for(root: Path, relative_paths: list[str]) -> tuple[list[tuple[str, str]], str]:
-    sources = read_sources(root, relative_paths)
-    return sources, declarations_block(sources)
+    primary = read_sources(root, relative_paths)
+    sources = include_local_imports(root, primary)
+    full = {rel for rel, _text in primary}
+    return sources, declarations_block(sources, full_rels=full)
 
 
 def _commit_draft(

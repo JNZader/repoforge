@@ -35,8 +35,13 @@ _CALL = re.compile(r"\b([A-Za-z_]\w*)\s*\(([^)]*)\)")
 _KW = re.compile(r"^([A-Za-z_]\w*)\s*=")
 
 _MAX_FILES = 8
+_MAX_IMPORTS = 6
 _MAX_CHUNKS = 40
 _MAX_BLOCK_CHARS = 12_000
+_FROM_SPEC = re.compile(r"""from\s+['"](\.[^'"]+)['"]""")
+_PY_RELATIVE = re.compile(r"^\s*from\s+(\.+)([\w.]*)\s+import", re.M)
+_PROBLEM_CALL = re.compile(r"\b([A-Za-z_]\w*)\(\)")
+_PROBLEM_TYPE = re.compile(r"member of ([A-Za-z_]\w*)")
 
 
 @dataclass(frozen=True)
@@ -73,11 +78,48 @@ def read_sources(root: Path, relative_paths: list[str]) -> list[tuple[str, str]]
     return found
 
 
-def declarations_block(sources: list[tuple[str, str]]) -> str:
-    """Markdown section of declarations the model is allowed to copy."""
+def include_local_imports(
+    root: Path,
+    sources: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    """Add files imported by relative specifiers, one hop, so a union can cross files.
+
+    ``api.ts`` imports ``./types``. A skill for ``api.ts`` has to see
+    ``GenerationMode`` even though that alias lives in the other file.
+    """
+    root = root.resolve()
+    seen = {rel for rel, _text in sources}
+    extra: list[tuple[str, str]] = []
+    for rel, text in sources:
+        for imported in _local_import_paths(root, rel, text):
+            if imported in seen or len(extra) >= _MAX_IMPORTS:
+                continue
+            path = root / imported
+            if not path.is_file():
+                continue
+            try:
+                body = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            seen.add(imported)
+            extra.append((imported, body))
+    return [*sources, *extra]
+
+
+def declarations_block(
+    sources: list[tuple[str, str]],
+    full_rels: set[str] | None = None,
+) -> str:
+    """Markdown section of declarations the model is allowed to copy.
+
+    Imported files contribute only their union lines. The file under
+    documentation keeps its full declaration list.
+    """
+    if full_rels is None:
+        full_rels = {rel for rel, _text in sources}
     sections: list[str] = []
     for rel, text in sources:
-        chunks = _declaration_chunks(text)
+        chunks = _declaration_chunks(text) if rel in full_rels else _union_lines(text)
         if not chunks:
             continue
         body = "\n".join(chunks[:_MAX_CHUNKS])
@@ -143,16 +185,54 @@ def _repair_prompt(
     problems: list[str],
     sources: list[tuple[str, str]],
 ) -> str:
+    """Ask for one correction. Quote the broken declaration, not the whole file."""
     listed = "\n".join(f"- {item}" for item in problems)
-    surface = declarations_block(sources)
+    cited = _cited_lines(problems, sources)
+    guide = f"Use exactly:\n{cited}\n\n" if cited else ""
     return (
-        "Rewrite this skill. The draft contradicts the source.\n\n"
+        "Fix this skill. Change only the lines named below. "
+        "Keep every other section.\n"
+        "Start with `---`. Do not wrap the skill in a fence.\n\n"
         f"Problems:\n{listed}\n\n"
-        f"{surface}\n\n"
-        "Return only the skill markdown. Start with `---`. "
-        "Do not wrap it in a fence. Do not return a tool transcript.\n\n"
+        f"{guide}"
         f"Draft:\n{content}"
     )
+
+
+def _cited_lines(problems: list[str], sources: list[tuple[str, str]]) -> str:
+    names: set[str] = set()
+    for problem in problems:
+        names.update(_PROBLEM_CALL.findall(problem))
+        names.update(_PROBLEM_TYPE.findall(problem))
+    if not names:
+        return ""
+    lines: list[str] = []
+    seen: set[str] = set()
+    for _rel, text in sources:
+        for chunk in _declaration_chunks(text):
+            for line in chunk.splitlines():
+                stripped = line.strip()
+                if stripped in seen:
+                    continue
+                if _line_names(stripped, names):
+                    seen.add(stripped)
+                    lines.append(stripped)
+        for line in _union_lines(text):
+            if line not in seen and _line_names(line, names):
+                seen.add(line)
+                lines.append(line)
+    return "\n".join(lines)
+
+
+def _line_names(line: str, names: set[str]) -> bool:
+    for name in names:
+        if re.search(rf"\bdef\s+{re.escape(name)}\b", line):
+            return True
+        if re.search(rf"\btype\s+{re.escape(name)}\b", line):
+            return True
+        if re.search(rf"\b{re.escape(name)}\s*:", line):
+            return True
+    return False
 
 
 def _declaration_chunks(text: str) -> list[str]:
@@ -266,6 +346,55 @@ def _shape_problems(content: str) -> list[str]:
     ):
         return ["draft does not start as skill markdown"]
     return []
+
+
+def _union_lines(text: str) -> list[str]:
+    """Union aliases and the fields that use them. Short enough for a small model."""
+    unions = _string_unions(text)
+    lines: list[str] = []
+    for match in _UNION.finditer(text):
+        if match.group(1) in unions:
+            lines.append(match.group(0).strip())
+    for field, type_name in _interface_fields(text).items():
+        if type_name in unions:
+            lines.append(f"{field}: {type_name}")
+    return lines
+
+
+def _local_import_paths(root: Path, rel: str, text: str) -> list[str]:
+    found: list[str] = []
+    for spec in _FROM_SPEC.findall(text):
+        resolved = _resolve_relative(root, rel, spec)
+        if resolved and resolved not in found:
+            found.append(resolved)
+    if rel.endswith(".py"):
+        for dots, rest in _PY_RELATIVE.findall(text):
+            spec = "../" * (len(dots) - 1) + rest.replace(".", "/")
+            if spec.endswith("/"):
+                spec = spec[:-1]
+            if not spec:
+                continue
+            resolved = _resolve_relative(root, rel, spec)
+            if resolved and resolved not in found:
+                found.append(resolved)
+    return found
+
+
+def _resolve_relative(root: Path, rel: str, spec: str) -> str | None:
+    root_resolved = root.resolve()
+    raw = ((root / rel).parent / spec).resolve()
+    suffixes = ("", ".ts", ".tsx", ".js", ".mjs", ".py")
+    indexes = ("index.ts", "index.tsx", "__init__.py")
+    candidates = [Path(str(raw) + suffix) for suffix in suffixes]
+    candidates.extend(raw / name for name in indexes)
+    for candidate in candidates:
+        try:
+            relative = candidate.resolve().relative_to(root_resolved).as_posix()
+        except ValueError:
+            continue
+        if candidate.is_file():
+            return relative
+    return None
 
 
 def _union_problems(content: str, bindings: Bindings) -> list[str]:
