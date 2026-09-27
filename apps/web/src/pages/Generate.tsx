@@ -14,8 +14,8 @@ import type { GenerationMode } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const LANGUAGES = [
-  'english', 'spanish', 'french', 'german', 'portuguese', 'italian',
-  'japanese', 'korean', 'chinese', 'russian', 'arabic',
+  'english', 'spanish', 'french', 'german', 'portuguese',
+  'chinese', 'japanese', 'korean', 'russian', 'italian', 'dutch',
 ] as const;
 
 const MODEL_PRESETS = [
@@ -26,7 +26,7 @@ const MODEL_PRESETS = [
   { label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' },
 ] as const;
 
-const TARGETS = ['claude', 'opencode', 'cursor', 'codex', 'gemini', 'copilot', 'windsurf'] as const;
+const TARGETS = ['claude', 'opencode', 'cursor', 'codex', 'gemini', 'copilot'] as const;
 
 const GITHUB_URL_REGEX = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/;
 
@@ -81,7 +81,7 @@ export function Generate() {
         repo_url: repoUrl.trim(),
         mode,
         language,
-        provider: provider || (providers?.[0]?.provider ?? 'github-models'),
+        provider: provider || (providers?.[0]?.provider ?? ''),
         model,
         complexity: complexity === 'auto' ? undefined : complexity,
         targets: mode !== 'docs' ? selectedTargets : undefined,

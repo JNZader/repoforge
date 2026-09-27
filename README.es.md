@@ -150,6 +150,7 @@ Corré `repoforge <command> --help` para ver la lista completa de opciones de cu
 - `-o`, `--output` / `--output-dir`: archivo o directorio de salida
 - `--model`: modelo de LLM
 - `--dry-run`: solo planifica, sin llamadas al LLM
+- `--no-thinking`: manda `enable_thinking=false` para modelos que anteponen un thinking trace
 - `-q`, `--quiet`: salida más silenciosa
 
 ## Configuración del modelo
@@ -158,14 +159,7 @@ RepoForge autodetecta proveedores a partir de variables de entorno, pero la conf
 
 ### GitHub Models
 
-La mejor opción de baja fricción si ya usás el tooling de GitHub.
-
-```bash
-export GITHUB_TOKEN=$(gh auth token)
-repoforge docs -w . --model github/gpt-4o-mini
-```
-
-Para GitHub Actions, el `GITHUB_TOKEN` incorporado no alcanza para GitHub Models. Necesitás un PAT con scope `models:read`, normalmente guardado como `GH_MODELS_TOKEN`.
+Retirado el 2026-07-30. Un modelo `github/...` y `GH_MODELS_TOKEN` no llegan a ninguna API de inferencia. Para el free tier usá Groq, o cualquier proveedor de abajo con su propia key.
 
 ### Groq
 
@@ -197,7 +191,7 @@ repoforge docs -w . --model gpt-4o-mini
 
 ### Notas prácticas sobre modelos
 
-- `github/gpt-4o-mini`: el default más fácil para docs y skills si ya usás GitHub
+- `groq/openai/gpt-oss-120b`: el modelo que usan los workflows de GitHub Actions de este repo en el free tier de Groq
 - `claude-haiku-3-5`: barato y normalmente suficiente para generación
 - `ollama/...`: local y gratis, pero la calidad depende mucho del modelo que bajes
 - `groq/...`: rápido y amigable con el free tier, pero los rate limits importan
@@ -640,8 +634,8 @@ RepoForge incluye un workflow de docs con modos de deploy seguros. El default es
 ### Paso a paso: setup seguro de GitHub Pages
 
 1. Copiá o reutilizá `.github/workflows/docs.yml` en tu repositorio.
-2. Creá un PAT de GitHub con scope `models:read`.
-3. Guardá ese PAT como el secret de repositorio `GH_MODELS_TOKEN`.
+2. Creá una API key de Groq.
+3. Guardala como el secret de repositorio `GROQ_API_KEY`. El workflow llama a `groq/openai/gpt-oss-120b`.
 4. Decidí si querés solo-generar, deploy en raíz o deploy en subpath.
 5. Si querés publicar, definí variables de repositorio:
    - `REPOFORGE_DOCS_DEPLOY_MODE=auto` o `main` o `subpath`
@@ -658,7 +652,7 @@ RepoForge incluye un workflow de docs con modos de deploy seguros. El default es
 | `deploy_mode` | Mecanismo de despliegue | Configuración de Pages requerida |
 |---|---|---|
 | `none` | Solo genera | Cualquiera |
-| `main` | `actions/deploy-pages@v4` | GitHub Actions |
+| `main` | `actions/deploy-pages@v5` | GitHub Actions |
 | `subpath` | `peaceiris/actions-gh-pages@v4` con `keep_files` | Deploy desde la rama `gh-pages` |
 | `auto` | Elige `main` o `subpath` | Debe coincidir con el target real |
 
@@ -668,7 +662,7 @@ RepoForge incluye un workflow de docs con modos de deploy seguros. El default es
 gh variable set REPOFORGE_DOCS_DEPLOY_MODE --body "auto" --repo youruser/yourrepo
 gh variable set REPOFORGE_DOCS_CONFIRM_DEPLOY --body "true" --repo youruser/yourrepo
 gh variable set REPOFORGE_DOCS_SUBPATH_PREFIX --body "docs" --repo youruser/yourrepo
-gh secret set GH_MODELS_TOKEN --repo youruser/yourrepo
+gh secret set GROQ_API_KEY --repo youruser/yourrepo
 ```
 
 Si tu repo ya sirve `https://youruser.github.io/yourrepo/`, el modo auto va a preferir un deploy preservado en subpath cuando detecte un sitio en vivo existente.
@@ -678,7 +672,7 @@ Si tu repo ya sirve `https://youruser.github.io/yourrepo/`, el modo auto va a pr
 RepoForge también trae una action compuesta (`action.yml`). Cuando la referencias desde otro workflow, fijá un tag publicado en lugar de `@main` para que los workflows aguas abajo queden reproducibles:
 
 ```yaml
-uses: JNZader/repoforge@v0.6.0  # fijá un tag publicado — mirá la página de Releases
+uses: JNZader/repoforge@v0.7.0  # fijá un tag publicado — mirá la página de Releases
 ```
 
 ### Flujo manual de Pages
@@ -727,13 +721,13 @@ project_type: web_service
 language: English
 
 # Model selection
-model: github/gpt-4o-mini
+model: groq/openai/gpt-oss-120b
 
 # If you want per-tier routing, set model: auto and configure tiers
 models:
   heavy: claude-haiku-3-5
-  standard: github/gpt-4o-mini
-  light: github/gpt-4o-mini
+  standard: groq/openai/gpt-oss-120b
+  light: groq/openai/gpt-oss-120b
 
 # Generation depth
 complexity: auto
@@ -835,7 +829,7 @@ from repoforge import (
 generate_artifacts(
     working_dir="/path/to/repo",
     output_dir=".claude",
-    model="github/gpt-4o-mini",
+    model="groq/openai/gpt-oss-120b",
     targets="claude,cursor,codex",
     complexity="auto",
     with_hooks=True,
@@ -922,7 +916,6 @@ El único paso pago es la generación de texto por LLM (`docs`, `skills`, `index
 
 | Modelo | Costo |
 |---|---|
-| GitHub Models | Gratis con el setup de token correcto |
 | Groq | Free tier, con rate limit |
 | Ollama | Runtime local gratis |
 | Claude Haiku 3.5 / GPT-4o-mini | Costo bajo por corrida |

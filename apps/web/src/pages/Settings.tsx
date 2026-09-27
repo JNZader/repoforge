@@ -28,7 +28,6 @@ const PROVIDERS = [
   { id: 'google', name: 'Google', prefix: 'AI' },
   { id: 'groq', name: 'Groq', prefix: 'gsk_' },
   { id: 'mistral', name: 'Mistral', prefix: '' },
-  { id: 'github-models', name: 'GitHub Models', prefix: 'ghp_' },
 ] as const;
 
 export function Settings() {
