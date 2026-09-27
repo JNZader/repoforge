@@ -155,7 +155,7 @@ from .semantic_search import (
 from .server import serve_docs, serve_skills
 from .watch import FileWatcher, WatchEvent, watch_docs
 
-__version__ = "0.4.0"
+__version__ = "0.7.0"
 __all__ = [
     "DiffEntry",
     "DiffResult",
