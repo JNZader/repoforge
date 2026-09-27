@@ -4,10 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "repoforge-ai"
-version = "0.7.0"
+version = "0.7.1"
 description = "Generate technical docs and AI agent skills (SKILL.md, AGENT.md) from any codebase — model-agnostic, monorepo-aware"
 readme = "README.md"
 license = { text = "MIT" }
+authors = [{ name = "Javier Zader" }]
+maintainers = [{ name = "Javier Zader" }]
 requires-python = ">=3.10"
 keywords = [
     "claude-code", "opencode", "ai-agents", "documentation",

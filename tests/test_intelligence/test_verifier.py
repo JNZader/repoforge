@@ -44,14 +44,14 @@ class TestResolveVerifierModel:
     def test_explicit_model_used_as_is(self):
         assert _resolve_verifier_model("gpt-4o", "anything") == "gpt-4o"
 
-    def test_default_is_phi4(self):
-        assert _resolve_verifier_model(None, "github/gpt-4o-mini") == DEFAULT_VERIFIER_MODEL
+    def test_default_when_generator_is_something_else(self):
+        assert _resolve_verifier_model(None, "claude-haiku-3-5") == DEFAULT_VERIFIER_MODEL
 
-    def test_fallback_when_generator_is_phi4(self):
-        assert _resolve_verifier_model(None, "github/Phi-4") == FALLBACK_VERIFIER_MODEL
+    def test_fallback_when_generator_is_the_default_model(self):
+        assert _resolve_verifier_model(None, DEFAULT_VERIFIER_MODEL) == FALLBACK_VERIFIER_MODEL
 
-    def test_fallback_when_generator_is_phi4_lowercase(self):
-        assert _resolve_verifier_model(None, "github/phi-4") == FALLBACK_VERIFIER_MODEL
+    def test_fallback_matches_the_model_name_inside_a_prefix(self):
+        assert _resolve_verifier_model(None, "groq/openai/gpt-oss-120b") == FALLBACK_VERIFIER_MODEL
 
 
 # ---------------------------------------------------------------------------
@@ -234,7 +234,7 @@ class TestVerifyChapter:
         generator_llm.model = "github/gpt-4o-mini"
 
         verify_chapter("content", [], None, generator_llm)
-        mock_build_llm.assert_called_once_with(model="github/Phi-4")
+        mock_build_llm.assert_called_once_with(model=DEFAULT_VERIFIER_MODEL)
 
     @patch("repoforge.intelligence.verifier.build_llm")
     def test_avoids_phi4_self_review(self, mock_build_llm):
@@ -243,7 +243,7 @@ class TestVerifyChapter:
         mock_build_llm.return_value = mock_verifier
 
         generator_llm = MagicMock()
-        generator_llm.model = "github/Phi-4"
+        generator_llm.model = DEFAULT_VERIFIER_MODEL
 
         verify_chapter("content", [], None, generator_llm)
-        mock_build_llm.assert_called_once_with(model="github/gpt-4o-mini")
+        mock_build_llm.assert_called_once_with(model=FALLBACK_VERIFIER_MODEL)

@@ -180,6 +180,12 @@ class GenerationService:
 
         async with self._semaphore:
             try:
+                if provider == "github-models":
+                    raise ValueError(
+                        "GitHub Models was retired on 2026-07-30. "
+                        "Remove that provider key and use Groq or another provider."
+                    )
+
                 # --- Phase 1: Clone ---
                 await self._emit(generation_id, "generation_started", repo_url=repo_url, mode=config.get("mode", "docs"))
                 await self._emit(generation_id, "phase_changed", phase="cloning")
@@ -218,12 +224,6 @@ class GenerationService:
 
                 model = config.get("model", "claude-haiku-3-5")
 
-                # For GitHub Models, the model name must be prefixed with
-                # "github/" so build_llm can detect the provider and set the
-                # correct api_base (models.inference.ai.azure.com).
-                # Without the prefix, a model like "claude-3-5-haiku-20241022"
-                # would match the "claude" (Anthropic) preset and miss the
-                # GitHub Models api_base entirely, causing all LLM calls to fail.
                 litellm_model = self._to_litellm_model(provider, model)
 
                 llm = build_llm(model=litellm_model, api_key=api_key)
@@ -560,9 +560,8 @@ class GenerationService:
         if row is None:
             if provider == "github-models":
                 raise ValueError(
-                    "GitHub Models requires a Personal Access Token (PAT) — "
-                    "the OAuth login token doesn't work for inference. "
-                    "Add one in Settings > Provider Keys."
+                    "GitHub Models was retired on 2026-07-30. "
+                    "Remove that provider key and use Groq or another provider."
                 )
             raise ValueError(
                 f"No API key configured for '{provider}'. "
@@ -597,16 +596,11 @@ class GenerationService:
 
         The repoforge ``build_llm`` function uses the model string prefix to
         detect the provider and configure api_base / api_key_env accordingly.
-        When the web frontend sends ``provider="github-models"`` with
-        ``model="claude-3-5-haiku-20241022"``, build_llm would match the
-        ``claude`` (Anthropic) preset and miss the GitHub Models api_base.
-
-        This method ensures the model name carries the correct LiteLLM
-        prefix so routing works correctly.
+        A provider id such as ``groq`` has to become ``groq/<model>`` so
+        ``build_llm`` selects that preset. Anthropic and OpenAI model ids
+        already match their preset without a prefix.
         """
-        # Mapping from our provider id → litellm prefix
         prefix_map: dict[str, str] = {
-            "github-models": "github",
             "groq": "groq",
             "google": "gemini",
             "mistral": "mistral",
@@ -636,7 +630,6 @@ class GenerationService:
             "openai": "OPENAI_API_KEY",
             "groq": "GROQ_API_KEY",
             "google": "GEMINI_API_KEY",
-            "github-models": "GITHUB_TOKEN",
             "mistral": "MISTRAL_API_KEY",
         }
         env_var = env_map.get(provider)

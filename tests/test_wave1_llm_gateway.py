@@ -58,17 +58,15 @@ class TestAutoDetectOrder:
         assert last_env == "LLM_GATEWAY_AUTH_TOKEN"
         assert last_model.startswith("gateway/")
 
-    def test_github_comes_before_gateway(self):
+    def test_github_token_is_not_a_provider(self):
         env_vars = [entry[0] for entry in AUTO_DETECT_ORDER]
-        github_idx = env_vars.index("GITHUB_TOKEN")
-        gateway_idx = env_vars.index("LLM_GATEWAY_AUTH_TOKEN")
-        assert github_idx < gateway_idx
+        assert "GITHUB_TOKEN" not in env_vars
 
-    def test_auto_detect_picks_github_not_gateway(self, monkeypatch):
+    def test_auto_detect_ignores_github_token(self, monkeypatch):
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test123")
         model = _auto_detect_model()
-        # _auto_detect_model returns a string like "github/gpt-4o-mini"
-        assert model.startswith("github/")
+        assert not model.startswith("github/")
+        assert "ollama" in model
 
     def test_auto_detect_prefers_anthropic_over_all(self, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-123")
@@ -92,11 +90,10 @@ class TestAutoDetectOrder:
 
 class TestExistingProviders:
 
-    def test_github_provider(self, monkeypatch):
+    def test_github_provider_is_refused(self, monkeypatch):
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
-        llm = build_llm("github/gpt-4o-mini")
-        assert llm.api_base == "https://models.inference.ai.azure.com"
-        assert llm.api_key == "ghp_test"
+        with pytest.raises(ValueError, match="retired"):
+            build_llm("github/gpt-4o-mini")
 
     def test_ollama_provider(self):
         llm = build_llm("ollama/qwen2.5-coder:14b")

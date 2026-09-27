@@ -80,7 +80,7 @@
 | Scalability | Breaks on large repos | Complexity-aware adaptive |
 | Output | Single README.md | Multi-file SKILL.md/AGENT.md + multi-tool adapters |
 | Visual polish | Excellent (badges, themes) | N/A (machine-consumed) |
-| LLM support | OpenAI, Claude, Gemini, Ollama, Offline | OpenAI-compatible + GitHub Models |
+| LLM support | OpenAI, Claude, Gemini, Ollama, Offline | OpenAI, Claude, Gemini, Groq, Ollama, Mistral |
 
 **Applicable to repoforge**:
 | Technique | Impact | Effort |
