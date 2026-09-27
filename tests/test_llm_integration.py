@@ -233,6 +233,18 @@ class TestFindPreset:
         assert preset["api_key_env"] == "GROQ_API_KEY"
         assert preset["max_tokens"] == 1536
 
+    def test_nvidia_nim_preset(self):
+        preset = _find_preset("nvidia_nim")
+        assert preset["api_key_env"] == "NVIDIA_NIM_API_KEY"
+        assert preset["fallback_api_key_env"] == "NVIDIA_API_KEY"
+        assert preset["api_base"] == "https://integrate.api.nvidia.com/v1"
+
+    def test_nvidia_nim_accepts_the_local_env_name(self):
+        with patch.dict(os.environ, {"NVIDIA_API_KEY": "nvapi-test"}, clear=True):
+            llm = build_llm(model="nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b")
+        assert llm.api_key == "nvapi-test"
+        assert llm.api_base == "https://integrate.api.nvidia.com/v1"
+
     def test_exact_match_ollama(self):
         preset = _find_preset("ollama")
         assert preset["api_key_env"] is None

@@ -5,7 +5,8 @@
 # Generates SKILL.md and AGENT.md files for Claude Code / OpenCode
 # and commits them back to the repository.
 #
-# Uses Groq's free tier (repository secret GROQ_API_KEY).
+# Uses NVIDIA NIM (repository secret NVIDIA_NIM_API_KEY).
+# Nemotron thinking traces are not skill markdown, so no-thinking is on.
 #
 # SETUP:
 #   1. Copy this file to your repo's .github/workflows/skills.yml
@@ -44,8 +45,9 @@ jobs:
         with:
           command: skills
           output-dir: .claude
-          model: groq/openai/gpt-oss-120b
-          api-key: ${{ secrets.GROQ_API_KEY }}
+          model: nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b
+          api-key: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          no-thinking: true
 
       - name: Commit generated files
         uses: stefanzweifel/git-auto-commit-action@v7

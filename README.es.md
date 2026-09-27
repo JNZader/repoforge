@@ -191,7 +191,7 @@ repoforge docs -w . --model gpt-4o-mini
 
 ### Notas prácticas sobre modelos
 
-- `groq/openai/gpt-oss-120b`: el modelo que usan los workflows de GitHub Actions de este repo en el free tier de Groq
+- `nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b`: el modelo que usan los workflows de GitHub Actions de este repo. Pasá `--no-thinking`, o el draft arranca con un thinking trace.
 - `claude-haiku-3-5`: barato y normalmente suficiente para generación
 - `ollama/...`: local y gratis, pero la calidad depende mucho del modelo que bajes
 - `groq/...`: rápido y amigable con el free tier, pero los rate limits importan
@@ -634,8 +634,8 @@ RepoForge incluye un workflow de docs con modos de deploy seguros. El default es
 ### Paso a paso: setup seguro de GitHub Pages
 
 1. Copiá o reutilizá `.github/workflows/docs.yml` en tu repositorio.
-2. Creá una API key de Groq.
-3. Guardala como el secret de repositorio `GROQ_API_KEY`. El workflow llama a `groq/openai/gpt-oss-120b`.
+2. Creá una API key de NVIDIA NIM.
+3. Guardala como el secret de repositorio `NVIDIA_NIM_API_KEY`. El workflow llama a `nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b` con `no-thinking: true`.
 4. Decidí si querés solo-generar, deploy en raíz o deploy en subpath.
 5. Si querés publicar, definí variables de repositorio:
    - `REPOFORGE_DOCS_DEPLOY_MODE=auto` o `main` o `subpath`
@@ -662,7 +662,7 @@ RepoForge incluye un workflow de docs con modos de deploy seguros. El default es
 gh variable set REPOFORGE_DOCS_DEPLOY_MODE --body "auto" --repo youruser/yourrepo
 gh variable set REPOFORGE_DOCS_CONFIRM_DEPLOY --body "true" --repo youruser/yourrepo
 gh variable set REPOFORGE_DOCS_SUBPATH_PREFIX --body "docs" --repo youruser/yourrepo
-gh secret set GROQ_API_KEY --repo youruser/yourrepo
+gh secret set NVIDIA_NIM_API_KEY --repo youruser/yourrepo
 ```
 
 Si tu repo ya sirve `https://youruser.github.io/yourrepo/`, el modo auto va a preferir un deploy preservado en subpath cuando detecte un sitio en vivo existente.
