@@ -39,9 +39,9 @@ def verify_chapter(
         chapter_content: The chapter markdown to verify.
         facts: Verified facts from source code.
         ast_symbols: AST symbols keyed by file path.
-        llm: The generator LLM. Verification uses this client unless
-            ``model`` names a different one.
-        model: Explicit verifier model. If None, verification stays on ``llm``.
+        llm: The generator LLM. Its model, key, base, and thinking flag
+            are copied into a new verifier client unless ``model`` is set.
+        model: Explicit verifier model. If None, the verifier uses ``llm.model``.
 
     Returns:
         Tuple of (corrected_content, list_of_issues_found).
@@ -50,7 +50,15 @@ def verify_chapter(
     if model:
         verifier_llm = build_llm(model=verifier_model)
     else:
-        verifier_llm = llm
+        # A new client, on purpose. Patching only the generator factory
+        # must not hide a verifier that still needs its own credentials.
+        # Copy the generator's key so that client is the same provider.
+        verifier_llm = build_llm(
+            model=verifier_model,
+            api_key=_text(getattr(llm, "api_key", None)),
+            api_base=_text(getattr(llm, "api_base", None)),
+            disable_thinking=_thinking_disabled(llm),
+        )
 
     facts_text = _format_facts_for_verification(facts, ast_symbols)
     prompt = _build_verification_prompt(chapter_content, facts_text)
@@ -60,11 +68,29 @@ def verify_chapter(
         corrections = _parse_verification_response(raw_response)
         corrected, issues = _apply_verification_corrections(chapter_content, corrections)
         return corrected, issues
-    except Exception as e:
-        # Provider errors (BadRequestError and friends) are not RuntimeError.
-        # A failed check must keep the chapter that was already written.
+    except (RuntimeError, ValueError, KeyError) as e:
+        # RuntimeError: LLM call failure; ValueError/KeyError: response parse errors.
+        # Provider auth errors stay uncaught so a chapter is not saved as if
+        # verification had run.
         logger.warning("Verification failed: %s — returning original content", e)
         return chapter_content, [f"Verification error: {e}"]
+
+
+def _text(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _thinking_disabled(llm: LLMProvider) -> bool:
+    extra = getattr(llm, "extra_kwargs", None)
+    if not isinstance(extra, dict):
+        return False
+    body = extra.get("extra_body")
+    if not isinstance(body, dict):
+        return False
+    template = body.get("chat_template_kwargs")
+    if not isinstance(template, dict):
+        return False
+    return template.get("enable_thinking") is False
 
 
 def _resolve_verifier_model(explicit_model: str | None, generator_model: str) -> str:

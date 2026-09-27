@@ -186,41 +186,52 @@ class TestApplyCorrections:
 # ---------------------------------------------------------------------------
 
 class TestVerifyChapter:
-    def test_applies_corrections_from_the_generator(self):
-        generator_llm = MagicMock()
-        generator_llm.model = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
-        generator_llm.complete.return_value = json.dumps([
+    @patch("repoforge.intelligence.verifier.build_llm")
+    def test_copies_the_generator_provider(self, mock_build_llm):
+        mock_verifier = MagicMock()
+        mock_verifier.complete.return_value = json.dumps([
             {"type": "wrong", "claim": "port 8080", "correction": "port 7437", "evidence": "port fact"},
         ])
+        mock_build_llm.return_value = mock_verifier
+
+        generator_llm = MagicMock()
+        generator_llm.model = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
+        generator_llm.api_key = "nvapi-test"
+        generator_llm.api_base = "https://integrate.api.nvidia.com/v1"
+        generator_llm.extra_kwargs = {
+            "extra_body": {"chat_template_kwargs": {"enable_thinking": False}},
+        }
 
         content = "The server runs on port 8080."
         facts = [_fact("port", "7437")]
-
         result, issues = verify_chapter(content, facts, None, generator_llm)
         assert "port 7437" in result
         assert len(issues) == 1
-        generator_llm.complete.assert_called_once()
+        mock_build_llm.assert_called_once_with(
+            model="nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b",
+            api_key="nvapi-test",
+            api_base="https://integrate.api.nvidia.com/v1",
+            disable_thinking=True,
+        )
+        generator_llm.complete.assert_not_called()
 
-    def test_returns_original_on_llm_error(self):
+    @patch("repoforge.intelligence.verifier.build_llm")
+    def test_returns_original_on_llm_error(self, mock_build_llm):
+        mock_verifier = MagicMock()
+        mock_verifier.complete.side_effect = RuntimeError("API error")
+        mock_build_llm.return_value = mock_verifier
+
         generator_llm = MagicMock()
         generator_llm.model = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
-        generator_llm.complete.side_effect = RuntimeError("API error")
+        generator_llm.api_key = "nvapi-test"
+        generator_llm.api_base = "https://integrate.api.nvidia.com/v1"
+        generator_llm.extra_kwargs = {}
 
         content = "Original content."
         result, issues = verify_chapter(content, [], None, generator_llm)
         assert result == content
         assert len(issues) == 1
         assert "error" in issues[0].lower()
-
-    def test_provider_error_keeps_the_chapter(self):
-        generator_llm = MagicMock()
-        generator_llm.model = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
-        generator_llm.complete.side_effect = Exception("Invalid API Key")
-
-        content = "Original content."
-        result, issues = verify_chapter(content, [], None, generator_llm)
-        assert result == content
-        assert "Invalid API Key" in issues[0]
 
     @patch("repoforge.intelligence.verifier.build_llm")
     def test_explicit_model_builds_its_own_client(self, mock_build_llm):
