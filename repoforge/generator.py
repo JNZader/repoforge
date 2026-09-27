@@ -45,6 +45,12 @@ from .prompts import (
     skill_prompt,
 )
 from .scanner import classify_complexity, scan_repo
+from .skill_bindings import (
+    declarations_block,
+    include_local_imports,
+    read_sources,
+    settle_skill_draft,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +75,7 @@ def generate_artifacts(
     model: Optional[str] = None,
     api_key: Optional[str] = None,
     api_base: Optional[str] = None,
+    disable_thinking: bool = False,
     also_opencode: bool = True,
     verbose: bool = True,
     dry_run: bool = False,
@@ -176,7 +183,12 @@ def generate_artifacts(
         llm = LLM(model=model or "(dry-run)")
         log(f"🤖 Model: {llm.model} (dry-run — no LLM calls)")
     else:
-        llm = build_llm(model=model, api_key=api_key, api_base=api_base)
+        llm = build_llm(
+            model=model,
+            api_key=api_key,
+            api_base=api_base,
+            disable_thinking=disable_thinking,
+        )
         log(f"🤖 Using model: {llm.model}")
 
     # Extract routing parameters from complexity
@@ -235,15 +247,15 @@ def generate_artifacts(
         log(f"\n✏️  Generating layer skill: {layer_name} ...")
         # Layer skills get graph context + global facts
         _layer_ctx = (_facts_ctx + "\n" + _graph_ctx).strip() if _facts_ctx else _graph_ctx
+        layer_paths = [m["path"] for m in layer_data.get("modules", []) if m.get("path")]
+        sources, declarations = _bindings_for(root, layer_paths)
         system, user = layer_skill_prompt(layer_name, layer_data, repo_map,
                                           prompt_detail=detail,
                                           disclosure=disclosure,
-                                          graph_context=_layer_ctx)
-        content = _generate(llm, system, user, dry_run)
+                                          graph_context=_layer_ctx,
+                                          declarations=declarations)
         path = out / "skills" / layer_name / "SKILL.md"
-        _write(path, content, dry_run)
-        generated["skills"].append(str(path))
-        log(f"   ✅ {_rel(path, root)}")
+        _commit_draft(llm, system, user, path, sources, dry_run, log, root, generated, "skills")
 
     # -----------------------------------------------------------------------
     # 2. Per-module skills (top modules only, filtered by complexity)
@@ -264,15 +276,16 @@ def generate_artifacts(
             mod_facts_ctx = build_module_facts_context(str(root), module["path"], _all_files)
             # Combine: module facts + blast radius
             mod_ctx = (mod_facts_ctx + "\n" + mod_graph_ctx).strip() if mod_facts_ctx else mod_graph_ctx
+            sources, declarations = _bindings_for(root, [module["path"]])
             system, user = skill_prompt(module, layer_name, repo_map,
                                         prompt_detail=detail,
                                         disclosure=disclosure,
-                                        graph_context=mod_ctx)
-            content = _generate(llm, system, user, dry_run)
+                                        graph_context=mod_ctx,
+                                        declarations=declarations)
             path = out / "skills" / layer_name / mod_name / "SKILL.md"
-            _write(path, content, dry_run)
-            generated["skills"].append(str(path))
-            log(f"   ✅ {_rel(path, root)}")
+            _commit_draft(
+                llm, system, user, path, sources, dry_run, log, root, generated, "skills",
+            )
 
     # -----------------------------------------------------------------------
     # 3. Layer agents (skip for small repos)
@@ -288,11 +301,12 @@ def generate_artifacts(
                 layer_name, layer_data, repo_map, layers,
                 generated_skills=layer_skills,
             )
-            content = _generate(llm, system, user, dry_run)
+            layer_paths = [m["path"] for m in layer_data.get("modules", []) if m.get("path")]
+            sources, _declarations = _bindings_for(root, layer_paths)
             path = out / "agents" / f"{layer_name}-agent" / "AGENT.md"
-            _write(path, content, dry_run)
-            generated["agents"].append(str(path))
-            log(f"   ✅ {_rel(path, root)}")
+            _commit_draft(
+                llm, system, user, path, sources, dry_run, log, root, generated, "agents",
+            )
     else:
         log("\n⏭️  Skipping layer agents (small repo)")
 
@@ -302,11 +316,8 @@ def generate_artifacts(
     if cx["generate_orchestrator"]:
         log("\n🤖 Generating orchestrator agent ...")
         system, user = orchestrator_prompt(repo_map)
-        content = _generate(llm, system, user, dry_run)
         path = out / "agents" / "orchestrator" / "AGENT.md"
-        _write(path, content, dry_run)
-        generated["agents"].append(str(path))
-        log(f"   ✅ {_rel(path, root)}")
+        _commit_draft(llm, system, user, path, [], dry_run, log, root, generated, "agents")
     else:
         log("\n⏭️  Skipping orchestrator (small repo)")
 
@@ -596,6 +607,37 @@ def _write(path: Path, content: str, dry_run: bool):
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def _bindings_for(root: Path, relative_paths: list[str]) -> tuple[list[tuple[str, str]], str]:
+    primary = read_sources(root, relative_paths)
+    sources = include_local_imports(root, primary)
+    full = {rel for rel, _text in primary}
+    return sources, declarations_block(sources, full_rels=full)
+
+
+def _commit_draft(
+    llm,
+    system: str,
+    user: str,
+    path: Path,
+    sources: list[tuple[str, str]],
+    dry_run: bool,
+    log,
+    root: Path,
+    generated: dict,
+    bucket: str,
+) -> None:
+    """Generate one skill or agent. A draft that still contradicts the source is not written."""
+    content = _generate(llm, system, user, dry_run)
+    if not dry_run:
+        content, problems = settle_skill_draft(llm, content, sources, system=system)
+        if content is None:
+            log(f"   ⚠️  refused {_rel(path, root)}: {'; '.join(problems)}")
+            return
+    _write(path, content, dry_run)
+    generated[bucket].append(str(path))
+    log(f"   ✅ {_rel(path, root)}")
 
 
 def _mirror(src: Path, dst: Path, log):

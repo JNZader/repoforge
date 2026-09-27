@@ -258,13 +258,15 @@ _DETAIL_INSTRUCTIONS = {
 def skill_prompt(module: dict, layer_name: str, repo_map: dict,
                  prompt_detail: str = "standard",
                  disclosure: str = "full",
-                 graph_context: str = "") -> tuple[str, str]:
+                 graph_context: str = "",
+                 declarations: str = "") -> tuple[str, str]:
     """Build prompt for a module-level SKILL.md.
 
     Args:
         prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
         disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
         graph_context: Pre-built module dependency context from graph v2.
+        declarations: Exact source declarations the examples must copy.
     """
     tech = format_tech_stack(repo_map)
     exports = module.get("exports", [])
@@ -308,7 +310,10 @@ def skill_prompt(module: dict, layer_name: str, repo_map: dict,
 ## Project
 - Stack: {tech}
 - Entry points: {", ".join(repo_map.get("entry_points", [])) or "none"}
-
+"""
+    if declarations.strip():
+        user += "\n" + declarations.strip() + "\n"
+    user += f"""
 ## Requirements
 - `name` field: kebab-case action verb + domain noun from THIS module.
   Good: `add-{module['name'].lower().replace('_','-')}-endpoint`, `extend-{module['name'].lower().replace('_','-')}-model`
@@ -418,13 +423,15 @@ RULES:
 def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
                       prompt_detail: str = "standard",
                       disclosure: str = "full",
-                      graph_context: str = "") -> tuple[str, str]:
+                      graph_context: str = "",
+                      declarations: str = "") -> tuple[str, str]:
     """Build prompt for a layer-level SKILL.md.
 
     Args:
         prompt_detail: "detailed" | "standard" | "concise" — adjusts verbosity.
         disclosure: "full" (no tier markers) | "tiered" (add L1/L2/L3 markers).
         graph_context: Pre-built dependency context from graph v2.
+        declarations: Exact source declarations the examples must copy.
     """
     tech = format_tech_stack(repo_map)
     modules = layer.get("modules", [])
@@ -467,7 +474,10 @@ def layer_skill_prompt(layer_name: str, layer: dict, repo_map: dict,
 ## Project
 - Stack: {tech}
 - Config files: {", ".join(repo_map.get("config_files", [])) or "none"}
-
+"""
+    if declarations.strip():
+        user += "\n" + declarations.strip() + "\n"
+    user += f"""
 ## Requirements
 - `name` must be: `{layer_name}-layer`
 - Trigger must mention: `{layer_name}/` directory and its main responsibility

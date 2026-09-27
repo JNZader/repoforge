@@ -60,6 +60,7 @@ def generate_docs(
     model: Optional[str] = None,
     api_key: Optional[str] = None,
     api_base: Optional[str] = None,
+    disable_thinking: bool = False,
     language: str = "English",
     project_name: Optional[str] = None,
     verbose: bool = True,
@@ -148,6 +149,7 @@ def generate_docs(
     router = ModelRouter.from_config(
         model=model, config=cfg, cli_overrides=cli_overrides,
         api_key=api_key, api_base=api_base,
+        disable_thinking=disable_thinking,
     )
     log(f"🤖 Model:  {router.model}")
     log(f"🌐 Language: {language}")

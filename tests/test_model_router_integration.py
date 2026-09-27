@@ -20,7 +20,7 @@ def _make_provider(name: str) -> MagicMock:
 
 def _build_llm_dispatch(mapping: dict[str | None, MagicMock]):
     """Return a build_llm side_effect that returns providers from *mapping*."""
-    def _build(model=None, api_key=None, api_base=None):
+    def _build(model=None, api_key=None, api_base=None, disable_thinking=False):
         if model in mapping:
             return mapping[model]
         # Fallback: return a generic mock

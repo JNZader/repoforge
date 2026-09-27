@@ -12,7 +12,7 @@ from repoforge.model_router import TIER_MAP, ModelRouter
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _fake_build_llm(model=None, api_key=None, api_base=None):
+def _fake_build_llm(model=None, api_key=None, api_base=None, disable_thinking=False):
     """Return a mock whose ``.model`` matches the requested model string."""
     provider = MagicMock()
     provider.model = model or "auto-detected"
@@ -21,7 +21,7 @@ def _fake_build_llm(model=None, api_key=None, api_base=None):
 
 def _failing_build_llm_for(failing_model: str):
     """Return a build_llm that raises for *failing_model* but works for others."""
-    def _build(model=None, api_key=None, api_base=None):
+    def _build(model=None, api_key=None, api_base=None, disable_thinking=False):
         if model == failing_model:
             raise RuntimeError(f"Cannot init {model}")
         return _fake_build_llm(model=model, api_key=api_key, api_base=api_base)

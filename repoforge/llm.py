@@ -287,6 +287,7 @@ def build_llm(
     api_base: Optional[str] = None,
     max_tokens: Optional[int] = None,
     temperature: Optional[float] = None,
+    disable_thinking: bool = False,
 ) -> LLMProvider:
     """
     Build an LLM provider instance.
@@ -360,6 +361,13 @@ def build_llm(
         model = f"{litellm_prefix}/{model_name}"
         # Send X-Project header for per-project credential scoping.
         extra["extra_headers"] = {"X-Project": "repoforge"}
+
+    if disable_thinking:
+        body = dict(extra.get("extra_body") or {})
+        template = dict(body.get("chat_template_kwargs") or {})
+        template["enable_thinking"] = False
+        body["chat_template_kwargs"] = template
+        extra["extra_body"] = body
 
     # Reasoning models (o1, o3, DeepSeek-R1, etc.) reject temperature=0.
     # Auto-set to 1.0 unless the caller explicitly provided a temperature.

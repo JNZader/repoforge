@@ -58,6 +58,12 @@ def _common_options(f):
     ))(f)
     f = click.option("--api-key", default=None, help="Override API key.")(f)
     f = click.option("--api-base", default=None, help="Override API base URL.")(f)
+    f = click.option("--no-thinking", is_flag=True, default=False,
+        help=(
+            "Send chat_template_kwargs.enable_thinking=false. "
+            "Nemotron-style models otherwise prefix a thinking trace "
+            "and the skill draft no longer starts as markdown."
+        ))(f)
     f = click.option("--dry-run", is_flag=True, default=False,
         help="Scan and plan, but don't call the LLM or write files.")(f)
     f = click.option("-q", "--quiet", is_flag=True, default=False,
@@ -181,7 +187,7 @@ def main(verbose):
     help="After generation, run security scanner on generated output.")
 @click.option("--plugin/--no-plugin", "with_plugin", default=False, show_default=True,
     help="Generate plugin.json + commands/ hierarchy (Skills → Commands → Plugins).")
-def skills(working_dir, model, api_key, api_base, dry_run, quiet,
+def skills(working_dir, model, api_key, api_base, no_thinking, dry_run, quiet,
            max_files_per_layer,
            output_dir, no_opencode, complexity, do_serve, port, serve_only,
            with_hooks, do_score, targets, disclosure, do_compress, aggressive,
@@ -216,6 +222,7 @@ def skills(working_dir, model, api_key, api_base, dry_run, quiet,
             model=model,
             api_key=api_key,
             api_base=api_base,
+            disable_thinking=no_thinking,
             also_opencode=not no_opencode,
             verbose=not quiet,
             dry_run=dry_run,
@@ -329,7 +336,7 @@ SUPPORTED_LANGUAGES = [
     help="LLM for standard-tier chapters (overview, data-models, api-reference). Requires --model auto.")
 @click.option("--model-light", default=None,
     help="LLM for light-tier chapters (index, quickstart, dev-guide). Requires --model auto.")
-def docs(working_dir, model, api_key, api_base, dry_run, quiet,
+def docs(working_dir, model, api_key, api_base, no_thinking, dry_run, quiet,
          max_files_per_layer,
          output_dir, language, project_name, complexity, theme, do_serve, port, serve_only,
          chunked, do_verify, verify_model, no_verify_docs, facts_only, incremental,
@@ -382,6 +389,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             model=model,
             api_key=api_key,
             api_base=api_base,
+            disable_thinking=no_thinking,
             language=language,
             project_name=project_name,
             verbose=not quiet,
@@ -401,6 +409,7 @@ def docs(working_dir, model, api_key, api_base, dry_run, quiet,
             model=model,
             api_key=api_key,
             api_base=api_base,
+            disable_thinking=no_thinking,
             language=language,
             project_name=project_name,
             verbose=not quiet,
@@ -3333,12 +3342,13 @@ def registry_search_cmd(query, top_k, depth, as_json, quiet):
 @_common_options
 @click.option("-o", "--output-dir", default=".claude", show_default=True)
 @click.option("--no-opencode", is_flag=True, default=False)
-def run_default(working_dir, model, api_key, api_base, dry_run, quiet, max_files_per_layer, output_dir, no_opencode):
+def run_default(working_dir, model, api_key, api_base, no_thinking, dry_run, quiet, max_files_per_layer, output_dir, no_opencode):
     """Alias for 'skills' (backwards compatibility)."""
     from .generator import generate_artifacts
     generate_artifacts(
         working_dir=working_dir, output_dir=output_dir,
         model=model, api_key=api_key, api_base=api_base,
+        disable_thinking=no_thinking,
         also_opencode=not no_opencode, verbose=not quiet, dry_run=dry_run,
     )
 
