@@ -305,7 +305,7 @@ SUPPORTED_LANGUAGES = [
 @click.option("--verify/--no-verify", "do_verify", default=True, show_default=True,
     help="Enable/disable LLM verification of generated chapters (Stage C).")
 @click.option("--verify-model", default=None,
-    help="Model for verification. Default: groq/openai/gpt-oss-120b.")
+    help="Model for verification. Default: the same model that wrote the chapter.")
 @click.option("--no-verify-docs", is_flag=True, default=False,
     help="Disable BOTH deterministic corrections (Stage D) and LLM verification (Stage C).")
 @click.option("--facts-only/--no-facts-only", default=False, show_default=True,

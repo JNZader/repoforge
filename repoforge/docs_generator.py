@@ -382,7 +382,8 @@ def generate_docs(
     # Stage 8: Summary
     # ------------------------------------------------------------------
     _print_summary(log, generated, docsify_files, all_corrections,
-                   no_verify_docs, do_verify, verify_model, out, root, errors)
+                   no_verify_docs, do_verify, verify_model, router.model,
+                   out, root, errors)
 
     return {
         "project_name": project_name,
@@ -546,14 +547,14 @@ def _make_logger(verbose: bool):
 
 
 def _print_summary(log, generated, docsify_files, corrections,
-                   no_verify_docs, do_verify, verify_model, out, root, errors):
+                   no_verify_docs, do_verify, verify_model, generator_model,
+                   out, root, errors):
     total = len(generated)
     verify_status = ""
     if no_verify_docs:
         verify_status = " (verification disabled)"
     elif do_verify:
-        from repoforge.intelligence.verifier import DEFAULT_VERIFIER_MODEL
-        verify_status = f" (verified with {verify_model or DEFAULT_VERIFIER_MODEL})"
+        verify_status = f" (verified with {verify_model or generator_model})"
     elif not no_verify_docs:
         verify_status = " (deterministic corrections only)"
 

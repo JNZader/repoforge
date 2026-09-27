@@ -97,8 +97,8 @@ def postprocess_chapter(
                     "stage": "C",
                     "issues": v_issues,
                 })
-        except (ImportError, ValueError, RuntimeError) as e:
-            # ImportError: verifier missing; ValueError: parse error; RuntimeError: LLM call failure
+        except Exception as e:
+            # A provider error is not a reason to drop the chapter.
             if log:
                 log(f" ⚠️C:{e}", end="")
 
