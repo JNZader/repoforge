@@ -2,7 +2,7 @@
 
 > **Active plan:** [docs/roadmap/2026-09-remaining-gaps.md](docs/roadmap/2026-09-remaining-gaps.md). Two cuts: the manifest records files the prompt cited, then one factuality repair.
 > **Done:** [docs/roadmap/2026-09-generation-truth.md](docs/roadmap/2026-09-generation-truth.md).
-> The waves below are the March 2026 research plan. Do not implement them as written. The package on this branch is `0.6.0` alpha. The "ships as v0.N" labels were never the release train.
+> The waves below are the March 2026 research plan. Do not implement them as written. The package version is `0.7.1`. The "ships as v0.N" labels were never the release train.
 
 ## Status on 2026-09-26
 

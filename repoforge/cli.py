@@ -32,7 +32,7 @@ Quick usage:
   repoforge export -w /my/repo --max-tokens 100000 --format xml
   repoforge compress -w /my/repo --aggressive --dry-run
   repoforge skills --model ollama/qwen2.5-coder:14b   # free local
-  repoforge skills --model github/gpt-4o-mini          # GitHub Copilot
+  repoforge skills --model groq/openai/gpt-oss-120b    # Groq free tier
   repoforge skills --model gateway/claude-sonnet-4     # via mcp-llm-bridge
 """
 
@@ -53,7 +53,8 @@ def _common_options(f):
     )(f)
     f = click.option("--model", default=None, help=(
         "LLM to use. Examples: claude-haiku-3-5, gpt-4o-mini, "
-        "groq/llama-3.1-70b-versatile, ollama/qwen2.5-coder:14b, github/gpt-4o-mini. "
+        "groq/llama-3.1-70b-versatile, ollama/qwen2.5-coder:14b, "
+        "groq/openai/gpt-oss-120b. "
         "Auto-detects from env vars if not set."
     ))(f)
     f = click.option("--api-key", default=None, help="Override API key.")(f)
@@ -304,7 +305,7 @@ SUPPORTED_LANGUAGES = [
 @click.option("--verify/--no-verify", "do_verify", default=True, show_default=True,
     help="Enable/disable LLM verification of generated chapters (Stage C).")
 @click.option("--verify-model", default=None,
-    help="Model for verification. Default: github/Phi-4 (or gpt-4o-mini if generator is Phi-4).")
+    help="Model for verification. Default: groq/openai/gpt-oss-120b.")
 @click.option("--no-verify-docs", is_flag=True, default=False,
     help="Disable BOTH deterministic corrections (Stage D) and LLM verification (Stage C).")
 @click.option("--facts-only/--no-facts-only", default=False, show_default=True,

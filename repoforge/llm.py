@@ -4,7 +4,6 @@ llm.py - Single LLM abstraction over LiteLLM.
 Supports any provider LiteLLM supports:
   - Anthropic   (claude-haiku-3-5, claude-sonnet-4-5, ...)
   - OpenAI      (gpt-4o-mini, gpt-4o, ...)
-  - GitHub Models (all models on models.inference.ai.azure.com)
   - Groq        (llama-3.1-70b-versatile, ...)
   - Ollama      (qwen2.5-coder:14b, llama3.2, deepseek-coder-v2, ...)
   - Google      (gemini-1.5-flash, ...)
@@ -17,8 +16,6 @@ Usage:
     llm = build_llm("claude-haiku-3-5")        # explicit model
     llm = build_llm("ollama/qwen2.5-coder:14b")  # local
     llm = build_llm("groq/llama-3.1-70b-versatile")
-    llm = build_llm("github/DeepSeek-R1")      # GitHub Models (any model)
-    llm = build_llm("github/gpt-4o-mini")      # GitHub Models (OpenAI)
     llm = build_llm("gateway/claude-sonnet-4-20250514")  # via mcp-llm-bridge
     llm = build_llm("gateway/gpt-4o")           # any model through the gateway
 
@@ -95,12 +92,6 @@ PROVIDER_PRESETS = {
         "temperature": 0.0,
         "api_base": None,  # reads OLLAMA_BASE_URL or default
     },
-    "github": {
-        "api_key_env": "GITHUB_TOKEN",
-        "api_base": "https://models.inference.ai.azure.com",
-        "max_tokens": 4096,
-        "temperature": 0.0,
-    },
     "mistral": {
         "api_key_env": "MISTRAL_API_KEY",
         "max_tokens": 4096,
@@ -139,7 +130,8 @@ _DURATION = re.compile(
 )
 
 # Auto-detection order from env vars.
-# GitHub Models is the default provider (free tier with GITHUB_TOKEN).
+# GITHUB_TOKEN is not a model credential. GitHub Models was retired
+# on 2026-07-30, and that token is present on almost every Actions runner.
 # LLM Gateway is opt-in: set LLM_GATEWAY_AUTH_TOKEN to route through
 # mcp-llm-bridge for centralized credential management and fallback.
 AUTO_DETECT_ORDER = [
@@ -147,7 +139,6 @@ AUTO_DETECT_ORDER = [
     ("ANTHROPIC_AUTH_TOKEN", "claude-haiku-3-5"),
     ("OPENAI_API_KEY", "gpt-4o-mini"),
     ("GROQ_API_KEY", "groq/llama-3.1-70b-versatile"),
-    ("GITHUB_TOKEN", "github/gpt-4o-mini"),
     ("GEMINI_API_KEY", "gemini/gemini-1.5-flash"),
     ("MISTRAL_API_KEY", "mistral/mistral-small"),
     ("LLM_GATEWAY_AUTH_TOKEN", "gateway/claude-sonnet-4-20250514"),
@@ -297,7 +288,6 @@ def build_llm(
         "gpt-4o-mini"                       -> OpenAI
         "groq/llama-3.1-70b-versatile"      -> Groq
         "ollama/qwen2.5-coder:14b"          -> Ollama local
-        "github/gpt-4o-mini"                -> GitHub Models
         "gemini/gemini-1.5-flash"           -> Google
         "mistral/mistral-small"             -> Mistral
         "cli/claude"                        -> CLI adapter (Claude Code)
@@ -323,8 +313,14 @@ def build_llm(
             )
         return CliLLMAdapter(CLI_REGISTRY[tool_name])
 
-    # Normalize: "github/gpt-4o-mini" -> prefix="github"
+    # Normalize: "groq/llama-3.1-70b-versatile" -> prefix="groq"
     prefix = model.split("/")[0].lower()
+    if prefix == "github":
+        raise ValueError(
+            "GitHub Models was retired on 2026-07-30. "
+            "A github/ model does not reach an inference API. "
+            "Use Groq, or another provider with its own key."
+        )
 
     preset = _find_preset(prefix)
 
@@ -343,12 +339,6 @@ def build_llm(
         resolved_base = preset.get("api_base")
     if prefix == "ollama" and not resolved_base:
         resolved_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-
-    # GitHub Models: all models use the same OpenAI-compatible endpoint.
-    # litellm recognizes "github/" as a provider and routes to OpenAI-compatible,
-    # setting api_base to models.inference.ai.azure.com automatically.
-    if prefix == "github":
-        resolved_base = resolved_base or "https://models.inference.ai.azure.com"
 
     # LLM Gateway (mcp-llm-bridge): rewrite model for LiteLLM.
     # "gateway/claude-sonnet-4" -> "openai/claude-sonnet-4" with gateway base_url.

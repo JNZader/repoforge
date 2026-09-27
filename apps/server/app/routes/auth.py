@@ -139,11 +139,9 @@ async def callback(
         # Generate JWT
         token = _build_jwt(user)
 
-    # NOTE: We intentionally do NOT auto-register the OAuth token as a
-    # github-models provider key. GitHub OAuth tokens with scope "read:user"
-    # cannot access the GitHub Models inference API — a separate Personal
-    # Access Token (PAT) with models:read scope is required. Users must
-    # add their PAT manually via Settings > Provider Keys.
+    # NOTE: The OAuth token is not stored as a model provider key.
+    # GitHub Models was retired on 2026-07-30, and this token is only
+    # for signing the user in.
 
     return RedirectResponse(
         url=f"{frontend_base}/#/auth/callback?token={token}",

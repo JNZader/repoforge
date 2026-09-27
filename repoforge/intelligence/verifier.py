@@ -5,9 +5,10 @@ Stage C of the two-stage verification pipeline.
 Uses a separate LLM call to cross-check generated content against
 verified facts extracted from source code.
 
-Default verifier model: github/Phi-4 (good at fact-checking, cheap).
-If the generator model IS Phi-4, falls back to github/gpt-4o-mini
-to avoid same-model self-review.
+Default verifier model: groq/openai/gpt-oss-120b.
+If the generator is already that model, falls back to claude-haiku-3-5
+to avoid same-model self-review. GitHub Models, including Phi-4 on that
+host, was retired on 2026-07-30.
 """
 
 from __future__ import annotations
@@ -22,8 +23,8 @@ from .ast_extractor import ASTSymbol
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_VERIFIER_MODEL = "github/Phi-4"
-FALLBACK_VERIFIER_MODEL = "github/gpt-4o-mini"
+DEFAULT_VERIFIER_MODEL = "groq/openai/gpt-oss-120b"
+FALLBACK_VERIFIER_MODEL = "claude-haiku-3-5"
 
 
 def verify_chapter(
@@ -43,8 +44,8 @@ def verify_chapter(
         facts: Verified facts from source code.
         ast_symbols: AST symbols keyed by file path.
         llm: The generator LLM instance (used to detect model conflicts).
-        model: Explicit verifier model override. If None, uses Phi-4
-               (or gpt-4o-mini if generator is Phi-4).
+        model: Explicit verifier model override. If None, uses the Groq
+               default, or Claude Haiku when the generator is already that Groq model.
 
     Returns:
         Tuple of (corrected_content, list_of_issues_found).
@@ -72,7 +73,8 @@ def _resolve_verifier_model(explicit_model: str | None, generator_model: str) ->
         return explicit_model
 
     gen_lower = generator_model.lower()
-    if "phi-4" in gen_lower or "phi4" in gen_lower:
+    default_name = DEFAULT_VERIFIER_MODEL.split("/")[-1].lower()
+    if default_name in gen_lower:
         return FALLBACK_VERIFIER_MODEL
 
     return DEFAULT_VERIFIER_MODEL

@@ -14,8 +14,12 @@ PyPI `repoforge-ai` 0.7.0 has an empty Author field. README (EN/ES), the live la
 - `action.yml` descriptions and default model
 - web form: drop the dead provider, the extra target, and the language the CLI rejects
 
-## Out of scope
-Server-side `github-models` validator and `AUTO_DETECT_ORDER` still know that provider. Removing them is a behavior change with its own tests.
+## Follow-up in this same branch
+- `github/` models raise. `GITHUB_TOKEN` is not an auto-detected provider.
+- The web validator rejects `github-models` without calling the retired host.
+- Root `06-api-reference.md` and `output/05-data-models.md` were Engram chapters and are deleted.
+- Landing test count is the pytest collection count, 3649.
+- Package version is 0.7.1 so the next GitHub release can refresh PyPI. The live site updates when this branch is on main.
 
 ## Checklist
 - [x] Author metadata is Javier Zader, no email

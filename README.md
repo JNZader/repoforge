@@ -672,7 +672,7 @@ If your repo already serves `https://youruser.github.io/yourrepo/`, auto mode wi
 RepoForge also ships a composite action (`action.yml`). When you reference it from another workflow, pin a released tag instead of `@main` so downstream workflows stay reproducible:
 
 ```yaml
-uses: JNZader/repoforge@v0.7.0  # pin a released tag — see the Releases page
+uses: JNZader/repoforge@v0.7.1  # pin a released tag — see the Releases page
 ```
 
 ### Manual Pages flow

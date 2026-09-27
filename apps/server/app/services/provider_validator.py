@@ -21,7 +21,7 @@ async def validate_provider_key(
 
     Args:
         provider: Provider name (``openai``, ``anthropic``, ``google``,
-                  ``groq``, ``mistral``, ``github-models``).
+                  ``groq``, ``mistral``). ``github-models`` is rejected.
         api_key: The API key to validate.
 
     Returns:
@@ -126,32 +126,9 @@ async def _validate_mistral(api_key: str) -> tuple[bool, list[str]]:
 
 
 async def _validate_github_models(api_key: str) -> tuple[bool, list[str]]:
-    """Validate GitHub PAT against the Models inference API.
-
-    Uses a minimal completion call to verify the token can access inference.
-    OAuth tokens with read:user scope will fail here (by design).
-    """
-    async with httpx.AsyncClient(timeout=_VALIDATION_TIMEOUT) as client:
-        resp = await client.post(
-            "https://models.inference.ai.azure.com/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": "hi"}],
-                "max_tokens": 1,
-            },
-        )
-    # 200 = success, 429 = rate limited but key is valid
-    if resp.status_code in (200, 429):
-        return True, ["gpt-4o-mini", "gpt-4o"]
-    logger.warning(
-        "GitHub Models validation failed (status=%d). "
-        "Make sure you're using a PAT, not an OAuth token.",
-        resp.status_code,
-    )
+    """GitHub Models was retired on 2026-07-30. No key can validate."""
+    del api_key
+    logger.info("Rejected github-models key: the inference API was retired")
     return False, []
 
 

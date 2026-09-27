@@ -276,7 +276,7 @@ def _build_facts_only(
         # Build per-chapter contexts for ALL known chapter files.
         # This covers universal chapters AND adaptive chapters from any project type
         # (infra_devops, cli_tool, library_sdk, etc.) to avoid falling back to
-        # the _default context which may exceed GitHub Models' 8K token cap.
+        # the _default context, which is the unscoped whole-repo prompt.
         _all_chapter_files = [
             # Universal
             "01-overview.md", "02-quickstart.md", "04-core-mechanisms.md",

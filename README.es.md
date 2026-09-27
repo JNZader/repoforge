@@ -672,7 +672,7 @@ Si tu repo ya sirve `https://youruser.github.io/yourrepo/`, el modo auto va a pr
 RepoForge también trae una action compuesta (`action.yml`). Cuando la referencias desde otro workflow, fijá un tag publicado en lugar de `@main` para que los workflows aguas abajo queden reproducibles:
 
 ```yaml
-uses: JNZader/repoforge@v0.7.0  # fijá un tag publicado — mirá la página de Releases
+uses: JNZader/repoforge@v0.7.1  # fijá un tag publicado — mirá la página de Releases
 ```
 
 ### Flujo manual de Pages

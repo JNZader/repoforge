@@ -552,7 +552,8 @@ def _print_summary(log, generated, docsify_files, corrections,
     if no_verify_docs:
         verify_status = " (verification disabled)"
     elif do_verify:
-        verify_status = f" (verified with {verify_model or 'Phi-4'})"
+        from repoforge.intelligence.verifier import DEFAULT_VERIFIER_MODEL
+        verify_status = f" (verified with {verify_model or DEFAULT_VERIFIER_MODEL})"
     elif not no_verify_docs:
         verify_status = " (deterministic corrections only)"
 
