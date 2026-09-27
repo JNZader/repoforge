@@ -97,6 +97,14 @@ PROVIDER_PRESETS = {
         "max_tokens": 4096,
         "temperature": 0.0,
     },
+    "nvidia_nim": {
+        "api_key_env": "NVIDIA_NIM_API_KEY",
+        # LiteLLM's name. Local setups often export NVIDIA_API_KEY instead.
+        "fallback_api_key_env": "NVIDIA_API_KEY",
+        "api_base": "https://integrate.api.nvidia.com/v1",
+        "max_tokens": 4096,
+        "temperature": 0.0,
+    },
     "gateway": {
         "api_key_env": "LLM_GATEWAY_AUTH_TOKEN",
         "api_base_env": "LLM_GATEWAY_URL",

@@ -42,6 +42,8 @@ inputs:
         claude-haiku-3-5         — requires ANTHROPIC_API_KEY
         gpt-4o-mini              — requires OPENAI_API_KEY
         groq/llama-3.3-70b-versatile — requires GROQ_API_KEY
+        nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b — requires NVIDIA_NIM_API_KEY
+          and no-thinking: true. With thinking on, the draft is not markdown.
       github/* models do not run. GitHub Models was retired on 2026-07-30.
     required: false
     default: 'groq/openai/gpt-oss-120b'
@@ -63,8 +65,9 @@ inputs:
   api-key:
     description: >-
       LLM provider API key. Required for the default Groq model.
-      The same value is exported as GROQ_API_KEY, ANTHROPIC_API_KEY, and
-      OPENAI_API_KEY. Pass the key that matches the selected model.
+      The same value is exported as GROQ_API_KEY, ANTHROPIC_API_KEY,
+      OPENAI_API_KEY, NVIDIA_NIM_API_KEY, and NVIDIA_API_KEY.
+      Pass the key that matches the selected model.
     required: false
     default: ''
 
@@ -75,6 +78,13 @@ inputs:
       have a reason to override the token the runner already provides.
     required: false
     default: ${{ github.token }}
+
+  no-thinking:
+    description: >-
+      Pass --no-thinking. Required for Nemotron on NVIDIA NIM, which otherwise
+      prefixes a thinking trace and the skill draft is rejected.
+    required: false
+    default: 'false'
 
   python-version:
     description: >-
@@ -154,6 +164,8 @@ runs:
         ANTHROPIC_API_KEY: ${{ inputs.api-key }}
         OPENAI_API_KEY: ${{ inputs.api-key }}
         GROQ_API_KEY: ${{ inputs.api-key }}
+        NVIDIA_NIM_API_KEY: ${{ inputs.api-key }}
+        NVIDIA_API_KEY: ${{ inputs.api-key }}
       run: |
         CMD="${{ inputs.command }}"
         MODEL="${{ inputs.model }}"
@@ -162,8 +174,13 @@ runs:
         NAME="${{ inputs.project-name }}"
         THEME="${{ inputs.theme }}"
 
-        # Build command args (no --quiet so errors are visible in Actions log)
+        # Build command args (no --quiet so errors are visible in Actions log).
+        # The API key stays in the environment. Do not append it here:
+        # this step prints ARGS.
         ARGS="$CMD --model $MODEL -o $OUT"
+        if [ "${{ inputs.no-thinking }}" = "true" ]; then
+          ARGS="$ARGS --no-thinking"
+        fi
 
         if [ "$CMD" = "docs" ]; then
           ARGS="$ARGS --lang $LANG --theme $THEME"

@@ -182,8 +182,9 @@ jobs:
           command: docs
           language: English
           output-dir: docs-build
-          model: groq/openai/gpt-oss-120b
-          api-key: ${{ secrets.GROQ_API_KEY }}
+          model: nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b
+          api-key: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          no-thinking: true
 
       - name: Prepare root artifact
         if: steps.plan.outputs.target == 'main'
