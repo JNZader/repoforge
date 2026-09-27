@@ -75,6 +75,7 @@ def generate_artifacts(
     model: Optional[str] = None,
     api_key: Optional[str] = None,
     api_base: Optional[str] = None,
+    disable_thinking: bool = False,
     also_opencode: bool = True,
     verbose: bool = True,
     dry_run: bool = False,
@@ -182,7 +183,12 @@ def generate_artifacts(
         llm = LLM(model=model or "(dry-run)")
         log(f"🤖 Model: {llm.model} (dry-run — no LLM calls)")
     else:
-        llm = build_llm(model=model, api_key=api_key, api_base=api_base)
+        llm = build_llm(
+            model=model,
+            api_key=api_key,
+            api_base=api_base,
+            disable_thinking=disable_thinking,
+        )
         log(f"🤖 Using model: {llm.model}")
 
     # Extract routing parameters from complexity

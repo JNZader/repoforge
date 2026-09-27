@@ -90,9 +90,11 @@ class ModelRouter:
         fallback_model: str | None = None,
         api_key: str | None = None,
         api_base: str | None = None,
+        disable_thinking: bool = False,
     ) -> None:
         self._api_key = api_key
         self._api_base = api_base
+        self._disable_thinking = disable_thinking
         self._providers: dict[str, LLMProvider] = {}
 
         # Merge config: CLI overrides win over yaml config
@@ -141,6 +143,7 @@ class ModelRouter:
                 model=model_str,
                 api_key=self._api_key,
                 api_base=self._api_base,
+                disable_thinking=self._disable_thinking,
             )
             self._providers[cache_key] = provider
         except Exception as exc:
@@ -190,6 +193,7 @@ class ModelRouter:
                     model=model_override,
                     api_key=self._api_key,
                     api_base=self._api_base,
+                    disable_thinking=self._disable_thinking,
                 )
                 self._providers[cache_key] = provider
             logger.info(
@@ -304,6 +308,7 @@ class ModelRouter:
         cli_overrides: Optional[dict[str, str | None]] = None,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
+        disable_thinking: bool = False,
     ) -> "ModelRouter":
         """Build a ``ModelRouter`` from CLI args and ``repoforge.yaml``.
 
@@ -323,6 +328,7 @@ class ModelRouter:
                 },
                 api_key=api_key,
                 api_base=api_base,
+                disable_thinking=disable_thinking,
             )
 
         # Auto mode: read per-tier models from config
@@ -339,4 +345,5 @@ class ModelRouter:
             fallback_model=None,  # auto-detect per tier if not set
             api_key=api_key,
             api_base=api_base,
+            disable_thinking=disable_thinking,
         )

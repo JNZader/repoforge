@@ -16,7 +16,7 @@ from repoforge.model_router import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _fake_build_llm(model=None, api_key=None, api_base=None):
+def _fake_build_llm(model=None, api_key=None, api_base=None, disable_thinking=False):
     provider = MagicMock()
     provider.model = model or "auto-detected"
     return provider
