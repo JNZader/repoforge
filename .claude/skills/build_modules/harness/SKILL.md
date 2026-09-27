@@ -1,25 +1,25 @@
 ---
-name: add-harness-modules
+name: extend-harness-models
 description: >
-  Provides patterns to generate module scaffolds and evaluate LLM outputs with harness utilities.
-  Trigger: when working with the `harness` module in eval layer.
+  Add parent to path when running directly.
+  Trigger: when loading eval harness modules for CRUD, NextJS, or Go services.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: low
-token_estimate: 350
-dependencies: []
-related_skills: ["run-scenarios", "score-evaluation"]
-load_priority: high
+  complexity: low
+  token_estimate: 350
+  dependencies: []
+  related_skills: [eval-scenarios, repoforge-cli]
+  load_priority: high
 ---
 
 <!-- L1:START -->
-# add-harness-modules
+# extend-harness-models
 
-Creates FastAPI CRUD scaffolds and scores LLM output precision using the harness utilities.
+Add parent directory to sys.path when running eval harness modules directly.
 
-**Trigger**: when you need to scaffold a service layer or evaluate LLM output with the `harness` module.
+**Trigger**: Running `eval/harness.py` or any harness module as a script.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,73 +27,55 @@ Creates FastAPI CRUD scaffolds and scores LLM output precision using the harness
 
 | Task | Pattern |
 |------|---------|
-| Create FastAPI CRUD module | `make_fastapi_crud_module()` |
+| Load harness module | `python -m eval.harness` |
+| Run all scenarios | `python repoforge/cli.py eval` |
 | Score trigger precision | `score_trigger_precision(output, module)` |
-| Run all evaluation scenarios | `run_all()` |
-
-## Critical Patterns (Summary)
-- **Create FastAPI CRUD scaffolds**: use `make_fastapi_crud_module` to obtain route and model dictionaries.
-- **Score trigger precision**: apply `score_trigger_precision` to get a `ScoreResult` reflecting how well output matches expected triggers.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Create FastAPI CRUD scaffolds
+### Pattern 1: Add Parent to Path for Direct Execution
 
-Generate ready‑to‑use FastAPI route and Pydantic model mappings in a single call.
+When running `eval/harness.py` directly, the `eval/` parent directory must be added to `sys.path` to resolve sibling imports. The module uses `pathlib.Path(__file__).parent.parent` to dynamically resolve the project root and insert it into the path.
 
 ```python
-from eval.harness import make_fastapi_crud_module
-
-# Returns (routes_dict, models_dict)
-crud_routes, crud_models = make_fastapi_crud_module()
-print(crud_routes)   # e.g., {'/items': <function ...>}
-print(crud_models)   # e.g., {'Item': <class ...>}
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 ```
 
-### Score trigger precision
+### Pattern 2: Score Trigger Precision Using Exported Functions
 
-Assess how precisely LLM output triggers the expected behavior for a given module.
+Use `score_trigger_precision` to evaluate how well an LLM output matches the expected trigger pattern for a given module. The function takes the raw output string and the generated module dict, returning a `ScoreResult` with precision metrics.
 
 ```python
-from eval.harness import score_trigger_precision, ScoreResult
-
-output = "Created item with ID 42"
-module = {"expected_trigger": "item_created"}
-
-result: ScoreResult = score_trigger_precision(output, module)
-print(f"Precision: {result.precision:.2f}")
+from eval.harness import score_trigger_precision
+result = score_trigger_precision(output, module_dict)
 ```
 
 ## When to Use
 
-- When you need a quick FastAPI CRUD skeleton for a new service layer.
-- When evaluating LLM‑generated code or logs against expected triggers.
-- When running batch evaluations across multiple scenarios with `run_all`.
+- Running eval harness scripts directly from the `eval/` directory
+- Debugging module generation precision for FastAPI, NextJS, or Go services
+- Validating that trigger patterns match expected module structures
 
 ## Commands
 
 ```bash
-# Run a single scenario with verbose logging
-python -m eval.harness --scenario my_scenario --verbose
-
-# Build the Docker image for the harness utilities
-docker build -t eval-harness .
+python -m eval.harness --scenario model --verbose
+python repoforge/cli.py eval --all
 ```
 
 ## Anti-Patterns
 
-### Don't: Re‑create scaffolds inside a loop
+### Don't: Run harness without path setup
 
-Repeatedly calling scaffold generators wastes resources and can cause inconsistent state.
+Running `eval/harness.py` directly without adding the parent directory to `sys.path` causes `ImportError` for sibling modules. The script relies on `pathlib.Path(__file__).parent.parent` to locate project roots, and missing this setup breaks all module generation imports.
 
 ```python
-# BAD
-for item in items:
-    routes, models = make_fastapi_crud_module()  # unnecessary repeated call
-    process(item, routes, models)
+# BAD: Missing path setup
+# sys.path.insert(0, str(Path(__file__).parent.parent))
+# from eval.harness import make_fastapi_crud_module
 ```
-
-Instead, call the generator once outside the loop and reuse the results.
 <!-- L3:END -->

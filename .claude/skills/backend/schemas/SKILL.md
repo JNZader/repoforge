@@ -1,27 +1,25 @@
 ---
-name: add-schemas-model
+name: add-schemas-endpoint
 description: >
-  Pydantic v2 schemas for RepoForge API requests and responses.
-  Trigger: when working with schemas in the backend.
+  Pydantic v2 request/response schemas for RepoForge Web API.
+  Trigger: when defining or validating schemas
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: low
-token_estimate: 350
-dependencies: []
-related_skills:
-  - define-pydantic-models
-  - handle-auth-responses
-load_priority: high
+  complexity: low
+  token_estimate: 450
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
 <!-- L1:START -->
-# add-schemas-model
+# add-schemas-endpoint
 
-Defines and validates the core request/response models for the RepoForge API.
+Pydantic v2 request/response schemas for RepoForge Web API.
 
-**Trigger**: when working with schemas in the backend.
+**Trigger**: when defining or validating schemas
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,66 +27,54 @@ Defines and validates the core request/response models for the RepoForge API.
 
 | Task | Pattern |
 |------|---------|
-| Return user info | `UserResponse(user=UserInfo(...))` |
-| Validate generation input | `GenerateRequest(**payload)` |
-| Emit token response | `TokenResponse(access_token=token)` |
-
-## Critical Patterns (Summary)
-- **UserResponse schema**: Wrap `UserInfo` in a response model for API output.
-- **GenerateRequest validation**: Use the request schema to enforce payload structure.
+| Validate request | `UserInfo` |
+| Response model | `UserResponse` |
+| Token handling | `TokenResponse` |
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### UserResponse schema
+### Pattern: UserInfo Schema Validation
 
-Encapsulate user details in a dedicated response model to keep API contracts explicit.
+The `UserInfo` schema validates incoming user data using Pydantic v2's `model_validate` for type-safe deserialization.
 
 ```python
-from apps.server.app.models.schemas import UserInfo, UserResponse
-
-def get_current_user(user_id: str) -> UserResponse:
-    info = UserInfo(id=user_id, name="Alice", email="alice@example.com")
-    return UserResponse(user=info)
+python
+data = UserInfo.model_validate(request_json)
 ```
 
-### GenerateRequest validation
+### Pattern: TokenResponse Construction
 
-Leverage `GenerateRequest` to automatically validate incoming generation payloads, ensuring correct types and defaults.
+`TokenResponse` structures authentication tokens with explicit `access_token` and `expires_in` fields for consistent API responses.
 
 ```python
-from apps.server.app.models.schemas import GenerateRequest, GenerateResponse
-
-def start_generation(payload: dict) -> GenerateResponse:
-    req = GenerateRequest(**payload)          # raises ValidationError on bad data
-    # process request...
-    return GenerateResponse(job_id=req.job_id, status="queued")
+python
+token = TokenResponse(access_token=jwt_token, expires_in=3600)
 ```
 
 ## When to Use
 
-- When returning user data from any endpoint.
-- When accepting generation parameters from clients.
-- When needing a typed token payload for authentication flows.
+- Validating incoming request bodies against `UserInfo`
+- Constructing `TokenResponse` for auth endpoints
+- Serializing model instances to `UserResponse`
 
 ## Commands
 
 ```bash
-docker compose up -d            # start the RepoForge services
-python -m apps.server.app.main  # run the FastAPI server locally
+docker compose up -d
+python -m repoforge.cli validate-schema
 ```
 
 ## Anti-Patterns
 
-### Don't: Use mutable defaults in Pydantic models
+### Don't: Use `dict()` for schema conversion
 
-Mutable defaults (e.g., `list = []`) are shared across instances, causing unexpected state leakage.
+Directly converting Pydantic models to dict loses type validation and errors on missing fields.
 
 ```python
-from pydantic import BaseModel
-
-class BadModel(BaseModel):
-    tags: list = []  # BAD: mutable default
+python
+# BAD
+user_dict = dict(user_model)
 ```
 <!-- L3:END -->

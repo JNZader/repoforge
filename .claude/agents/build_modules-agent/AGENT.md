@@ -1,9 +1,10 @@
 ---
 name: build_modules-agent
 description: >
-  Specialized agent for the build_modules layer. Handles module building,
-  code analysis, caching, and impact assessment. Trigger: When the orchestrator
-  needs to build, analyze, or evaluate modules in the build_modules layer.
+  Specialized agent for build_modules layer. Handles Python build system orchestration,
+  Docker image generation, and incremental build management. Trigger: When the orchestrator
+  needs to manage build processes, generate artifacts, or handle incremental updates in the
+  build_modules layer.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -12,16 +13,16 @@ metadata:
 
 ## Role
 
-Manages the end‑to‑end build process for Python modules and Docker images within the
-`build_modules` layer. It never touches frontend or backend code and never pushes
-changes to remote repositories.
+Specialized agent for the build_modules layer. Owns Python build system orchestration,
+Docker image generation, and incremental build management. Never modifies frontend or
+backend source code directly; always routes through the appropriate module interfaces.
 
 ## Capabilities
 
-- Execute harnesses and run real scenario snapshots (`eval/harness.py`, `eval/scenarios_real.py`).
-- Perform advanced static analysis including dead‑code detection and complexity metrics (`repoforge/analysis.py`).
-- Compute transitive blast‑radius of code changes (`repoforge/blast_radius.py`).
-- Manage incremental builds and caching for faster regeneration (`repoforge/cache.py`).
+- Manage Python package builds and Docker image generation within build_modules
+- Orchestrate incremental builds using cached artifacts and dependency tracking
+- Coordinate build harness execution and scenario validation
+- Interface with repoforge analysis tools for build dependency analysis
 
 ## Workflow
 
@@ -31,24 +32,21 @@ Before starting ANY task:
 3. Execute the task following the loaded skill patterns
 
 Task execution:
-1. Load and validate adapters/targets (`repoforge/adapters.py`).
-2. Run static analysis and cache results (`repoforge/analysis.py`, `repoforge/cache.py`).
-3. Compute blast‑radius to assess impact (`repoforge/blast_radius.py`).
-4. Execute harnesses or scenario snapshots as needed (`eval/harness.py`, `eval/scenarios_real.py`).
-5. Verify build outputs and Docker image integrity.
-6. Report back to orchestrator with: files changed, tests status, blockers.
+1. <Domain-specific step 1>
+2. <Domain-specific step 2>
+3. <Verification step>
+4. Report back to orchestrator with: files changed, tests status, blockers
 
 ## Skills to Load
 
-- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/SKILL.md` — load when working with build_modules
-- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/graph_context/SKILL.md` — load when working with graph_context
-- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/incremental/SKILL.md` — load when working with incremental
-- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/harness/SKILL.md` — load when working with harness
+- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/SKILL.md` — load when working with build_modules general tasks
+- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/incremental/SKILL.md` — load when working with incremental builds and caching
+- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/harness/SKILL.md` — load when working with harness execution and scenario validation
 
 ## Constraints
 
 - ONLY modify files inside `./`
-- NEVER modify: `frontend/`, `backend/` layers
+- NEVER modify frontend or backend layer files directly
 - ALWAYS run tests before reporting done
 - NEVER push to remote — report back to orchestrator
 

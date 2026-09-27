@@ -1,27 +1,25 @@
 ---
-name: add-types-definitions
+name: add-types-endpoint
 description: >
-  Provides core TypeScript type definitions for generation workflow.
-  Trigger: when working with `types` in the web frontend.
+  Type-safe frontend types for generation workflows and SSE events.
+  Trigger: when adding new generation types or SSE event handlers.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: low
-token_estimate: 350
-dependencies: []
-related_skills:
-  - define-user-model
-  - handle-generation-events
-load_priority: high
+  complexity: medium
+  token_estimate: 650
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
 <!-- L1:START -->
-# add-types-definitions
+# add-types-endpoint
 
-Adds essential TypeScript interfaces and union types for the generation system.
+Type-safe frontend types for generation workflows and SSE events.
 
-**Trigger**: loading the `types` module in the web layer.
+**Trigger**: when adding new generation types or SSE event handlers.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,80 +27,73 @@ Adds essential TypeScript interfaces and union types for the generation system.
 
 | Task | Pattern |
 |------|---------|
-| Define user data | `interface User { … }` |
-| Set generation mode | `type GenerationMode = 'docs' | 'skills' | 'both'` |
-| Listen for start event | `interface GenerationStartedEvent extends GenerationSSEEvent { … }` |
-
-## Critical Patterns (Summary)
-- **User & ProviderKey definitions**: model authenticated users and their keys.
-- **Generation enums & events**: type‑safe handling of modes, statuses, and SSE events.
+| Validate User type | `User` |
+| Handle Generation events | `GenerationEvent` |
 <!-- L2:END -->
 
 <!-- L3:START -->
-## Critical Patterns (Detailed)
+## Critical Patterns
 
-### User & ProviderKey definitions
+### Pattern: User Type Validation
 
-Model the authenticated GitHub user and associated provider keys with strict typings to avoid runtime mismatches.
+Validate authenticated user identity using the `User` interface for API responses and session storage.
 
 ```typescript
-export interface User {
-  github_user_id: number;
-  login: string;
-  avatar_url: string;
-}
+import { User } from '@/lib/types';
 
-export interface ProviderKey {
-  provider: string;
-  key_hint: string | null;
-  validated_at: string | null;
-  status?: string;
-  note?: string;
-  storage?: 'persistent' | 'session';
+function getDisplayName(user: User): string {
+  return user.login;
 }
 ```
 
-### Generation enums & events
+### Pattern: Generation Mode Dispatch
 
-Use `GenerationMode` and `GenerationStatus` unions for compile‑time safety, and extend `GenerationSSEEvent` for specific SSE payloads like `GenerationStartedEvent`.
+Switch on `GenerationMode` to route generation requests to the correct workflow path.
 
 ```typescript
-export type GenerationMode = 'docs' | 'skills' | 'both';
-export type GenerationStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+import { GenerationMode } from '@/lib/types';
 
-export interface GenerationStartedEvent extends GenerationSSEEvent {
-  type: 'generation_started';
-  generation_id: string;
-  repo_url: string;
-  mode: GenerationMode;
+function routeGeneration(mode: GenerationMode): void {
+  switch (mode) {
+    case 'docs':
+      // docs-only path
+      break;
+    case 'skills':
+      // skills-only path
+      break;
+    case 'both':
+      // combined path
+      break;
+  }
 }
 ```
 
 ## When to Use
 
-- When building API request payloads for `/generate` endpoints.
-- When rendering UI components that depend on user authentication or generation progress.
-- When debugging SSE streams from the backend generation service.
+- Creating new generation request handlers
+- Processing SSE event streams for generation progress
+- Validating user authentication state
 
 ## Commands
 
 ```bash
-# Run the Python CLI inside Docker
-docker compose run --rm web python -m repoforge.cli generate --repo https://github.com/example/repo
-
-# Start the full stack locally
-docker compose up -d
+docker build -t repoforge/app .
+python repoforge/cli.py --help
 ```
 
 ## Anti-Patterns
 
-### Don't: treat union types as arbitrary strings
+### Don't: Omit optional ProviderKey fields
 
-Casting a string to a union bypasses type safety and can cause runtime errors.
+Accessing `provider` or `key_hint` without checking for `null` causes runtime errors when credentials are incomplete.
 
 ```typescript
-// BAD
-const userInput: string = getUserInput();
-const mode: GenerationMode = userInput as GenerationMode; // unsafe
+import { ProviderKey } from '@/lib/types';
+
+// BAD - assumes key_hint is always present
+const hint = providerKey.key_hint; // TypeError if null
+
+// GOOD - handle optional field
+const hint = providerKey.key_hint ?? 'no key set';
 ```
 <!-- L3:END -->

@@ -1,104 +1,96 @@
 ---
-name: configure-main-middleware
+name: add-main-endpoints
 description: >
-  Sets up core FastAPI middleware and health endpoints for the RepoForge server.
-  Trigger: when the `main` FastAPI app is initialized.
+  FastAPI application setup with middlewares, health checks, and lifespan management.
+  Trigger: when initializing the main FastAPI application or adding health endpoints.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: low
-token_estimate: 350
-dependencies: []
-related_skills:
-  - add-health-endpoint
-  - setup-fastapi-lifespan
-load_priority: high
+  complexity: medium
+  token_estimate: 650
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
 <!-- L1:START -->
-# configure-main-middleware
+# add-main-endpoints
 
-Configures essential middleware and health routes for the FastAPI `main` application.
+FastAPI application setup with middlewares, health checks, and lifespan management.
 
-**Trigger**: loading the `main` module at server start‑up.
+**Trigger**: when initializing the main FastAPI application or adding health endpoints.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task                         | Pattern |
-|------------------------------|---------|
-| Add correlation ID middleware| `correlation_id_middleware` |
-| Log each request             | `request_logging_middleware` |
-| Expose health checks         | `health`, `health_detailed` |
-
-## Critical Patterns (Summary)
-- **Add Correlation ID Middleware**: injects a unique request ID into logs and response headers.
-- **Expose Health Endpoints**: provides `/health` and `/health/detailed` for liveness and diagnostics.
+| Task | Pattern |
+|------|---------|
+| Setup middlewares | `correlation_id_middleware` |
+| Health check | `GET /health` |
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Add Correlation ID Middleware
+### Pattern 1: Application Lifespan & Middleware Setup
 
-Ensures every incoming request carries a UUID that is logged and returned in the `X-Request-ID` header, aiding traceability across services.
+Configure FastAPI lifespan and register all HTTP middlewares (correlation ID, request logging, security headers) at application startup.
 
 ```python
-@app.middleware("http")
-async def correlation_id_middleware(request: Request, call_next):
-    request_id = str(uuid.uuid4())
-    structlog.contextvars.bind_contextvars(request_id=request_id)
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    return response
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from apps.server.app.main import lifespan, correlation_id_middleware, request_logging_middleware, security_headers_middleware
+
+app = FastAPI(lifespan=lifespan)
+
+app.middleware("http")(correlation_id_middleware)
+app.middleware("http")(request_logging_middleware)
+app.middleware("http")(security_headers_middleware)
 ```
 
-### Expose Health Endpoints
+### Pattern 2: Health Check Endpoints
 
-Provides lightweight JSON health checks; `health` returns basic status, while `health_detailed` includes version and uptime.
+Define two health check endpoints: a basic `GET /health` returning status and a detailed `GET /health/detailed` with system information.
 
 ```python
 @app.get("/health")
 async def health() -> dict:
-    return await health()
+    """Basic health check endpoint."""
+    return {"status": "ok"}
 
 @app.get("/health/detailed")
 async def health_detailed() -> dict:
-    return await health_detailed()
+    """Detailed health check endpoint."""
+    return {"status": "ok", "version": "0.3.0"}
 ```
 
 ## When to Use
 
-- When initializing the FastAPI `main` app and you need request tracing.
-- When you want observable liveness endpoints for Kubernetes or CI checks.
-- When debugging startup failures and need detailed runtime diagnostics.
+- Initializing the RepoForge Web backend FastAPI application
+- Adding or modifying middleware pipeline for request processing
+- Exposing health check endpoints for monitoring and load balancer checks
 
 ## Commands
 
 ```bash
-# Build the Docker image
-docker build -t repoforge-server:0.3.0 .
+# Start the server with uvicorn
+uvicorn apps.server.app.main:app --reload
 
-# Run the server locally
-uvicorn apps.server.app.main:app --host 0.0.0.0 --port 8000 --reload
+# Run database migrations
+alembic upgrade head
 ```
 
 ## Anti-Patterns
 
-### Don't: Register the same middleware multiple times
+### Don't: Forget to register middlewares
 
-Duplicating middleware leads to duplicated headers, double logging, and performance overhead.
+Omitting `app.middleware("http")(...)` calls means middlewares defined in `lifespan` or elsewhere will not execute, breaking request ID tracking, logging, and security headers.
 
 ```python
-# BAD – middleware applied twice
-@app.middleware("http")
-async def correlation_id_middleware(request: Request, call_next):
-    ...
-
-@app.middleware("http")
-async def correlation_id_middleware(request: Request, call_next):
-    ...
+# BAD: Missing middleware registration
+app = FastAPI(lifespan=lifespan)  # middlewares not attached
 ```
 <!-- L3:END -->

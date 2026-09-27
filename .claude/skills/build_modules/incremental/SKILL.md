@@ -1,25 +1,25 @@
 ---
-name: add-incremental-manifest
+name: add-incremental-endpoint
 description: >
-  Manage incremental build state for repoforge projects.
-  Trigger: when working with incremental manifests.
+  Incremental manifest management for chapter dependencies.
+  Trigger: incremental or manifest operations
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: low
-token_estimate: 350
-dependencies: []
-related_skills: []
-load_priority: high
+  complexity: medium
+  token_estimate: 450
+  dependencies: []
+  related_skills: []
+  load_priority: high
 ---
 
 <!-- L1:START -->
-# add-incremental-manifest
+# add-incremental-endpoint
 
-Manage incremental build state for repoforge projects.
+Incremental manifest management for chapter dependencies.
 
-**Trigger**: when working with incremental manifests.
+**Trigger**: incremental or manifest operations
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -28,84 +28,98 @@ Manage incremental build state for repoforge projects.
 | Task | Pattern |
 |------|---------|
 | Load manifest | `load_manifest(out_dir)` |
-| Save manifest | `save_manifest(out_dir, manifest)` |
-| Find stale chapters | `stale_chapter_names(changed, deps)` |
-
-## Critical Patterns (Summary)
-- **Load & Save Manifest Safely**: Use `load_manifest` and `save_manifest` with proper Path handling.
-- **Detect Stale Chapters via Git SHA**: Combine `get_git_sha`, `get_changed_files`, and `stale_chapter_names`.
+| Get git SHA | `get_git_sha(repo_root)` |
+| Find stale chapters | `stale_chapter_names(changed_files, consumed_by_chapter)` |
 <!-- L2:END -->
+
+<!-- L3:START -->
+## Critical Patterns (Summary)
+
+### load_manifest + save_manifest
+
+<One sentence: Loads/saves the chapter manifest JSON for incremental rebuild tracking.>
+
+```python
+# Load existing manifest
+manifest = load_manifest(out_dir)
+
+# Save updated manifest after changes
+save_manifest(out_dir, manifest)
+```
+
+### get_changed_files + build_chapter_deps
+
+<One sentence: Computes which files changed since last SHA and maps chapter dependencies.>
+
+```python
+# Get files changed since last build
+changed = get_changed_files(repo_root, old_sha)
+
+# Build dependency graph for chapters
+deps = build_chapter_deps(repo_map, chapters)
+```
+<!-- L3:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Load & Save Manifest Safely
+### load_manifest + save_manifest
 
-Persist and retrieve the build manifest without corrupting data. Always validate the returned value before use.
+Loads the chapter manifest JSON from `out_dir` or saves an updated manifest after incremental changes. Uses the `Manifest` dataclass for type-safe access.
 
 ```python
-from pathlib import Path
 from repoforge.incremental import load_manifest, save_manifest, Manifest
 
-out_dir = Path("./build")
-manifest: Manifest | None = load_manifest(out_dir)
-if manifest is None:
-    manifest = Manifest()  # assume dataclass default
+manifest: Manifest = load_manifest(out_dir)
 # ... modify manifest ...
-manifest_path = save_manifest(out_dir, manifest)
-print(f"Manifest saved to {manifest_path}")
+save_manifest(out_dir, manifest)
 ```
 
-### Detect Stale Chapters via Git SHA
+### get_changed_files + build_chapter_deps
 
-Identify chapters that need rebuilding by comparing the current Git SHA with the previous one and walking dependency graphs.
+Computes which files changed since the last git SHA and maps chapter dependency relationships. `get_changed_files` returns a `list[str]` of file paths modified since `old_sha`. `build_chapter_deps` takes a `repo_map: dict` and `chapters: list[dict]` returning `dict[str, list[str]]` of chapter-to-dependency mappings.
 
 ```python
-from pathlib import Path
-from repoforge.incremental import (
-    get_git_sha,
-    get_changed_files,
-    build_chapter_deps,
-    stale_chapter_names,
-)
-
-repo_root = Path(".")
-old_sha = "a1b2c3d4"  # previous build SHA
-new_sha = get_git_sha(repo_root)
-changed = get_changed_files(repo_root, old_sha)
-
-# repo_map and chapters would come from your project config
-deps = build_chapter_deps(repo_map={}, chapters=[])
-stale = stale_chapter_names(changed, deps)
-print(f"Stale chapters: {stale}")
+changed: list[str] = get_changed_files(repo_root, old_sha)
+deps: dict[str, list[str]] = build_chapter_deps(repo_map, chapters)
 ```
+<!-- L3:END -->
 
+<!-- L3:START -->
 ## When to Use
 
-- When a CI pipeline needs to rebuild only affected chapters after a code change.
-- When generating incremental documentation and you must avoid reprocessing unchanged sections.
-- When debugging stale‑chapter detection failures.
+- After git operations to detect which files changed since last build
+- Before rebuilding chapters to determine which need re-rendering
+- When tracking incremental state across builds
 
 ## Commands
 
 ```bash
-# Run the incremental build inside Docker
-docker build -t repoforge .
-docker run --rm -v "$(pwd)":/app repoforge python -m repoforge.cli build
-
-# Direct Python invocation
 python -m repoforge.cli build --incremental
+docker build --pull --no-cache
 ```
+<!-- L3:END -->
 
+<!-- L3:START -->
 ## Anti-Patterns
 
-### Don't: Mutate Manifest without saving
+### Don't: Skip manifest persistence after chapter edits
 
-Modifying the in‑memory `Manifest` and forgetting to persist it leads to out‑of‑sync builds.
+<Why it's wrong: Without calling `save_manifest`, the incremental state is lost and full rebuilds are triggered unnecessarily.>
 
 ```python
-manifest = load_manifest(Path("./build"))
-manifest.some_field = "new value"
-# BAD: never call save_manifest, changes are lost on next run
+# BAD: Forgetting to persist manifest
+# save_manifest(out_dir, manifest)  # missing!
 ```
+<!-- L3:END -->
+
+<!-- L3:START -->
+## Quick Reference
+
+| Task | Pattern |
+|------|---------|
+| Get git SHA | `get_git_sha(repo_root)` |
+| Find stale chapters | `stale_chapter_names(changed_files, consumed_by_chapter)` |
+| Cite files in prompt | `files_cited_in_prompt(prompt, known_files)` |
+<!-- L3:END -->
 <!-- L3:END -->
