@@ -1,8 +1,8 @@
 ---
-name: add-api-client
+name: manage-api
 description: >
-  Provides patterns for robust API interaction in the web frontend.
-  Trigger: when working with the `api` utilities.
+  Provides patterns for robust API interaction in the frontend.
+  Trigger: load when any `api` function or hook is imported.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ load_priority: high
 ---
 
 <!-- L1:START -->
-# add-api-client
+# manage-api
 
-Provides concise patterns for using the API layer in the web app.
+Provides patterns for robust API interaction in the frontend.
 
-**Trigger**: when working with the `api` utilities.
+**Trigger**: load when any `api` function or hook is imported.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,83 +27,82 @@ Provides concise patterns for using the API layer in the web app.
 
 | Task | Pattern |
 |------|---------|
-| Fetch a generation | `fetchGeneration(id)` |
-| Start a generation | `useStartGeneration()` |
-| Handle API errors | `throw new ApiError(...)` |
+| fetch a single generation | `useGeneration(id)` |
+| start a new generation | `useStartGeneration()` |
+| cancel a generation | `useCancelGeneration()` |
 
 ## Critical Patterns (Summary)
-- **Error handling with `ApiError`**: Throw and catch typed errors for HTTP failures.
-- **React Query hooks**: Use provided `use*` hooks to keep UI in sync with API state.
+- **Consistent error handling with `ApiError`**: wrap `fetchApi` calls and inspect `instanceof ApiError`.
+- **React Query hooks for generation lifecycle**: use `useGeneration`, `useStartGeneration`, and `useCancelGeneration` to keep UI in sync.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Error handling with `ApiError`
+### Consistent error handling with `ApiError`
 
-Wrap `fetchApi` calls in try/catch and re‑throw `ApiError` to expose status and code to UI components.
+Catch `ApiError` from `fetchApi` to surface HTTP status and custom codes instead of generic errors.
 
 ```typescript
 import { fetchApi, ApiError } from './api';
 
 async function loadProviders() {
   try {
-    return await fetchApi<ProviderKey[]>('/api/providers');
-  } catch (e) {
-    if (e instanceof ApiError) {
-      console.error(`API ${e.status} – ${e.code}: ${e.message}`);
+    const providers = await fetchApi<ProviderKey[]>('/api/providers');
+    return providers;
+  } catch (err) {
+    if (err instanceof ApiError) {
+      console.error(`API ${err.status} – ${err.code}: ${err.message}`);
+    } else {
+      console.error('Unexpected error', err);
     }
-    throw e;
+    throw err;
   }
 }
 ```
 
 ### React Query hooks for generation lifecycle
 
-Leverage `useStartGeneration`, `useCancelGeneration`, and `useGeneration` to trigger mutations and keep cached data fresh.
+Leverage the provided hooks to fetch, start, and cancel generations while automatically invalidating related queries.
 
 ```typescript
-import { useStartGeneration, useCancelGeneration, useGeneration } from './api';
+import { useGeneration, useStartGeneration, useCancelGeneration } from './api';
 
-function GenerationPanel({ id }: { id: string }) {
-  const { data: gen } = useGeneration(id);
-  const start = useStartGeneration();
-  const cancel = useCancelGeneration();
+// Fetch a generation by ID
+function GenerationDetail({ id }: { id: string }) {
+  const { data, isLoading, error } = useGeneration(id);
+  if (isLoading) return <p>Loading…</p>;
+  if (error) return <p>Error loading generation.</p>;
+  return <pre>{JSON.stringify(data, null, 2)}</pre>;
+}
 
-  return (
-    <>
-      <button onClick={() => start.mutate({ prompt: 'Hello' })}>Start</button>
-      <button onClick={() => cancel.mutate(id)}>Cancel</button>
-      <pre>{JSON.stringify(gen, null, 2)}</pre>
-    </>
-  );
+// Start a new generation
+function NewGenerationButton({ request }: { request: GenerateRequest }) {
+  const { mutateAsync, isLoading } = useStartGeneration();
+  const handleClick = async () => {
+    await mutateAsync(request);
+  };
+  return <button onClick={handleClick} disabled={isLoading}>Generate</button>;
+}
+
+// Cancel an ongoing generation
+function CancelButton({ id }: { id: string }) {
+  const { mutateAsync } = useCancelGeneration();
+  return <button onClick={() => mutateAsync(id)}>Cancel</button>;
 }
 ```
 
 ## When to Use
 
-- Fetching or mutating generation data from the `/api/generate` endpoints.  
-- Populating provider lists or analytics dashboards with React Query.  
-- Implementing global error boundaries that need HTTP status details.
+- When you need to call any `/api/*` endpoint from the React frontend.
+- When you want automatic cache invalidation after starting or cancelling a generation.
+- When you must surface detailed server errors to the UI.
 
 ## Commands
 
 ```bash
-# Run the full stack locally
+# Build and run the Docker environment
 docker compose up --build
 
-# Execute the CLI entry point
-python -m repoforge.cli run
-```
-
-## Anti-Patterns
-
-### Don't: swallow `ApiError` without handling status
-
-Ignoring the structured error loses valuable debugging information.
-
-```typescript
-// BAD
-await fetchApi('/api/providers'); // errors are silently ignored
-```
-<!-- L3:END -->
+# Execute the CLI entry point inside the container
+docker exec -it app

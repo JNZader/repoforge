@@ -55,7 +55,7 @@ When the task is substantial (new feature, refactor, multi‑layer change):
 1. Launch **EXPLORER** sub‑agent → codebase analysis  
 2. Show summary, get approval  
 3. Launch **PROPOSER** → proposal generation  
-4. Launch **SPEC WRITER** → specification drafting  
+4. Launch **SPEC WRITER** → detailed specification  
 5. Launch **IMPLEMENTER** (per layer) → code generation  
 6. Launch **VERIFIER** → validation and testing  
 

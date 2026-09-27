@@ -1,8 +1,8 @@
 ---
 name: add-schemas-model
 description: >
-  Provides patterns for defining and using Pydantic v2 request/response schemas in the RepoForge API.
-  Trigger: When working with schemas for request/response validation.
+  Pydantic v2 schemas for RepoForge API requests and responses.
+  Trigger: when working with schemas in the backend.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -12,16 +12,16 @@ token_estimate: 350
 dependencies: []
 related_skills:
   - define-pydantic-models
-  - handle-auth
+  - handle-auth-responses
 load_priority: high
 ---
 
 <!-- L1:START -->
 # add-schemas-model
 
-Defines concise, type‑safe Pydantic schemas for API payloads.
+Defines and validates the core request/response models for the RepoForge API.
 
-**Trigger**: When working with schemas for request/response validation.
+**Trigger**: when working with schemas in the backend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,13 +29,13 @@ Defines concise, type‑safe Pydantic schemas for API payloads.
 
 | Task | Pattern |
 |------|---------|
-| Create user response | `class UserResponse(BaseModel): ...` |
-| Return token payload | `class TokenResponse(BaseModel): ...` |
-| List generations | `class GenerationListResponse(BaseModel): ...` |
+| Return user info | `UserResponse(user=UserInfo(...))` |
+| Validate generation input | `GenerateRequest(**payload)` |
+| Emit token response | `TokenResponse(access_token=token)` |
 
 ## Critical Patterns (Summary)
-- **UserResponse schema**: model API user data with `UserResponse`.
-- **TokenResponse schema**: standardize JWT payload using `TokenResponse`.
+- **UserResponse schema**: Wrap `UserInfo` in a response model for API output.
+- **GenerateRequest validation**: Use the request schema to enforce payload structure.
 <!-- L2:END -->
 
 <!-- L3:START -->
@@ -43,63 +43,52 @@ Defines concise, type‑safe Pydantic schemas for API payloads.
 
 ### UserResponse schema
 
-Encapsulate user data returned by the API in a single, validated model.
+Encapsulate user details in a dedicated response model to keep API contracts explicit.
 
 ```python
-from pydantic import BaseModel, Field
-from uuid import UUID
+from apps.server.app.models.schemas import UserInfo, UserResponse
 
-class UserInfo(BaseModel):
-    id: UUID
-    username: str
-    email: str
-
-class UserResponse(BaseModel):
-    user: UserInfo = Field(..., description="Authenticated user details")
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+def get_current_user(user_id: str) -> UserResponse:
+    info = UserInfo(id=user_id, name="Alice", email="alice@example.com")
+    return UserResponse(user=info)
 ```
 
-### TokenResponse schema
+### GenerateRequest validation
 
-Provide a consistent shape for JWT access/refresh tokens.
+Leverage `GenerateRequest` to automatically validate incoming generation payloads, ensuring correct types and defaults.
 
 ```python
-from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
+from apps.server.app.models.schemas import GenerateRequest, GenerateResponse
 
-class TokenResponse(BaseModel):
-    access_token: str = Field(..., description="Bearer token")
-    token_type: str = Field(default="bearer")
-    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=1))
+def start_generation(payload: dict) -> GenerateResponse:
+    req = GenerateRequest(**payload)          # raises ValidationError on bad data
+    # process request...
+    return GenerateResponse(job_id=req.job_id, status="queued")
 ```
 
 ## When to Use
 
-- When returning user information from `/auth/me` or similar endpoints.  
-- When issuing JWTs after successful authentication.  
-- When serializing generation results for `/generate` responses.
+- When returning user data from any endpoint.
+- When accepting generation parameters from clients.
+- When needing a typed token payload for authentication flows.
 
 ## Commands
 
 ```bash
-# Build and run the Docker environment
-docker compose up --build -d
-
-# Run the CLI entry point to start the server
-python -m repoforge.cli serve
-
-# Validate schemas with pytest
-pytest -q apps/server/app/models/test_schemas.py
+docker compose up -d            # start the RepoForge services
+python -m apps.server.app.main  # run the FastAPI server locally
 ```
 
 ## Anti-Patterns
 
 ### Don't: Use mutable defaults in Pydantic models
 
-Mutable defaults (e.g., `list = []`) bypass validation and cause shared state across instances.
+Mutable defaults (e.g., `list = []`) are shared across instances, causing unexpected state leakage.
 
 ```python
-class BadSchema(BaseModel):
+from pydantic import BaseModel
+
+class BadModel(BaseModel):
     tags: list = []  # BAD: mutable default
 ```
 <!-- L3:END -->

@@ -1,100 +1,82 @@
 ---
 name: add-auth-endpoints
-description: >
-  Provides FastAPI routes for GitHub OAuth login, callback, JWT validation, and logout.
-  Trigger: auth
+description: >-
+  Implements GitHub OAuth login/callback and JWT validation for the auth layer.
+  Trigger: when auth routes are needed.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
 complexity: low
-token_estimate: 350
+token_estimate: 340
 dependencies: []
 related_skills:
-  - configure-settings
-  - manage-jwt
+  - add-github-oauth
+  - handle-jwt
 load_priority: high
 ---
 
 <!-- L1:START -->
 # add-auth-endpoints
 
-Adds FastAPI routes for GitHub OAuth login, callback handling, JWT validation, and logout.
+Implements GitHub OAuth login, callback handling, JWT validation, and logout.
 
-**Trigger**: auth
+**Trigger**: when auth routes are needed.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task | Pattern |
-|------|---------|
-| Add login route | `login(request)` |
-| Validate JWT | `validate_token(request, current_user)` |
-| Add logout route | `logout(request, current_user)` |
+| Task                     | Pattern |
+|--------------------------|---------|
+| Initiate GitHub login    | `login(request)` |
+| Process OAuth callback   | `callback(request, code, state, error)` |
+| Verify JWT token         | `validate_token(request, current_user)` |
 
 ## Critical Patterns (Summary)
-- **OAuth flow**: expose `login` and `callback` to start and complete GitHub OAuth.
-- **Token guard**: use `validate_token` to enforce JWT authentication on protected endpoints.
+- **OAuth Login Endpoint**: expose `/login` that redirects to GitHub.
+- **JWT Validation Endpoint**: expose `/validate` that returns user info if token is valid.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### OAuth flow with `login` and `callback`
+### OAuth Login Endpoint
 
-Expose `/login` to redirect users to GitHub and `/callback` to handle the provider response.  
-Both functions return `RedirectResponse` and rely on FastAPI's `Request` and query parameters.
+Expose a FastAPI route that starts the GitHub OAuth flow and redirects the client.  
+Use the exported `login` function to build the redirect URL and log the attempt.
 
 ```python
-from fastapi import APIRouter, Request, Query
+from fastapi import Request
 from fastapi.responses import RedirectResponse
+import logging
 
-router = APIRouter()
-
-@router.get("/login")
 async def login(request: Request) -> RedirectResponse:
-    # Build GitHub OAuth URL and redirect
-    redirect_uri = "https://github.com/login/oauth/authorize?...your_params..."
-    return RedirectResponse(url=redirect_uri)
-
-@router.get("/callback")
-async def callback(
-    request: Request,
-    code: str | None = Query(default=None),
-    state: str | None = Query(default=None),
-    error: str | None = Query(default=None),
-) -> RedirectResponse:
-    # Exchange `code` for access token, then redirect to app
-    if error:
-        raise HTTPException(status_code=400, detail=error)
-    # token = exchange_code_for_token(code)
-    return RedirectResponse(url="/")
+    logging.info("Starting GitHub OAuth login")
+    redirect_url = f"https://github.com/login/oauth/authorize?client_id={settings.github_client_id}"
+    return RedirectResponse(url=redirect_url)
 ```
 
-### JWT validation with `validate_token`
+### JWT Validation Endpoint
 
-Protect routes by extracting the current user from the JWT and returning a structured response.
+Validate the incoming JWT and return a structured response.  
+Leverage `validate_token` which receives the `CurrentUser` dependency and returns `AuthValidateResponse`.
 
 ```python
-from fastapi import APIRouter, Request, Depends
+from fastapi import Request, Depends
+from apps.server.app.schemas import AuthValidateResponse
+from apps.server.app.dependencies import CurrentUser
 
-router = APIRouter()
-
-@router.post("/validate")
-async def validate_token(
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-) -> AuthValidateResponse:
-    # `current_user` is populated by JWT verification middleware
-    return AuthValidateResponse(user_id=current_user.id, valid=True)
+async def validate_token(request: Request, current_user: CurrentUser) -> AuthValidateResponse:
+    # FastAPI resolves CurrentUser from the JWT
+    return AuthValidateResponse(user_id=current_user.id, email=current_user.email)
 ```
 
 ## When to Use
 
 - Adding GitHub OAuth login to a new FastAPI service.
-- Securing endpoints that require a verified JWT.
-- Implementing a logout endpoint that clears session cookies or tokens.
+- Securing API endpoints with JWT validation after user authentication.
+- Implementing a logout route that clears session cookies or tokens.
 
 ## Commands
 
@@ -102,26 +84,22 @@ async def validate_token(
 # Run the API locally
 uvicorn apps.server.app.main:app --reload
 
-# Build and start Docker containers
-docker compose build
-docker compose up -d
+# Build and start containers
+docker compose up -d --build
 
-# Execute repository CLI (e.g., migrations)
-python -m repoforge.cli migrate
+# Execute the CLI entry point
+python -m repoforge.cli run
 ```
 
 ## Anti-Patterns
 
-### Don't: Return raw dict from `logout` without proper HTTP response
+### Don't: Return raw dict from `logout` without proper response handling
 
-Returning a plain dictionary bypasses FastAPI's response handling and may expose internal data.
+Returning a plain dictionary bypasses FastAPI's response model and may expose internal data.
 
 ```python
 # BAD
-@router.post("/logout")
 async def logout(request: Request, current_user: CurrentUser) -> dict:
-    return {"message": "logged out"}  # No status code or response model
+    return {"message": "logged out"}  # no status code, no cookie clearing
 ```
-
-Instead, use a proper response type such as `JSONResponse` or a Pydantic model.
 <!-- L3:END -->

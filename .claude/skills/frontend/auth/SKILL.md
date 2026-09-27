@@ -1,27 +1,27 @@
 ---
 name: add-auth-provider
 description: >
-  Provides patterns for integrating AuthProvider and useAuth in a React app.
-  Trigger: when auth context is needed in the UI.
+  Patterns for integrating authentication context in a React frontend.
+  Trigger: when auth utilities are imported or used.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
 complexity: low
-token_estimate: 350
+token_estimate: 340
 dependencies: []
 related_skills:
-  - configure-api-url
-  - manage-auth-context
+  - add-react-context
+  - configure-env-variables
 load_priority: high
 ---
 
 <!-- L1:START -->
 # add-auth-provider
 
-Provides concise patterns to initialize and consume authentication in the frontend.
+Provides a quick way to set up authentication context in the web app.
 
-**Trigger**: when auth context is needed in the UI.
+**Trigger**: when auth utilities are imported or used.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -31,73 +31,69 @@ Provides concise patterns to initialize and consume authentication in the fronte
 |------|---------|
 | Wrap root with provider | `<AuthProvider>{children}</AuthProvider>` |
 | Access auth state | `const auth = useAuth();` |
-| Read API base URL | `const base = API_URL;` |
+| Use API base URL | `fetch(API_URL + '/endpoint')` |
 
 ## Critical Patterns (Summary)
-- **Wrap Application with AuthProvider**: Enclose the app tree in `<AuthProvider>` to supply auth context.
-- **Consume Auth State via useAuth**: Call `useAuth()` inside components to get the current auth value.
+- **AuthProvider**: supply React context for auth.
+- **useAuth**: safely consume the auth context.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Wrap Application with AuthProvider
+### AuthProvider – expose authentication via React context
 
-Place `AuthProvider` at the top level (e.g., in `App.tsx`) so all descendants can access authentication data.
+Wrap your application (or part of it) with `AuthProvider` so child components can access auth data.
 
 ```typescript
 import { AuthProvider } from './lib/auth';
-import { Layout } from './components/Layout';
 
-function App() {
+function Root() {
   return (
     <AuthProvider>
-      <Layout />
+      <App />
     </AuthProvider>
   );
 }
 ```
 
-### Consume Auth State via useAuth
+### useAuth – retrieve authentication state inside components
 
-Use the `useAuth` hook inside any component that is a descendant of `AuthProvider` to retrieve the `AuthContextValue`. It throws if used outside the provider.
+Call `useAuth` only inside components that are descendants of `AuthProvider` to get the typed auth context.
 
 ```typescript
 import { useAuth } from './lib/auth';
 
-function UserBadge() {
+function Dashboard() {
   const { user, token } = useAuth(); // AuthContextValue
-  return <span>{user?.name ?? 'Guest'}</span>;
+  return <div>Welcome, {user.name}</div>;
 }
 ```
 
 ## When to Use
 
-- When you need to protect routes or display user‑specific UI.
-- When making API calls that require the `API_URL` and auth token.
-- To debug missing context errors during development.
+- When you need a global auth state across multiple pages.
+- When a component must read the current user or token.
+- When you want to centralize API URL handling with `API_URL`.
 
 ## Commands
 
 ```bash
-# Rebuild and run the Docker environment
-docker compose up --build
-
-# Execute the repository CLI (Python entry point)
-python -m repoforge.cli
+docker compose up --build          # rebuild and run the dev container
+python -m repoforge.cli            # run the repository CLI
 ```
 
 ## Anti-Patterns
 
-### Don't: Call useAuth outside AuthProvider
+### Don't: Call useAuth outside an AuthProvider
 
-Calling `useAuth` in a component that isn’t wrapped by `AuthProvider` triggers a runtime error.
+Using the hook without the provider throws an error and breaks the component tree.
 
 ```typescript
 import { useAuth } from './lib/auth';
 
-function OrphanComponent() {
-  // BAD: No AuthProvider above this component
+function Orphan() {
+  // BAD: no AuthProvider above this component
   const auth = useAuth(); // throws Error
   return <div>{auth?.user?.name}</div>;
 }
