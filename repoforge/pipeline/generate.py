@@ -98,7 +98,8 @@ def postprocess_chapter(
                     "issues": v_issues,
                 })
         except (ImportError, ValueError, RuntimeError) as e:
-            # ImportError: verifier missing; ValueError: parse error; RuntimeError: LLM call failure
+            # ImportError: verifier missing; ValueError: parse error; RuntimeError: LLM call failure.
+            # Auth errors from the verifier stay uncaught and fail the chapter.
             if log:
                 log(f" ⚠️C:{e}", end="")
 

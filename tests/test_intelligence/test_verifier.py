@@ -5,13 +5,9 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from repoforge.facts import FactItem
 from repoforge.intelligence.ast_extractor import ASTSymbol
 from repoforge.intelligence.verifier import (
-    DEFAULT_VERIFIER_MODEL,
-    FALLBACK_VERIFIER_MODEL,
     _apply_verification_corrections,
     _build_verification_prompt,
     _format_facts_for_verification,
@@ -44,14 +40,13 @@ class TestResolveVerifierModel:
     def test_explicit_model_used_as_is(self):
         assert _resolve_verifier_model("gpt-4o", "anything") == "gpt-4o"
 
-    def test_default_when_generator_is_something_else(self):
-        assert _resolve_verifier_model(None, "claude-haiku-3-5") == DEFAULT_VERIFIER_MODEL
+    def test_default_is_the_generator_model(self):
+        assert _resolve_verifier_model(None, "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b") == (
+            "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
+        )
 
-    def test_fallback_when_generator_is_the_default_model(self):
-        assert _resolve_verifier_model(None, DEFAULT_VERIFIER_MODEL) == FALLBACK_VERIFIER_MODEL
-
-    def test_fallback_matches_the_model_name_inside_a_prefix(self):
-        assert _resolve_verifier_model(None, "groq/openai/gpt-oss-120b") == FALLBACK_VERIFIER_MODEL
+    def test_default_keeps_a_groq_generator_on_groq(self):
+        assert _resolve_verifier_model(None, "groq/openai/gpt-oss-120b") == "groq/openai/gpt-oss-120b"
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +187,7 @@ class TestApplyCorrections:
 
 class TestVerifyChapter:
     @patch("repoforge.intelligence.verifier.build_llm")
-    def test_applies_corrections_from_llm(self, mock_build_llm):
+    def test_copies_the_generator_provider(self, mock_build_llm):
         mock_verifier = MagicMock()
         mock_verifier.complete.return_value = json.dumps([
             {"type": "wrong", "claim": "port 8080", "correction": "port 7437", "evidence": "port fact"},
@@ -200,14 +195,25 @@ class TestVerifyChapter:
         mock_build_llm.return_value = mock_verifier
 
         generator_llm = MagicMock()
-        generator_llm.model = "github/gpt-4o-mini"
+        generator_llm.model = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
+        generator_llm.api_key = "nvapi-test"
+        generator_llm.api_base = "https://integrate.api.nvidia.com/v1"
+        generator_llm.extra_kwargs = {
+            "extra_body": {"chat_template_kwargs": {"enable_thinking": False}},
+        }
 
         content = "The server runs on port 8080."
         facts = [_fact("port", "7437")]
-
         result, issues = verify_chapter(content, facts, None, generator_llm)
         assert "port 7437" in result
         assert len(issues) == 1
+        mock_build_llm.assert_called_once_with(
+            model="nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b",
+            api_key="nvapi-test",
+            api_base="https://integrate.api.nvidia.com/v1",
+            disable_thinking=True,
+        )
+        generator_llm.complete.assert_not_called()
 
     @patch("repoforge.intelligence.verifier.build_llm")
     def test_returns_original_on_llm_error(self, mock_build_llm):
@@ -216,7 +222,10 @@ class TestVerifyChapter:
         mock_build_llm.return_value = mock_verifier
 
         generator_llm = MagicMock()
-        generator_llm.model = "github/gpt-4o-mini"
+        generator_llm.model = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
+        generator_llm.api_key = "nvapi-test"
+        generator_llm.api_base = "https://integrate.api.nvidia.com/v1"
+        generator_llm.extra_kwargs = {}
 
         content = "Original content."
         result, issues = verify_chapter(content, [], None, generator_llm)
@@ -225,25 +234,14 @@ class TestVerifyChapter:
         assert "error" in issues[0].lower()
 
     @patch("repoforge.intelligence.verifier.build_llm")
-    def test_uses_phi4_by_default(self, mock_build_llm):
+    def test_explicit_model_builds_its_own_client(self, mock_build_llm):
         mock_verifier = MagicMock()
         mock_verifier.complete.return_value = '[{"type": "ok", "claim": "good"}]'
         mock_build_llm.return_value = mock_verifier
 
         generator_llm = MagicMock()
-        generator_llm.model = "github/gpt-4o-mini"
+        generator_llm.model = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
 
-        verify_chapter("content", [], None, generator_llm)
-        mock_build_llm.assert_called_once_with(model=DEFAULT_VERIFIER_MODEL)
-
-    @patch("repoforge.intelligence.verifier.build_llm")
-    def test_avoids_phi4_self_review(self, mock_build_llm):
-        mock_verifier = MagicMock()
-        mock_verifier.complete.return_value = '[{"type": "ok", "claim": "good"}]'
-        mock_build_llm.return_value = mock_verifier
-
-        generator_llm = MagicMock()
-        generator_llm.model = DEFAULT_VERIFIER_MODEL
-
-        verify_chapter("content", [], None, generator_llm)
-        mock_build_llm.assert_called_once_with(model=FALLBACK_VERIFIER_MODEL)
+        verify_chapter("content", [], None, generator_llm, model="claude-haiku-3-5")
+        mock_build_llm.assert_called_once_with(model="claude-haiku-3-5")
+        generator_llm.complete.assert_not_called()

@@ -5,10 +5,9 @@ Stage C of the two-stage verification pipeline.
 Uses a separate LLM call to cross-check generated content against
 verified facts extracted from source code.
 
-Default verifier model: groq/openai/gpt-oss-120b.
-If the generator is already that model, falls back to claude-haiku-3-5
-to avoid same-model self-review. GitHub Models, including Phi-4 on that
-host, was retired on 2026-07-30.
+Default verifier model: the same model that wrote the chapter.
+Pass an explicit model to use a different one. A second provider needs
+its own key. The docs workflow has one key, so verification stays on it.
 """
 
 from __future__ import annotations
@@ -22,9 +21,6 @@ from ..llm import LLMProvider, build_llm
 from .ast_extractor import ASTSymbol
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_VERIFIER_MODEL = "groq/openai/gpt-oss-120b"
-FALLBACK_VERIFIER_MODEL = "claude-haiku-3-5"
 
 
 def verify_chapter(
@@ -43,15 +39,26 @@ def verify_chapter(
         chapter_content: The chapter markdown to verify.
         facts: Verified facts from source code.
         ast_symbols: AST symbols keyed by file path.
-        llm: The generator LLM instance (used to detect model conflicts).
-        model: Explicit verifier model override. If None, uses the Groq
-               default, or Claude Haiku when the generator is already that Groq model.
+        llm: The generator LLM. Its model, key, base, and thinking flag
+            are copied into a new verifier client unless ``model`` is set.
+        model: Explicit verifier model. If None, the verifier uses ``llm.model``.
 
     Returns:
         Tuple of (corrected_content, list_of_issues_found).
     """
     verifier_model = _resolve_verifier_model(model, llm.model)
-    verifier_llm = build_llm(model=verifier_model)
+    if model:
+        verifier_llm = build_llm(model=verifier_model)
+    else:
+        # A new client, on purpose. Patching only the generator factory
+        # must not hide a verifier that still needs its own credentials.
+        # Copy the generator's key so that client is the same provider.
+        verifier_llm = build_llm(
+            model=verifier_model,
+            api_key=_text(getattr(llm, "api_key", None)),
+            api_base=_text(getattr(llm, "api_base", None)),
+            disable_thinking=_thinking_disabled(llm),
+        )
 
     facts_text = _format_facts_for_verification(facts, ast_symbols)
     prompt = _build_verification_prompt(chapter_content, facts_text)
@@ -62,22 +69,35 @@ def verify_chapter(
         corrected, issues = _apply_verification_corrections(chapter_content, corrections)
         return corrected, issues
     except (RuntimeError, ValueError, KeyError) as e:
-        # RuntimeError: LLM call failure; ValueError/KeyError: response parse errors
+        # RuntimeError: LLM call failure; ValueError/KeyError: response parse errors.
+        # Provider auth errors stay uncaught so a chapter is not saved as if
+        # verification had run.
         logger.warning("Verification failed: %s — returning original content", e)
         return chapter_content, [f"Verification error: {e}"]
 
 
+def _text(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _thinking_disabled(llm: LLMProvider) -> bool:
+    extra = getattr(llm, "extra_kwargs", None)
+    if not isinstance(extra, dict):
+        return False
+    body = extra.get("extra_body")
+    if not isinstance(body, dict):
+        return False
+    template = body.get("chat_template_kwargs")
+    if not isinstance(template, dict):
+        return False
+    return template.get("enable_thinking") is False
+
+
 def _resolve_verifier_model(explicit_model: str | None, generator_model: str) -> str:
-    """Pick the verifier model, avoiding same-model self-review."""
+    """Use the generator model unless the caller named another one."""
     if explicit_model:
         return explicit_model
-
-    gen_lower = generator_model.lower()
-    default_name = DEFAULT_VERIFIER_MODEL.split("/")[-1].lower()
-    if default_name in gen_lower:
-        return FALLBACK_VERIFIER_MODEL
-
-    return DEFAULT_VERIFIER_MODEL
+    return generator_model
 
 
 def _format_facts_for_verification(
