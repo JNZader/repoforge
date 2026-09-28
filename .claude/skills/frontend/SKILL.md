@@ -2,9 +2,10 @@
 name: frontend-layer
 description: >
   Frontend layer for the Gentleman-Skills project. Handles the React/TypeScript UI,
-  including generation streaming, authentication, and component composition.
-  Trigger: When working in apps/web/ — adding pages, debugging streaming, or
-  modifying auth flows.
+  including app shell, routing, authentication, generation streaming, and analytics dashboards.
+  Owns the user-facing experience and client-side state management.
+trigger: When working in `frontend/` directory — adding pages, debugging generation streams,
+  or integrating auth flows in the web app.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -13,15 +14,14 @@ metadata:
   token_estimate: 650
   dependencies: []
   related_skills: [backend-layer, build_modules-layer]
-  load_priority: high
 ---
 
 <!-- L1:START -->
 # frontend-layer
 
-Frontend layer for Gentleman-Skills React/TypeScript UI. Covers generation streaming, auth, and component composition.
+Frontend layer for the Gentleman-Skills project. Handles the React/TypeScript UI, including app shell, routing, authentication, generation streaming, and analytics dashboards.
 
-**Trigger**: When working in apps/web/ — adding pages, debugging streaming, or modifying auth flows.
+**Trigger**: When working in `frontend/` directory — adding pages, debugging generation streams, or integrating auth flows in the web app.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,88 +29,85 @@ Frontend layer for Gentleman-Skills React/TypeScript UI. Covers generation strea
 
 | Task | Pattern |
 |------|---------|
-| Add new page component | `apps/web/src/components/Layout.tsx` |
-| Start generation stream | `useStartGeneration()` mutation |
-| Check generation status | `useGenerationStream()` hook |
+| Stream generation | `useGenerationStream(generationId)` |
+| Auth check | `useAuth()` |
+| Start generation | `useStartGeneration(data)` |
 
 ## Critical Patterns (Summary)
-- **TypeScript React Components**: Functional components with hooks; all UI components use functional pattern with ReactNode children.
-- **Generation Streaming Flow**: `useGenerationStream` hook + `startGeneration` mutation + SSE event polling pattern.
+- **TypeScript React Components**: Functional components with hooks; all UI components are pure functions returning JSX.
+- **API Integration**: `fetchApi`, `streamGeneration`, `startGeneration` from `lib/api.ts`; auth via `AuthProvider`/`useAuth` with `VITE_API_URL` env var.
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Pattern 1: Generation Streaming Flow
+### Pattern 1: TypeScript React Components
 
-The `useGenerationStream` hook manages SSE-based generation state with steps tracking. Components subscribe via `useGenerationStream(generationId)` and render progress using the `steps` array and `progress` object. The `startGeneration` mutation triggers the backend flow and returns a `GenerateResponse`.
-
-```typescript
-// Use hook to track generation state
-const { status, steps, progress } = useGenerationStream(generationId);
-
-// Render progress UI
-{steps.map((step) => (
-  <div key={step.label}>
-    {step.label}: {step.status}
-  </div>
-))}
-```
-
-### Pattern 2: Error Boundary + Auth Provider Pattern
-
-`ErrorBoundary` wraps critical components to catch render errors without breaking the UI. `AuthProvider` must wrap the app tree and `useAuth` must be called within its context. API calls use `fetchApi` with proper `ApiError` handling for status codes.
+All UI components are functional components returning JSX. State is managed with React hooks (`useState`, `useQuery`, `useMutation`). Components are composed hierarchically: `App` wraps `ErrorBoundary` → `Suspense` → `LoadingSpinner`, with `Layout` and `ProtectedRoute` controlling routing and auth.
 
 ```typescript
-// ErrorBoundary wraps children to catch errors
-<ErrorBoundary>
-  <Suspense fallback={<LoadingSpinner />}>
-    <PageContent />
-  </Suspense>
-</ErrorBoundary>
+// Example: App.tsx entry point
+import { HashRouter } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { LoadingSpinner } from './components/LoadingSpinner';
+import { Layout } from './components/Layout';
 
-// Auth must wrap the tree
-<AuthProvider>
-  <App />
-</AuthProvider>
+function App() {
+  return (
+    <HashRouter>
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Layout>
+            {/* route children rendered here */}
+          </Layout>
+        </Suspense>
+      </ErrorBoundary>
+    </HashRouter>
+  );
+}
+export default App;
 ```
-<!-- L3:END -->
+
+### Pattern 2: Generation Streaming with useGenerationStream
+
+Generation state is managed via `useGenerationStream` hook which tracks `StreamStatus` ('idle' | 'connecting' | 'running' | 'completed' | 'error' | 'cancelled'), `StepItem` list, and `progress`. Streaming uses SSE events from `/api/generate` endpoint. The hook provides `events`, `status`, `steps`, and `progress` for UI rendering.
+
+```typescript
+// Example: useGenerationStream hook usage
+const { status, steps, progress, events } = useGenerationStream(generationId);
+if (status === 'running') {
+  steps.map((step) => <Step key={step.label} {...step} />);
+}
+```
 
 ## When to Use
 
-- Adding a new page or component under `apps/web/src/components/`
-- Debugging generation streaming state or SSE connectivity
-- Wrapping components with error boundaries or auth checks
-- Modifying generation flow or API endpoints
+- Adding a new page or view in the web app
+- Debugging generation stream state or SSE event handling
+- Integrating or modifying authentication flow
+- Building analytics dashboards using `useAnalyticsSummary`, `useAnalyticsUsage`, `useAnalyticsModels`, `useAnalyticsRepos`
 
 ## Commands
 
 ```bash
-# Install deps
-cd apps/web && npm install
-
-# Run dev server
+# Start development server
 cd apps/web && npm run dev
 
 # Build for production
 cd apps/web && npm run build
 
-# Run tests
-cd apps/web && npm test
+# Run type check
+cd apps/web && npm run typecheck
 ```
 
 ## Anti-Patterns
 
-### Don't: Access API directly without `fetchApi` wrapper — `apps/web/src/lib/api.ts`
+### Don't: Directly fetch API without error boundaries
 
-Direct `fetch` calls bypass error normalization, auth headers, and consistent error types (`ApiError`). Always use the exported `fetchApi`, `startGeneration`, and `streamGeneration` functions for consistent `ApiError` handling, automatic retries, and SSE streaming support.
+Directly calling `fetchApi` without wrapping in `ErrorBoundary` or handling `ApiError` types will crash the UI on network errors or auth failures. Always use `useStartGeneration`/`useCancelGeneration` mutations or wrap calls in try/catch with `ApiError` handling, and ensure `ErrorBoundary` wraps the app root to catch rendering errors from child components.
 
 ```typescript
-// BAD — bypasses error handling and auth
-const resp = await fetch('/api/generate', { method: 'POST' });
-const data = await resp.json();
-
-// GOOD — uses typed error handling
-const data = await startGeneration({ provider, key });
+// BAD: Unhandled fetchApi call
+const data = await fetchApi('/api/generate', { method: 'POST' }); // crashes on error
 ```
 <!-- L3:END -->

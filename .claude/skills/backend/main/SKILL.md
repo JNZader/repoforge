@@ -1,25 +1,25 @@
 ---
 name: add-main-endpoints
 description: >
-  FastAPI application setup with middlewares, health checks, and lifespan management.
-  Trigger: when initializing the main FastAPI application or adding health endpoints.
+  Middleware and health endpoints for RepoForge Web application.
+  Trigger: when initializing or extending the FastAPI main application.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-  complexity: medium
-  token_estimate: 650
-  dependencies: []
-  related_skills: []
-  load_priority: high
+complexity: low
+token_estimate: 450
+dependencies: []
+related_skills: [add-repo-endpoint, add-user-model]
+load_priority: high
 ---
 
 <!-- L1:START -->
 # add-main-endpoints
 
-FastAPI application setup with middlewares, health checks, and lifespan management.
+One sentence: Adds middleware and health check endpoints to the FastAPI app.
 
-**Trigger**: when initializing the main FastAPI application or adding health endpoints.
+**Trigger**: when setting up the RepoForge Web application main entry point.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,70 +27,57 @@ FastAPI application setup with middlewares, health checks, and lifespan manageme
 
 | Task | Pattern |
 |------|---------|
-| Setup middlewares | `correlation_id_middleware` |
-| Health check | `GET /health` |
+| Add middleware | `add-middleware-pattern` |
+| Health check | `health-endpoint-pattern` |
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Pattern 1: Application Lifespan & Middleware Setup
+### Pattern: correlation_id_middleware
 
-Configure FastAPI lifespan and register all HTTP middlewares (correlation ID, request logging, security headers) at application startup.
+Injects a unique correlation ID into each request context for distributed tracing.
 
 ```python
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
-
-from apps.server.app.main import lifespan, correlation_id_middleware, request_logging_middleware, security_headers_middleware
-
-app = FastAPI(lifespan=lifespan)
-
-app.middleware("http")(correlation_id_middleware)
-app.middleware("http")(request_logging_middleware)
-app.middleware("http")(security_headers_middleware)
+@app.middleware("http")
+async def correlation_id_middleware(request: Request, call_next):
+    import uuid
+    request.state.correlation_id = str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Correlation-ID"] = request.state.correlation_id
+    return response
 ```
 
-### Pattern 2: Health Check Endpoints
+### Pattern: health endpoint
 
-Define two health check endpoints: a basic `GET /health` returning status and a detailed `GET /health/detailed` with system information.
+Provides basic and detailed health check endpoints for monitoring and load balancer checks.
 
 ```python
-@app.get("/health")
 async def health() -> dict:
-    """Basic health check endpoint."""
     return {"status": "ok"}
 
-@app.get("/health/detailed")
 async def health_detailed() -> dict:
-    """Detailed health check endpoint."""
-    return {"status": "ok", "version": "0.3.0"}
+    return {"status": "ok", "database": "connected"}
 ```
-
 ## When to Use
 
-- Initializing the RepoForge Web backend FastAPI application
-- Adding or modifying middleware pipeline for request processing
-- Exposing health check endpoints for monitoring and load balancer checks
+- Adding request tracing and monitoring to the RepoForge Web app
+- Configuring health checks for Docker container orchestration
 
 ## Commands
 
 ```bash
-# Start the server with uvicorn
-uvicorn apps.server.app.main:app --reload
-
-# Run database migrations
-alembic upgrade head
+docker compose up -d repoforge
 ```
 
 ## Anti-Patterns
 
-### Don't: Forget to register middlewares
+### Don't: Skip middleware setup
 
-Omitting `app.middleware("http")(...)` calls means middlewares defined in `lifespan` or elsewhere will not execute, breaking request ID tracking, logging, and security headers.
+Omitting `correlation_id_middleware` or `security_headers_middleware` leaves the application vulnerable to request forgery and removes tracing capability.
 
 ```python
 # BAD: Missing middleware registration
-app = FastAPI(lifespan=lifespan)  # middlewares not attached
+# app.add_middleware(...)  # not called
 ```
 <!-- L3:END -->

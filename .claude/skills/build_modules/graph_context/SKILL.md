@@ -1,75 +1,74 @@
 ---
-name: build-graph-context
+name: add-graph-context-endpoint
 description: >
-  Generates concise graph‑based context for LLM prompts.
-  Trigger: when graph_context is needed for code analysis.
+  Build and format graph context for codebase analysis.
+  Trigger: When loading graph_context module for codebase analysis workflows.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: low
-token_estimate: 350
+complexity: medium
+token_estimate: 1200
 dependencies: []
-related_skills: [format-api-surface, select-code-snippets]
+related_skills: [build-graph-context, format-api-surface]
 load_priority: high
----
+---<!-- L1:START -->
+# add-graph-context-endpoint
 
-<!-- L1:START -->
-# build-graph-context
+One sentence: Builds and formats graph context for codebase analysis workflows.
 
-Creates a string representation of a code graph for downstream LLM consumption.
-
-**Trigger**: when graph_context is needed for code analysis.
+**Trigger**: When loading graph_context module for codebase analysis workflows.
 <!-- L1:END -->
 
 <!-- L2:START -->
 ## Quick Reference
 
-| Task                     | Pattern |
-|--------------------------|---------|
-| Full graph context       | `build_graph_context(root, files)` |
-| Relevant snippets        | `select_code_snippets(graph, root, entry_points, token_budget)` |
-| API surface formatting   | `format_api_surface(root, files, max_tokens)` |
-
-## Critical Patterns (Summary)
-- **Build full graph context**: use `build_graph_context` to serialize selected files.
-- **Select token‑budgeted snippets**: use `select_code_snippets` with an explicit `token_budget`.
+| Task | Pattern |
+|------|---------|
+| Build graph context | `build_graph_context()` |
+| Select code snippets | `select_code_snippets()` |
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Build full graph context
+### Pattern 1: build_graph_context
 
-Serialize a set of source files into a single context string that captures imports, definitions, and relationships.
+Builds graph context from root directory and optional file list.
 
 ```python
-from repoforge.graph_context import build_graph_context
-
-root_dir = "/app/src"
-files = ["module/__init__.py", "module/utils.py"]
-graph_context = build_graph_context(root_dir, files)
-print(graph_context)
+# Real code using actual exported names from this module
+context = build_graph_context(root_dir: str, files: list[str] | None=None) -> str
 ```
 
-### Select token‑budgeted code snippets
+### Pattern 2: select_code_snippets
 
-Extract the most relevant `CodeSnippet` objects from a `CodeGraph` while respecting a token budget to stay within LLM limits.
+Selects optimal code snippets within token budget.
 
 ```python
-from repoforge.graph_context import select_code_snippets
-
-snippets = select_code_snippets(
-    graph,                     # CodeGraph instance
-    "/app/src",                # root directory
-    entry_points=["main.py"], # optional entry points
-    token_budget=1500         # keep under LLM token limit
-)
-for snippet in snippets:
-    print(snippet.code)
+# Real code using actual exported names from this module
+snippets = select_code_snippets(graph, "/path/to/code", entry_points=["main.py"], token_budget=2000)
 ```
 
 ## When to Use
 
-- Generating a complete context for a new module during CI linting.
-- Providing focused
+- Analyzing codebase structure for AI context
+- Selecting relevant code snippets within token limits
+- Building structured graph representations
+
+## Commands
+
+```bash
+python -m repoforge.graph_context --help
+docker run --rm -v $(pwd):/code repoforge/graph_context:latest
+```
+
+## Anti-Patterns
+
+### Don't: Ignore token budget when selecting snippets
+
+```python
+# BAD - will exceed context window
+snippets = select_code_snippets(graph, root_dir, token_budget=100)  # Too small
+```
+<!-- L3:END -->

@@ -1,8 +1,8 @@
 ---
-name: extend-harness-models
+name: extend-harness-module
 description: >
-  Add parent to path when running directly.
-  Trigger: when loading eval harness modules for CRUD, NextJS, or Go services.
+  Add parent directory to path when running eval scripts directly.
+  Trigger: when executing eval/harness.py as main script.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -10,16 +10,16 @@ metadata:
   complexity: low
   token_estimate: 350
   dependencies: []
-  related_skills: [eval-scenarios, repoforge-cli]
+  related_skills: []
   load_priority: high
 ---
 
 <!-- L1:START -->
-# extend-harness-models
+# extend-harness-module
 
-Add parent directory to sys.path when running eval harness modules directly.
+Add parent directory to path when running eval scripts directly.
 
-**Trigger**: Running `eval/harness.py` or any harness module as a script.
+**Trigger**: executing eval/harness.py as main script or importing from repoforge/cli.py
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,55 +27,80 @@ Add parent directory to sys.path when running eval harness modules directly.
 
 | Task | Pattern |
 |------|---------|
-| Load harness module | `python -m eval.harness` |
-| Run all scenarios | `python repoforge/cli.py eval` |
-| Score trigger precision | `score_trigger_precision(output, module)` |
+| Add parent to sys.path | `sys.path.insert(0, '..')` |
+| Run eval harness | `python -m eval.harness` |
+| Execute scenario | `python -m eval.harness run_scenario --scenario model --verbose` |
+
+## Critical Patterns (Summary)
+- **Add parent to path**: Insert `'..'` into `sys.path` before importing harness modules when running scripts directly
+- **Use run_scenario**: Call `run_scenario()` with scenario name to execute evaluation with optional LLM and verbose output
 <!-- L2:END -->
 
 <!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Pattern 1: Add Parent to Path for Direct Execution
+### Add parent to path
 
-When running `eval/harness.py` directly, the `eval/` parent directory must be added to `sys.path` to resolve sibling imports. The module uses `pathlib.Path(__file__).parent.parent` to dynamically resolve the project root and insert it into the path.
+When running `eval/harness.py` directly, the module's parent directory must be added to `sys.path` to resolve sibling imports. This pattern uses `pathlib.Path` to dynamically resolve the project root and insert it into the path, ensuring all harness exports (`make_fastapi_crud_module`, `score_trigger_precision`, etc.) are accessible.
 
 ```python
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Add parent directory to path for direct script execution
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+
+# Now imports from the module work
+from eval.harness import make_fastapi_crud_module, run_scenario
 ```
 
-### Pattern 2: Score Trigger Precision Using Exported Functions
+### Use run_scenario to execute evaluations
 
-Use `score_trigger_precision` to evaluate how well an LLM output matches the expected trigger pattern for a given module. The function takes the raw output string and the generated module dict, returning a `ScoreResult` with precision metrics.
+The `run_scenario` function orchestrates a single evaluation run with optional LLM integration. It accepts a scenario name, optional LLM instance, verbose flag, and facts dictionary. The function returns an `EvalResult` containing scores for trigger precision, code concreteness, pattern detection, and multilang coverage, enabling automated evaluation of LLM outputs against expected module patterns.
 
 ```python
-from eval.harness import score_trigger_precision
-result = score_trigger_precision(output, module_dict)
+from eval.harness import run_scenario
+
+result = run_scenario(
+    scenario_name="model",
+    verbose=True,
+    facts=["extracted_fact_1", "extracted_fact_2"]
+)
+print(f"Trigger precision: {result.score_trigger_precision}")
+print(f"Code concreteness: {result.score_code_concreteness}")
 ```
 
 ## When to Use
 
-- Running eval harness scripts directly from the `eval/` directory
-- Debugging module generation precision for FastAPI, NextJS, or Go services
-- Validating that trigger patterns match expected module structures
+- Running `eval/harness.py` directly from any working directory
+- Executing scenario-based evaluations with `python -m eval.harness`
+- Importing harness functions from repoforge/cli.py or other modules
+- Debugging module score outputs (`score_trigger_precision`, `score_code_concreteness`)
 
 ## Commands
 
 ```bash
-python -m eval.harness --scenario model --verbose
-python repoforge/cli.py eval --all
+# Run the harness with a specific scenario
+python -m eval.harness run_scenario --scenario model --verbose
+
+# Run all scenarios
+python -m eval.harness run_all
+
+# Execute from project root with parent path auto-resolved
+python -m eval.harness --scenario auth --facts '["key=value"]'
 ```
 
 ## Anti-Patterns
 
-### Don't: Run harness without path setup
+### Don't: Skip sys.path modification when running directly
 
-Running `eval/harness.py` directly without adding the parent directory to `sys.path` causes `ImportError` for sibling modules. The script relies on `pathlib.Path(__file__).parent.parent` to locate project roots, and missing this setup breaks all module generation imports.
+<Why it's wrong: Without adding the parent directory to `sys.path`, Python cannot resolve imports like `from eval.harness import ...`, raising `ModuleNotFoundError: No module named 'eval'. This breaks all harness functionality when running scripts outside the project package context.>
 
 ```python
-# BAD: Missing path setup
-# sys.path.insert(0, str(Path(__file__).parent.parent))
-# from eval.harness import make_fastapi_crud_module
+# BAD: Running without path setup
+import sys
+# Missing: sys.path.insert(0, '..')
+from eval.harness import run_scenario  # ModuleNotFoundError
 ```
 <!-- L3:END -->

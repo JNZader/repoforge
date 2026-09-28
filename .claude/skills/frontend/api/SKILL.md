@@ -1,25 +1,25 @@
 ---
-name: add-api-integration
+name: add-api-endpoint
 description: >
-  Centralized API integration patterns for generation, analytics, and provider management.
-  Trigger: when integrating with the api layer or building generation workflows.
+  Centralized API client for the web frontend with React Query integration.
+  Trigger: when fetching or mutating data from the backend API.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
 complexity: medium
-token_estimate: 600
+token_estimate: 450
 dependencies: []
 related_skills: []
 load_priority: high
 ---
 
 <!-- L1:START -->
-# add-api-integration
+# add-api-endpoint
 
-One sentence: Centralized API integration patterns for generation, analytics, and provider management.
+One sentence: Centralized API client for the web frontend with React Query integration.
 
-**Trigger**: when building generation workflows or integrating with the api layer.
+Trigger: when fetching or mutating data from the backend API.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -29,76 +29,64 @@ One sentence: Centralized API integration patterns for generation, analytics, an
 |------|---------|
 | Fetch generations | `useGenerations()` |
 | Start generation | `useStartGeneration()` |
-| Manage providers | `useProviders()` |
 <!-- L2:END -->
 
 <!-- L3:START -->
-## Critical Patterns (Detailed)
+## Critical Patterns (Summary)
 
-### Pattern 1: Fetch Generations with Query Keys
+### Error Handling with ApiError
 
-Use `fetchGenerations` with typed params and `useGenerations` hook for server-driven state.
-
-```typescript
-import { fetchGenerations, useGenerations } from '@/lib/api';
-
-// Fetch with pagination params
-const { data, isLoading } = await fetchGenerations({
-  page: 1,
-  per_page: 10,
-  status: 'completed',
-});
-
-// Hook-based usage
-const { data: generations, isPending } = useGenerations({
-  page: 1,
-  search: 'ai',
-});
-```
-
-### Pattern 2: Start Generation and Invalidate Cache
-
-Use `startGeneration` with `useMutation` to trigger generation and auto-invalidate queries.
+Handle structured API errors using the `ApiError` class which provides `status` and `code` fields for precise error categorization.
 
 ```typescript
-import { useStartGeneration, useGenerations } from '@/lib/api';
+import { ApiError } from '@/lib/api';
 
-const { mutate: startGen, isPending } = useStartGeneration();
-const { refetch } = useGenerations();
-
-await startGen({ provider: 'openai', model: 'gpt-4' });
-// Cache automatically refreshed via onSuccess
-await refetch();
+try {
+  const data = await fetchApi<User>('/api/user');
+} catch (error) {
+  if (error instanceof ApiError) {
+    // Handle specific status codes
+    if (error.status === 401) {
+      // Redirect to login
+    }
+  }
+}
 ```
 
+### useStartGeneration Mutation
+
+Use the `useStartGeneration` mutation to trigger generation workflows with automatic query invalidation.
+
+```typescript
+import { useStartGeneration } from '@/lib/api';
+
+const { mutate, isLoading } = useStartGeneration();
+mutate({ mode: 'docs' });
+```
 ## When to Use
 
-- Building new generation workflows in the frontend
-- Fetching generation history with filters (status, mode, search)
-- Managing provider configurations and keys
+- Fetching generation data or provider lists from the backend
+- Starting new generation workflows with proper mutation handling
+- Canceling in-progress generation tasks
+- Querying analytics and provider information
 
 ## Commands
 
 ```bash
-# Development: start the web app with API mocking
-docker compose -f docker-compose.dev.yml up web
-
-# Run type checks on API layer
-npx tsc --noEmit apps/web/src/lib/api.ts
+docker compose -f docker-compose.dev.yml up -d
+python repoforge/cli.py dev
 ```
 
 ## Anti-Patterns
 
 ### Don't: Ignore ApiError status codes
 
-Accessing response data without checking `status` leads to runtime crashes when the API returns 4xx/5xx.
+Accessing `error.message` without checking `error.status` or `error.code` leads to brittle error handling that breaks on different error types.
 
 ```typescript
-// BAD — assumes success even on error
-const result = await fetchApi('/api/generate'); // crashes if status >= 400
-
-// GOOD — check status first
-const result = await fetchApi('/api/generate');
-if (result.status >= 400) throw new ApiError(result.status, result.code, result.message);
+// BAD - assumes all errors are generic
+catch (error) {
+  console.error(error.message); // Misses status/code context
+}
 ```
 <!-- L3:END -->

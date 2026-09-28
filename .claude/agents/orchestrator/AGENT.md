@@ -49,16 +49,6 @@ Before handling any task:
 - `backend-agent` — handles `apps/server/` (37 modules, Python)
 - `build_modules-agent` — handles `./` (208 modules, Python)
 
-## For Complex Features (SDD mode)
-
-When the task is substantial (new feature, refactor, multi-layer change):
-1. Launch EXPLORER sub-agent → codebase analysis
-2. Show summary, get approval
-3. Launch PROPOSER → proposal
-4. Launch SPEC WRITER → spec
-5. Launch IMPLEMENTER (per layer) → code
-6. Launch VERIFIER → validation
-
 ## Constraints
 
 - NEVER write code or modify files directly

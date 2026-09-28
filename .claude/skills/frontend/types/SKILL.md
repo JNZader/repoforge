@@ -2,13 +2,13 @@
 name: add-types-endpoint
 description: >
   Type-safe frontend types for generation workflows and SSE events.
-  Trigger: when adding new generation types or SSE event handlers.
+  Trigger: when adding new generation types or SSE events to the frontend.
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
   complexity: medium
-  token_estimate: 650
+  token_estimate: 450
   dependencies: []
   related_skills: []
   load_priority: high
@@ -19,7 +19,7 @@ metadata:
 
 Type-safe frontend types for generation workflows and SSE events.
 
-**Trigger**: when adding new generation types or SSE event handlers.
+**Trigger**: when adding new generation types or events to the frontend.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,73 +27,66 @@ Type-safe frontend types for generation workflows and SSE events.
 
 | Task | Pattern |
 |------|---------|
-| Validate User type | `User` |
-| Handle Generation events | `GenerationEvent` |
+| Validate user login | `User` |
+| Create generation request | `GenerateRequest` |
+
+## Critical Patterns (Summary)
+- **User Pattern**: Validates `github_user_id` and `login` from `User` interface
+- **GenerationRequest Pattern**: Constructs `GenerateRequest` with required `repo_url`, `mode`, and `provider`
 <!-- L2:END -->
 
 <!-- L3:START -->
-## Critical Patterns
+## Critical Patterns (Detailed)
 
-### Pattern: User Type Validation
+### User Pattern
 
-Validate authenticated user identity using the `User` interface for API responses and session storage.
+Validates `github_user_id` and `login` from `User` interface to ensure authenticated session state before initiating generation workflows.
 
 ```typescript
 import { User } from '@/lib/types';
 
-function getDisplayName(user: User): string {
-  return user.login;
+if (!User || !User.github_user_id) {
+  throw new Error('User not authenticated');
 }
 ```
+### GenerationRequest Pattern
 
-### Pattern: Generation Mode Dispatch
-
-Switch on `GenerationMode` to route generation requests to the correct workflow path.
+Constructs `GenerateRequest` with required `repo_url`, `mode`, and `provider` fields to start a new generation pipeline.
 
 ```typescript
-import { GenerationMode } from '@/lib/types';
+import { GenerateRequest } from '@/lib/types';
 
-function routeGeneration(mode: GenerationMode): void {
-  switch (mode) {
-    case 'docs':
-      // docs-only path
-      break;
-    case 'skills':
-      // skills-only path
-      break;
-    case 'both':
-      // combined path
-      break;
-  }
-}
+const request: GenerateRequest = {
+  repo_url: 'https://github.com/example/repo',
+  mode: 'skills',
+  provider: 'openai',
+};
 ```
-
 ## When to Use
 
-- Creating new generation request handlers
-- Processing SSE event streams for generation progress
-- Validating user authentication state
+- Validating authenticated user session before generation
+- Constructing generation requests with proper mode and provider selection
+- Handling user authentication state in generation workflows
 
 ## Commands
 
 ```bash
-docker build -t repoforge/app .
+docker build -t repoforge/app:latest .
 python repoforge/cli.py --help
 ```
 
 ## Anti-Patterns
 
-### Don't: Omit optional ProviderKey fields
+### Don't: Missing required fields in GenerateRequest
 
-Accessing `provider` or `key_hint` without checking for `null` causes runtime errors when credentials are incomplete.
+<Why it's wrong: Omitting `repo_url`, `mode`, or `provider` causes runtime errors during generation pipeline initialization. All three fields are required per the `GenerateRequest` interface definition.>
 
 ```typescript
-import { ProviderKey } from '@/lib/types';
+import { GenerateRequest } from '@/lib/types';
 
-// BAD - assumes key_hint is always present
-const hint = providerKey.key_hint; // TypeError if null
-
-// GOOD - handle optional field
-const hint = providerKey.key_hint ?? 'no key set';
+const badRequest: GenerateRequest = {
+  // Missing repo_url, mode, provider — will fail validation
+  mode: 'skills',
+};
 ```
 <!-- L3:END -->

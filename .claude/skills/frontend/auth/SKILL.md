@@ -1,8 +1,8 @@
 ---
-name: add-auth-context
+name: add-auth-endpoint
 description: >
-  Configure authentication context and API endpoints for the application.
-  Trigger: when setting up auth provider or configuring API_URL.
+  Adding authentication endpoints and managing auth state across the app.
+  Trigger: when adding new auth-protected routes or API calls.
 license: Apache-2.0
 metadata:
   author: repoforge
@@ -15,11 +15,11 @@ metadata:
 ---
 
 <!-- L1:START -->
-# add-auth-context
+# add-auth-endpoint
 
-Configure authentication context and API endpoints for the application.
+One sentence: Adding authentication endpoints and managing auth state across the app.
 
-**Trigger**: when setting up AuthProvider or configuring API_URL.
+**Trigger**: when adding new auth-protected routes or API calls.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -27,58 +27,56 @@ Configure authentication context and API endpoints for the application.
 
 | Task | Pattern |
 |------|---------|
-| Setup auth context | `<AuthProvider>` |
-| Get API URL | `API_URL` |
+| Add auth provider | `<AuthProvider>` |
+| Get auth state | `useAuth()` |
 <!-- L2:END -->
 
 <!-- L3:START -->
-## Critical Patterns (Summary)
+## Critical Patterns
 
-### Pattern 1: AuthProvider Setup
+### Use AuthProvider to wrap app
 
-Wrap the app shell with `AuthProvider` to enable `useAuth` hooks. This provider manages authentication state and must wrap all routes that need auth checks.
+Wrap the app shell with `AuthProvider` to make `useAuth` available throughout the component tree.
 
 ```typescript
 import { AuthProvider } from '@/lib/auth';
 
-<AuthProvider>
-  <App />
-</AuthProvider>
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <AuthProvider>
+    <App />
+  </AuthProvider>,
+);
 ```
-### Pattern 2: useAuth Hook
 
-Call `useAuth()` to access the authentication context. It throws if used outside an `AuthProvider`, ensuring proper placement.
+### Use useAuth to access context
+
+Call `useAuth()` anywhere inside a provider-wrapped tree to get the auth context without prop-drilling.
 
 ```typescript
-const { user, login, logout } = useAuth();
+const { token, loading } = useAuth();
+if (loading) return <LoadingSpinner />;
 ```
+
 ## When to Use
 
-- Setting up new application routes requiring authentication
-- Accessing user session data in components
-- Debugging auth state not propagating correctly
+- Adding a new protected API route
+- Checking auth state in a component
+- Accessing user token globally
 
 ## Commands
 
 ```bash
-docker build -t app:latest .
-python -m repoforge.cli auth:status
+docker build -t myapp .
+docker run -p 3000:80 myapp
 ```
+
 ## Anti-Patterns
 
-### Don't: useAuth outside AuthProvider
+### Don't: Access auth outside AuthProvider
 
-Calling `useAuth()` without wrapping the component tree in `AuthProvider` throws `'useAuth must be used within an AuthProvider'`. Always ensure the provider is an ancestor in the component tree.
+Calling `useAuth()` outside an `AuthProvider` boundary throws an error.
 
 ```typescript
-// BAD: will throw error
-const { user } = useAuth();
+const { token } = useAuth(); // BAD: throws 'useAuth must be used within an AuthProvider'
 ```
-## Quick Reference
-
-| Task | Pattern |
-|------|---------|
-| Setup auth context | `<AuthProvider>` |
-| Get API URL | `API_URL` |
-| Access user session | `useAuth()` |
 <!-- L3:END -->

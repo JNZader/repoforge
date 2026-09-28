@@ -1,26 +1,25 @@
 ---
 name: backend-layer
 description: >
-  Python FastAPI backend layer for RepoForge Web. Handles HTTP requests, authentication, migrations, and health checks.
-  Trigger: When working in backend/ directory — adding routes, modifying middleware, or debugging server behavior.
+  Python FastAPI backend layer for RepoForge Web. Handles HTTP routing, middleware, authentication, rate limiting, and database migrations. Owns all server-side request processing and API endpoints.
+  Trigger: When working in backend/ directory and its main responsibility
 license: Apache-2.0
 metadata:
   author: repoforge
   version: "1.0"
-complexity: medium
-token_estimate: 1200
-dependencies: []
-related_skills: [frontend-layer, build_modules-layer]
-load_priority: high
+  complexity: medium
+  token_estimate: 1200
+  dependencies: []
+  related_skills: [frontend-layer, build_modules-layer]
+  load_priority: high
 ---
-
 
 <!-- L1:START -->
 # backend-layer
 
-The Python FastAPI backend layer for RepoForge Web, handling HTTP requests, authentication, migrations, and health checks.
+The Python FastAPI backend layer for RepoForge Web, handling HTTP routing, middleware, authentication, rate limiting, and database migrations. Owns all server-side request processing and API endpoints.
 
-**Trigger**: When working in `backend/` directory — adding routes, modifying middleware, or debugging server behavior.
+**Trigger**: When working in `backend/` directory — adding routes, modifying middleware, debugging authentication, or extending API endpoints.
 <!-- L1:END -->
 
 <!-- L2:START -->
@@ -28,83 +27,69 @@ The Python FastAPI backend layer for RepoForge Web, handling HTTP requests, auth
 
 | Task | Pattern |
 |------|---------|
-| Run migrations | `alembic upgrade head` |
-| Start server | `uvicorn app.main:app --reload` |
-| Test endpoints | `pytest tests/` |
+| Run migrations | `cd apps/server && alembic upgrade head` |
+| Start server | `uvicorn apps.server.main:app --reload` |
+| Test endpoints | `pytest apps/server/tests/` |
 
 ## Critical Patterns (Summary)
-- **FastAPI Middleware**: All request processing goes through correlation_id, logging, and security_headers middleware in defined order.
-- **Migration Runner**: Alembic env.py provides async offline/online migration functions for schema changes.
-<!-- L2:END -->
+- **Middleware Chain**: FastAPI middleware runs in order — correlation_id → request_logging → security_headers. Each must call `call_next` to pass control.
+- **Settings Fail-Fast**: `Settings` from `config.py` validates required env vars on startup; missing vars cause immediate exit.
 
-<!-- L3:START -->
 ## Critical Patterns (Detailed)
 
-### Pattern 1: FastAPI Middleware Pipeline
+### Middleware Chain
 
-Request flows through correlation_id → logging → security_headers → route handler. Each middleware is a FastAPI `@app.middleware("http")` dependency that adds headers or context before passing to the next layer.
+FastAPI middleware executes in declaration order. Each handler must invoke `call_next` to forward the request; omitting this breaks the chain and returns 500 errors.
 
 ```python
-# apps/server/app/main.py
 @app.middleware("http")
-async def correlation_id_middleware(request: Request, call_next):
-    request.state.correlation_id = str(uuid4())
+async def security_headers_middleware(request: Request, call_next):  # noqa: ANN001
     response = await call_next(request)
-    response.headers["X-Correlation-ID"] = request.state.correlation_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 ```
 
-### Pattern 2: Alembic Migration Runner
-
-Offline migrations run without DB connection; online migrations establish async connection via `run_async_migrations()` to perform schema changes.
+### Settings Fail-Fast
 
 ```python
-# apps/server/alembic/env.py
-def run_migrations_offline() -> None:
-    context = context.configure(url=url, literal_binds=True)
-    with context.begin():
-        do_run_migrations(context)
+from apps.server.app.config import Settings
 
-async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.CONFIG_SECTION), prefix="sqlalchemy."
-    )
-    async with connectable.begin() as connection:
-        await connection.run_sync(do_run_migrations, thread=True)
+settings = Settings()  # Raises ValueError if required vars missing
 ```
+
 ## When to Use
 
-- Adding new API routes — use `GET /health` and `GET /health/detailed` patterns as reference
-- Modifying request logging — adjust `configure_logging()` in `apps/server/app/middleware/logging_config.py`
-- Implementing authentication — add JWT dependency via `get_current_user` in `apps/server/app/middleware/auth.py`
+- Adding new HTTP routes or API endpoints
+- Modifying request validation or authentication flow
+- Configuring rate limits or adding middleware
+- Running or writing database migrations
 
-## Adding a New Route
+## Adding a New middleware
 
-1. Define route in `apps/server/app/routes/` — follow existing `providers.py` or `auth.py` pattern
-2. Add middleware if auth/logging needed — inject `get_current_user` or `configure_logging()`
-3. Register in FastAPI app lifespan if startup logic required
-4. Verify: `pytest tests/ -k "<route_name>"`
+1. Create `<name>.py` in `apps/server/app/middleware/`
+2. Export a FastAPI dependency or middleware function following existing pattern
+3. Add to middleware chain in `apps/server/app/main.py` if needed
+4. Verify with `pytest apps/server/tests/middleware/`
 
 ## Commands
 
 ```bash
-uvicorn app.main:app --reload
-alembic upgrade head
-pytest tests/ -k "health"
+cd apps/server && alembic upgrade head       # Run migrations
+uvicorn apps.server.main:app --reload        # Start dev server
+pytest apps/server/tests/                    # Run test suite
 ```
 
 ## Anti-Patterns
 
-### Don't: Skip middleware pipeline order
-
-Placing security headers after route handlers or omitting correlation_id breaks request tracing and security. Middleware must wrap the full request lifecycle.
+### Don't: Skip `call_next` in middleware
 
 ```python
-# BAD - security headers too late
 @app.middleware("http")
-async def security_headers_middleware(request: Request, call_next):
-    response = await call_next(request)  # headers set after handler
-    response.headers["X-SECURITY"] = "true"
-    return response
+async def bad_middleware(request: Request, call_next):
+    # BUG: Missing call_next — request never proceeds
+    return JSONResponse({"error": "chain broken"}, status_code=500)
 ```
+
+**Why**: Without calling `call_next`, the middleware short-circuits the entire request pipeline, returning a 500 error to the client and breaking all downstream handlers.
+
 <!-- L3:END -->

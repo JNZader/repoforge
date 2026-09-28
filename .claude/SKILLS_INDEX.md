@@ -12,6 +12,7 @@
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/schemas/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/main/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/backend/auth/SKILL.md`
+- `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/graph_context/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/incremental/SKILL.md`
 - `/home/runner/work/repoforge/repoforge/.claude/skills/build_modules/harness/SKILL.md`
 
